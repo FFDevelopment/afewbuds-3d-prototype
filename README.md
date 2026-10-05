@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.7.0**.
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.8.0**.
 
 ## Play the Windows build
 
@@ -115,3 +115,7 @@ Synchronizes cloud-test57: player-facing compact scale, wall-fitted hidden stash
 ## Prototype 0.7
 
 Synchronizes cloud-test58: removes the three dark window placeholder boxes and moves the Hidden Wall Stash another 0.12 units toward the left wall (total X offset -0.36). Vault anchor and along-wall positions remain unchanged. Existing gameplay, native accounts, and first-person controls are retained.
+
+## Prototype 0.8
+
+Desktop UI proportions: portrait phone (up to 460 × 680), smaller header typography, and compact visitor notification fixed at the top above the phone. Workstation panels retain their wider layout. Camera height and gameplay are unchanged.

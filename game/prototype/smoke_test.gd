@@ -237,6 +237,14 @@ func run() -> void:
 	game._toggle_phone()
 	await frames()
 	check(game.phone_open and not game.fp_player.enabled, "phone releases cursor and locks movement")
+	check(game.phone_panel.size.y > game.phone_panel.size.x * 1.35, "desktop phone maintains portrait proportions")
+	check(game.phone_panel.get_global_rect().end.y <= game.hud.size.y, "portrait phone fits viewport")
+	game.customer_waiting = true
+	game.customer_answered = false
+	game._refresh_door_alert()
+	await frames()
+	check(game.knock_banner.size.x <= 520 and game.knock_banner.size.y <= 90, "visitor alert stays compact")
+	check(game.knock_banner.get_global_rect().end.y < game.phone_panel.get_global_rect().position.y, "visitor alert sits above phone without overlap")
 	game._toggle_phone()
 	game._go_to_view("main_workbench")
 	check(game.fp_player.position.distance_to(position_before) < 0.1, "closing menus does not teleport player")

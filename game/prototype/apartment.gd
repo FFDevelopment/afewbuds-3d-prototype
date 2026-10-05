@@ -47,6 +47,7 @@ func _ready() -> void:
 	_add_station_targets()
 	_setup_desktop_panels()
 	_build_fp_hud()
+	get_viewport().size_changed.connect(_setup_desktop_panels)
 	AFBCloud.sync_changed.connect(_on_cloud_status)
 	fp_ready = true
 	current_view = "fp_walk"
@@ -82,7 +83,7 @@ func _process(delta: float) -> void:
 	fp_prompt.visible = not modal
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
-	fp_info.text = "AFEWBUDS   /   APARTMENT 0.7\n%s   ·   %s   ·   $%d" % ["GROW ROOM" if current_room == "grow" else "LIVING ROOM", _format_game_clock(), cash]
+	fp_info.text = "AFEWBUDS   /   APARTMENT 0.8\n%s   ·   %s   ·   $%d" % ["GROW ROOM" if current_room == "grow" else "LIVING ROOM", _format_game_clock(), cash]
 	fp_hint.text = "WASD  Walk     E  Interact     P  Phone     Esc  Pause     F5  Save"
 	_hide_old_navigation()
 
@@ -377,12 +378,24 @@ func _use_target() -> void:
 		fp_player.enabled = false
 
 func _setup_desktop_panels() -> void:
-	for panel in [phone_panel, grow_panel, plant_direct_panel, bagging_panel, dealer_storage_panel, storage_panel, supply_inventory_panel, system_control_panel, trim_panel, bag_minigame_panel]:
+	for panel in [grow_panel, plant_direct_panel, bagging_panel, dealer_storage_panel, storage_panel, supply_inventory_panel, system_control_panel, trim_panel, bag_minigame_panel]:
 		panel.set_anchors_preset(Control.PRESET_CENTER)
 		panel.offset_left = -345
 		panel.offset_right = 345
 		panel.offset_top = -320
 		panel.offset_bottom = 330
+	# Phone gets a portrait shell; workstation panels keep their wider layout.
+	var screen: Vector2 = get_viewport().get_visible_rect().size
+	var phone_height: float = minf(680.0, screen.y - 116.0)
+	var phone_width: float = minf(460.0, phone_height * 0.68)
+	phone_panel.set_anchors_preset(Control.PRESET_CENTER)
+	phone_panel.offset_left = -phone_width / 2.0
+	phone_panel.offset_right = phone_width / 2.0
+	phone_panel.offset_top = -phone_height / 2.0 + 38.0
+	phone_panel.offset_bottom = phone_height / 2.0 + 38.0
+	phone_title.add_theme_font_size_override("font_size", 24)
+	phone_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	phone_title.clip_text = true
 	status_label.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	status_label.offset_left = 28
 	status_label.offset_right = -28
@@ -499,3 +512,30 @@ func _open_storage_panel() -> void:
 	storage_panel.visible = true
 	_set_world_controls_visible(false)
 	_refresh_storage_panel()
+
+func _build_door_alert() -> void:
+	super._build_door_alert()
+	# A compact, fixed alert rail above the portrait phone.
+	knock_banner.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	knock_banner.offset_left = -250
+	knock_banner.offset_right = 250
+	knock_banner.offset_top = 12
+	knock_banner.offset_bottom = 80
+	var style := knock_banner.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
+	style.content_margin_top = 8
+	style.content_margin_bottom = 8
+	style.content_margin_left = 12
+	style.content_margin_right = 12
+	knock_banner.add_theme_stylebox_override("panel", style)
+	knock_text.add_theme_font_size_override("font_size", 16)
+	door_alert_detail.add_theme_font_size_override("font_size", 14)
+	door_alert_dot.add_theme_font_size_override("font_size", 18)
+	door_alert_button.custom_minimum_size = Vector2(100, 48)
+	door_alert_button.add_theme_font_size_override("font_size", 14)
+
+func _refresh_door_alert() -> void:
+	super._refresh_door_alert()
+	if knock_banner != null:
+		# Base mobile layout otherwise moves the alert down to Y=194 while walking.
+		knock_banner.offset_top = 12
+		knock_banner.offset_bottom = 80

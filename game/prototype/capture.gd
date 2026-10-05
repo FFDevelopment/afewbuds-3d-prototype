@@ -42,6 +42,9 @@ func run() -> void:
 	await capture("03-packaging.png")
 	game._close_bagging_panel()
 	game._toggle_phone()
+	game.customer_waiting = true
+	game.customer_answered = false
+	game._refresh_door_alert()
 	await capture("04-phone.png")
 	game._toggle_phone()
 	game.dealer_locker_level = 1
