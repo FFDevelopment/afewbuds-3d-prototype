@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.8.0**.
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.8.1**.
 
 ## Play the Windows build
 
@@ -119,3 +119,8 @@ Synchronizes cloud-test58: removes the three dark window placeholder boxes and m
 ## Prototype 0.8
 
 Desktop UI proportions: portrait phone (up to 460 × 680), smaller header typography, and compact visitor notification fixed at the top above the phone. Workstation panels retain their wider layout. Camera height and gameplay are unchanged.
+
+
+## Prototype 0.8.1
+
+Rewards/Advancements no longer expands the portrait desktop phone. Long labels and buttons wrap inside the fixed phone width, horizontal scrolling stays disabled, and a smoke test verifies the phone width remains unchanged when Rewards opens.
