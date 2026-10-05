@@ -21,3 +21,7 @@ Simulation synchronized from cloud-test47 at `14698f4669d535fcaac8ea8aa5f68e9449
 ## Account preparation: prototype 0.3
 
 The account UI and save abstraction are staged locally with a mock service for testing. Live transport is absent. No regular repository update is included. A temporary database save-function change made during integration work was restored to its previous definition; this release does not depend on it.
+
+## Existing account service: prototype 0.4
+
+Uses `afewbuds-beta/shared/config.js` and its existing RPC request contracts without changing that repository or the backend. The desktop upload flow uses the existing timestamp-based save API with a client-side comparison; it does not depend on the reverted revision guard.

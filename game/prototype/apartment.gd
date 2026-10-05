@@ -51,7 +51,7 @@ func _ready() -> void:
 	fp_player.sync_camera()
 	_refresh_navigation_ui()
 	if not session_paused:
-		_pause_gameplay("FIRST-PERSON APARTMENT TEST\n\nWASD to walk · Mouse to look · Shift to move faster\nE to use a plant or workstation · P for phone\nEsc to pause · F5 to save\n\nWalk through the opening into the grow room. Harvest the ready Purple Dream plant, then take it to the packaging bench.\n\nYour career is saved locally. Account connection is not enabled yet.")
+		_pause_gameplay("FIRST-PERSON APARTMENT TEST\n\nWASD to walk · Mouse to look · Shift to move faster\nE to use a plant or workstation · P for phone\nEsc to pause · F5 to save\n\nWalk through the opening into the grow room. Harvest the ready Purple Dream plant, then take it to the packaging bench.\n\nSigned-in careers sync with AFewBuds. Save and close one version before switching. Guests save locally.")
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 func _process(delta: float) -> void:
@@ -80,7 +80,7 @@ func _process(delta: float) -> void:
 	fp_prompt.visible = not modal
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
-	fp_info.text = "AFEWBUDS   /   APARTMENT 0.3\n%s   ·   %s   ·   $%d" % ["GROW ROOM" if current_room == "grow" else "LIVING ROOM", _format_game_clock(), cash]
+	fp_info.text = "AFEWBUDS   /   APARTMENT 0.4\n%s   ·   %s   ·   $%d" % ["GROW ROOM" if current_room == "grow" else "LIVING ROOM", _format_game_clock(), cash]
 	fp_hint.text = "WASD  Walk     E  Interact     P  Phone     Esc  Pause     F5  Save"
 	_hide_old_navigation()
 
@@ -161,6 +161,12 @@ func _capture_runtime_state() -> Dictionary:
 	if fp_player != null:
 		data["prototype_player"] = {"x": fp_player.position.x, "z": fp_player.position.z, "yaw": fp_player.yaw, "pitch": fp_player.pitch}
 	return data
+
+func _reset_beta_save() -> void:
+	if not AFBCloud.session.is_empty():
+		status_label.text = "Shared career resets are not supported here. Sign out to reset your local guest career."
+		return
+	super._reset_beta_save()
 
 func _confirm_beta_reset() -> void:
 	super._confirm_beta_reset()

@@ -31,7 +31,7 @@ func _ready() -> void:
 	logo.custom_minimum_size.y = 100
 	box.add_child(logo)
 	label("AFewBuds", 32)
-	label("3D Edition · Local prototype", 18)
+	label("3D Edition · AFewBuds Account", 18)
 	username = field("Username")
 	password = field("Password", true)
 	email = field("Email (optional for registration)")
@@ -43,19 +43,14 @@ func _ready() -> void:
 	remember = CheckBox.new()
 	remember.text = "Remember me on this computer"
 	box.add_child(remember)
-	var sign_in := button("SIGN IN — NOT CONNECTED YET", submit)
-	sign_in.disabled = true
-	var registration := button("Create account — coming later", toggle_mode)
-	registration.disabled = true
-	username.editable = false
-	password.editable = false
-	remember.disabled = true
+	button("SIGN IN", submit)
+	button("Create account / Back to sign in", toggle_mode)
 	var continue_button := button("CONTINUE LOCAL CAREER", guest)
 	var green := StyleBoxFlat.new()
 	green.bg_color = Color("216b40")
 	green.set_corner_radius_all(8)
 	continue_button.add_theme_stylebox_override("normal", green)
-	continue_button.grab_focus()
+	username.grab_focus()
 	conflict_button = button("Continue from cloud (back up desktop copy)", load_cloud)
 	conflict_button.hide()
 	message = label(AFBCloud.CONNECTION_NOTE, 16)

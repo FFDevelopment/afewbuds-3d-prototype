@@ -9,27 +9,27 @@ func check(ok: bool, label_text: String) -> void:
 func run() -> void:
 	check("QA" in OS.get_user_data_dir(), "cloud tests isolated")
 	if failures: quit(1); return
-	var live_client = load("res://account/cloud.gd").new()
-	root.add_child(live_client)
-	var denied: Dictionary = await live_client.request_rpc("afb_set_save", {"p_session_token": "unused"})
-	check(denied.has("error") and live_client.get_child_count() == 0, "production account transport cannot contact backend")
-	live_client.write_json(live_client.ACTIVE, {"cash": 321, "runtime": {"prototype_player": {"x": 1.5, "z": 2}}})
-	live_client.queue_free()
 	var cloud = load("res://account/mock_cloud.gd").new()
 	root.add_child(cloud)
-	cloud.session = {"account_id": "test-A", "session_token": "mock", "username": "QA"}
-	cloud.remote = {"cash": 400, "save_schema": 2, "_afb_revision": 4, "future_field": {"keep": true}, "runtime": {"current_view": "main_grow_door", "future": 7}}
+	cloud.write_json(cloud.ACTIVE, {"cash": 321, "runtime": {"prototype_player": {"x": 1.5, "z": 2}}})
+	var rejected: Dictionary = await cloud.request_rpc("afb_login", {"p_password": "wrong"})
+	check(rejected.has("error"), "invalid credentials remain on sign-in")
+	var login: Dictionary = await cloud.request_rpc("afb_login", {"p_password": "mock-password"})
+	check(cloud.accept_session(login, true), "valid existing-account response accepted")
+	cloud.session = {}
+	var remembered: Dictionary = await cloud.restore_session()
+	check(remembered.get("username") == "QA" and cloud.session.session_token == "mock", "remembered session validates and restores")
+	cloud.remote = {"cash": 400, "save_schema": 2, "future_field": {"keep": true}, "runtime": {"current_view": "main_grow_door", "future": 7}}
 	var result: Dictionary = await cloud.prepare()
-	check(result.get("ok", false) and cloud.revision == 4, "account career restores cloud revision")
+	check(result.get("ok", false) and cloud.remote_signature == cloud.fingerprint(cloud.remote), "account career restores existing API save")
 	var save := {"cash": 500, "save_schema": 2, "runtime": {"prototype_player": {"x": 2}, "current_view": "fp_walk"}}
 	cloud.queue_save(save)
 	await cloud.flush()
 	while cloud.busy: await process_frame
-	check(cloud.remote.cash == 500 and cloud.revision == 5, "desktop uploads shared progression")
+	check(cloud.remote.cash == 500 and cloud.writes == 1, "desktop uploads shared progression")
 	check(not cloud.remote.runtime.has("prototype_player") and cloud.remote.runtime.current_view == "main_grow_door", "camera isolated from shared save")
 	check(cloud.remote.future_field.keep and cloud.remote.runtime.future == 7, "unknown root and runtime fields retained")
 	check(cloud.read_json(cloud.settings_path()).x == 2, "camera persisted per account on desktop")
-	cloud.remote._afb_revision = 6
 	cloud.remote.cash = 700
 	cloud.queue_save({"cash": 550, "save_schema": 2})
 	await cloud.flush()
@@ -48,6 +48,12 @@ func run() -> void:
 	cloud.fail_network = false
 	await cloud.flush()
 	check(cloud.remote.cash == 725 and not cloud.read_json(cloud.cache_path()).dirty, "network retry uploads pending progress")
+	cloud.reject_save = true
+	cloud.queue_save({"cash": 800, "save_schema": 2})
+	await cloud.flush()
+	while cloud.busy: await process_frame
+	check(cloud.blocked and cloud.remote.cash == 725, "server rejection never reports a successful save")
+	cloud.reject_save = false
 	cloud.session = {"account_id": "test-B", "session_token": "mock2", "username": "QB"}
 	cloud.remote = {}
 	await cloud.prepare()

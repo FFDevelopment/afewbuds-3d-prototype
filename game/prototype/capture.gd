@@ -25,6 +25,8 @@ func run() -> void:
 	var login = load("res://account/login.tscn").instantiate()
 	root.add_child(login)
 	await capture("00-account-entry.png")
+	login.toggle_mode()
+	await capture("00-registration.png")
 	login.queue_free()
 	await process_frame
 	await root.get_node("AFBCloud").prepare(true)

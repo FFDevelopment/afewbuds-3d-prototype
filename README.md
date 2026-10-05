@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.3.0**.
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.4.0**.
 
 ## Play the Windows build
 
@@ -23,7 +23,7 @@ GitHub requires you to be signed in to download artifacts from this repository. 
 | Esc | Close the current panel, or pause/resume |
 | F5 | Save local progress |
 
-Choose **CONTINUE LOCAL CAREER**, then click **RESUME GAME**. Look for the green crosshair and `[ E ]` prompt. Walk through the open doorway into the grow room; no camera transition is required. Menus release the cursor and stop player movement.
+Sign in with your existing AFewBuds account, or choose **CONTINUE LOCAL CAREER** to play as a guest. Then click **RESUME GAME**. Look for the green crosshair and `[ E ]` prompt. Walk through the open doorway into the grow room; no camera transition is required. Menus release the cursor and stop player movement.
 
 ## First test route
 
@@ -53,11 +53,13 @@ This is **Apartment 2.0 groundwork**, not the complete larger-world redesign. Pa
 
 The native dealer locker is available through E, with four capacity tiers and transfer controls. The inherited phone and simulation still contain unfinished legacy features. They are not all covered by this prototype's test suite. Close menus with their buttons or Esc; sales and daily closeouts require their explicit choices.
 
-The account screen and account/save interfaces are prepared, but **live account access, registration, cloud saves, and leaderboards are disconnected**. The production transport contains no HTTP request, endpoint, or API key. Account controls are visibly disabled. This build makes no backend changes and does not contact the regular game's account service.
+The desktop build uses the same existing AFewBuds account APIs as `afewbuds-beta`: sign-in, registration, remembered sessions, account settings, cloud career loading/saving, and global leaderboard access. This update changes only the 3D repository. It requires no database schema/function changes and no regular-game code changes.
 
-Your existing 0.2 prototype save is preserved automatically as the local career. Saves remain in `%APPDATA%/AFewBuds-3D-Prototype/`; `career_guest.json` holds local gameplay and `desktop_guest.json` holds camera position. `afewbuds_3d_prototype_save.json` is the active game snapshot. No regular-game cloud save is imported.
+**Save and close one version before switching to the other.** The existing service is timestamp-based and does not offer an atomic conditional save. The desktop checks the last loaded cloud snapshot before uploading and stops when it detects another version's changes, but simultaneous play in both versions is not supported. A conflict keeps the desktop copy locally and offers to back it up before loading cloud progress.
 
-Future shared accounts still require end-to-end integration and compatible conflict protection. The current account tests use an in-memory mock; they do not establish live sync compatibility.
+Guest progress remains separate from signed-in careers. Existing 0.2/0.3 prototype progress is retained as the local guest career, not automatically uploaded to an account. Saves stay in `%APPDATA%/AFewBuds-3D-Prototype/`; per-career files hold gameplay and separate `desktop_*.json` files hold camera position. Remember me stores the session token, never your password. Sign out through Phone → Account → Save and return to sign-in.
+
+Local guest resets work normally. Shared account resets are unavailable in this prototype. Newer save schema versions are rejected rather than loaded into an incompatible build. Unknown top-level and runtime fields are retained; inventory dictionaries and arrays remain authoritative replacements.
 
 ## Edit the project
 
@@ -97,3 +99,7 @@ Synchronized cloud-test47 dealer storage and sequential upgrade cards. Walk to t
 ## Prototype 0.3
 
 Adds the disconnected account entry screen, isolated career slots, separate desktop camera settings, and local save migration. The higher viewpoint, locker controls, and gameplay from 0.2 remain. Development is limited to this repository.
+
+## Prototype 0.4
+
+Enables the native account connection with the regular game's existing public API configuration. Removed the staged revision protocol; save checks now work with the unchanged get/save endpoints. Tests cover the native HTTP request/response flow with a local fixture, remembered sessions, account isolation, save conflicts, rejected uploads, and guest migration. The live service was checked for invalid-login rejection and public leaderboard availability; a successful sign-in with a real player's credentials requires the player to sign in.
