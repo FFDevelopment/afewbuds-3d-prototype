@@ -1,0 +1,25 @@
+config_version=5
+
+[application]
+config/name="AFewBuds 3D Prototype"
+config/version="0.1.0"
+run/main_scene="res://prototype/apartment.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://assets/branding/afb_app_icon.png"
+config/use_custom_user_dir=true
+config/custom_user_dir_name="AFewBuds-3D-Prototype"
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=800
+window/size/window_width_override=1280
+window/size/window_height_override=800
+window/stretch/mode="canvas_items"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
+
+[debug]
+gdscript/warnings/inference_on_variant=1
