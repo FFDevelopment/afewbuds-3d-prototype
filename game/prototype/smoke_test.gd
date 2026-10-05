@@ -72,7 +72,7 @@ func run() -> void:
 	await frames()
 	check(game._target_from_ray(Vector3(3, 1.4, -3.4), Vector3.FORWARD) == null, "wall blocks interaction through partition")
 	game.get_node("QA_WallTarget").queue_free()
-	aim(Vector3(1.8, 0.08, 0.54), Vector3(3.25, 1.35, 0.54))
+	aim(Vector3(1.8, 0.08, 0.78), Vector3(3.25, 1.35, 0.78))
 	await frames()
 	game._use_target()
 	check(game.bagging_panel.visible, "bench opens original packaging pipeline")
@@ -195,6 +195,42 @@ func run() -> void:
 			check(game.bag_minigame_panel.visible and game.bag_current_units == 0, "bench III continues next bag without reopening")
 	check(batches > 1 and not game.bag_minigame_panel.visible and game.bagged_inventory["Purple Dream"] == bags_before + 17, "continuous bagging finishes and conserves all product")
 	game._close_bagging_panel()
+	# Latest furniture must line up with its first-person targets.
+	check(is_equal_approx(game.get_node("BenchTop").position.z, 0.78), "bench moved toward front door")
+	check(is_equal_approx(game.get_node("StorageBack").position.z, -0.06), "shelves moved toward front door")
+	var counter: MeshInstance3D = game.get_node("KitchenCounter")
+	var frame: MeshInstance3D = game.get_node("GrowDoorFrameR")
+	check(counter.position.x - counter.mesh.size.x / 2 > frame.position.x + frame.mesh.size.x / 2, "kitchen clears grow-room door frame")
+	check(game.get_node("ScaleBody").position.x - game.get_node("ScaleBody").mesh.size.x / 2 >= game.get_node("BenchTop").position.x - game.get_node("BenchTop").mesh.size.x / 2, "scale sits inside tabletop front edge")
+	check(is_equal_approx(game.get_node("PackingScaleText").rotation_degrees.y, -90), "scale display faces player")
+	game.storage_level = 4
+	game._apply_visual_upgrades()
+	check(game.storage_vault.position.is_equal_approx(Vector3(-4.33, 0, -0.30)), "vault anchor remains unchanged")
+	game.storage_level = 5
+	game._apply_visual_upgrades()
+	check(game.hidden_stash_interior_root.position.is_equal_approx(Vector3(-4.57, 0, -0.30)), "stash moves toward wall without moving along it")
+	game._open_storage_panel()
+	check(game.fp_station_opening, "stash animation blocks movement")
+	game._pause_gameplay()
+	await create_timer(0.35).timeout
+	check(not game.storage_panel.visible, "pause cancels pending stash menu")
+	game._resume_gameplay()
+	game._open_storage_panel()
+	await create_timer(0.35).timeout
+	check(game.storage_panel.visible, "stash opens normally after resume")
+	game._close_storage_panel()
+	game.seed_inventory.clear()
+	for seed_name in game.SEED_ORDER:
+		game.seed_inventory[seed_name] = 1
+	game.seed_inventory["Future QA Hybrid"] = 1
+	game.plant_slots[2]["stage"] = -1
+	game._open_direct_plant(2)
+	await frames()
+	var seed_buttons := 0
+	for button in game.plant_direct_box.find_children("", "Button", true, false):
+		if button.text.ends_with(" (1)"): seed_buttons += 1
+	check(seed_buttons == game.seed_inventory.size(), "picker lists every owned seed including future genetics")
+	game._close_direct_plant()
 	var position_before: Vector3 = game.fp_player.position
 	game._toggle_phone()
 	await frames()

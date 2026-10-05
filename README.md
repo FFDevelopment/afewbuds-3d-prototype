@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.5.0**.
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.6.0**.
 
 ## Play the Windows build
 
@@ -107,3 +107,7 @@ Enables the native account connection with the regular game's existing public AP
 ## Prototype 0.5
 
 Synchronizes the full cloud-test53 simulation: Bagging Bench III and continuous 1–4g bagging, premium double-door dealer locker from tier III, relocated locker/bench/kitchen, and updated upgrade cards. First-person targets and collision follow the furniture, including purchases made during play. Locker doors animate before its menu opens; pause/resume preserves the locker menu without moving the camera. The 1.90-unit viewpoint and existing account integration remain. Integration tests cover purchases, inventory conservation, continuous bagging, premium visuals/collision, and interrupted locker opening.
+
+## Prototype 0.6
+
+Synchronizes cloud-test57: player-facing compact scale, wall-fitted hidden stash, shelves and complete bench shifted toward the front door, modern kitchen clear of the grow doorway, and scrollable planting choices for every owned seed. Vault position is unchanged. First-person seed scrolling is connected and stash-opening animations block movement and cancel safely on pause.

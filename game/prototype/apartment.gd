@@ -82,7 +82,7 @@ func _process(delta: float) -> void:
 	fp_prompt.visible = not modal
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
-	fp_info.text = "AFEWBUDS   /   APARTMENT 0.5\n%s   ·   %s   ·   $%d" % ["GROW ROOM" if current_room == "grow" else "LIVING ROOM", _format_game_clock(), cash]
+	fp_info.text = "AFEWBUDS   /   APARTMENT 0.6\n%s   ·   %s   ·   $%d" % ["GROW ROOM" if current_room == "grow" else "LIVING ROOM", _format_game_clock(), cash]
 	fp_hint.text = "WASD  Walk     E  Interact     P  Phone     Esc  Pause     F5  Save"
 	_hide_old_navigation()
 
@@ -114,7 +114,9 @@ func _input(event: InputEvent) -> void:
 		return
 	if _any_modal_open():
 		# Preserve existing drag-to-bag and trim controls, scrolling, and UI buttons.
-		if _handle_station_list_pointer(event) or _handle_station_pointer(event):
+		if plant_direct_panel.visible and plant_direct_scroll != null and plant_direct_scroll.handle_pointer(event):
+			get_viewport().set_input_as_handled()
+		elif _handle_station_list_pointer(event) or _handle_station_pointer(event):
 			get_viewport().set_input_as_handled()
 		elif phone_open and phone_scroll != null and phone_scroll.handle_pointer(event):
 			get_viewport().set_input_as_handled()
@@ -308,8 +310,8 @@ func _sync_physical_collisions() -> void:
 func _add_station_targets() -> void:
 	# Target fronts sit just ahead of the relevant surfaces, not at fixed-view anchors.
 	_add_interaction_area("FP_Locker", Vector3(3.95, 1.3, -2.20), Vector3(0.25, 2.0, 1.5), "station_locker")
-	_add_interaction_area("FP_Bench", Vector3(3.25, 1.35, 0.54), Vector3(0.3, 0.8, 2.25), "station_workbench")
-	_add_interaction_area("FP_Storage", Vector3(-3.95, 1.3, -0.3), Vector3(0.3, 1.8, 2.4), "station_storage")
+	_add_interaction_area("FP_Bench", Vector3(3.25, 1.35, 0.78), Vector3(0.3, 0.8, 2.25), "station_workbench")
+	_add_interaction_area("FP_Storage", Vector3(-3.95, 1.3, -0.30 if storage_level >= 4 else -0.06), Vector3(0.3, 1.8, 2.4), "station_storage")
 	_add_interaction_area("FP_Door", Vector3(0, 1.4, 5.62), Vector3(1.7, 2.6, 0.18), "station_door")
 	_add_interaction_area("FP_System", Vector3(4.45, 1.8, -6.65), Vector3(0.25, 1.0, 1.2), "station_system", "grow")
 	_add_interaction_area("FP_Supply", Vector3(-4.05, 1.25, -6.45), Vector3(0.25, 1.8, 1.3), "station_supply", "grow")
@@ -461,6 +463,7 @@ func _pause_gameplay(message: String = "Paused. Resume whenever you are ready.",
 		fp_open_epoch += 1
 		fp_station_opening = false
 		_set_premium_dealer_locker_open(false)
+		_set_hidden_stash_open(false)
 	super._pause_gameplay(message, start_unix)
 
 func _resume_gameplay() -> void:
@@ -470,3 +473,29 @@ func _resume_gameplay() -> void:
 		_open_dealer_storage_panel()
 		if dealer_locker_level >= 3:
 			_set_premium_dealer_locker_open(true)
+
+func _sync_storage_furniture() -> void:
+	super._sync_storage_furniture()
+	if fp_ready:
+		var target := get_node_or_null("FP_Storage") as Node3D
+		if target != null:
+			target.position.z = -0.30 if storage_level >= 4 else -0.06
+
+func _open_storage_panel() -> void:
+	if storage_level < 5:
+		super._open_storage_panel()
+		return
+	fp_station_opening = true
+	fp_player.enabled = false
+	fp_open_epoch += 1
+	var epoch := fp_open_epoch
+	_set_hidden_stash_open(true)
+	await get_tree().create_timer(0.28).timeout
+	if epoch != fp_open_epoch:
+		return
+	fp_station_opening = false
+	if session_paused:
+		return
+	storage_panel.visible = true
+	_set_world_controls_visible(false)
+	_refresh_storage_panel()

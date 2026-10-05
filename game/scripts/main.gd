@@ -570,9 +570,9 @@ const ROOM_SWITCH_TARGETS: Array[Dictionary] = [
 const ROOM_DIRECT_STATIONS: Array[Dictionary] = [
 	{"id": "room_enter_grow", "room": "main", "pos": Vector3(0.0, 1.55, -3.88), "view": ""},
 	{"id": "room_enter_main", "room": "grow", "pos": Vector3(0.0, 1.55, -3.88), "view": ""},
-	{"id": "station_workbench", "room": "main", "pos": Vector3(3.95, 1.15, 0.54), "view": "workbench"},
+	{"id": "station_workbench", "room": "main", "pos": Vector3(3.95, 1.15, 0.78), "view": "workbench"},
 	{"id": "station_locker", "room": "main", "pos": Vector3(4.13, 1.30, -2.20), "view": "locker"},
-	{"id": "station_storage", "room": "main", "pos": Vector3(-4.35, 1.35, -0.30), "view": "storage"},
+	{"id": "station_storage", "room": "main", "pos": Vector3(-4.35, 1.35, -0.06), "view": "storage"},
 	{"id": "station_door", "room": "main", "pos": Vector3(0.0, 1.50, 5.78), "view": "door"},
 	{"id": "station_tent1", "room": "grow", "pos": Vector3(0.0, 1.25, -9.10), "view": "grow"},
 	{"id": "station_tent2", "room": "grow", "pos": Vector3(-3.20, 1.18, -9.28), "view": "grow2"},
@@ -602,6 +602,7 @@ var grow_panel: PanelContainer
 var grow_list: VBoxContainer
 var plant_direct_panel: PanelContainer
 var plant_direct_box: VBoxContainer
+var plant_direct_scroll: PhoneTouchScroll
 var selected_plant_slot: int = -1
 var active_tool_prop: Node3D
 var bagging_panel: PanelContainer
@@ -789,6 +790,9 @@ func _input(event: InputEvent) -> void:
 		_reset_world_pointer()
 		return
 	if phone_open and phone_scroll != null and phone_scroll.handle_pointer(event):
+		get_viewport().set_input_as_handled()
+		return
+	if plant_direct_panel != null and plant_direct_panel.visible and plant_direct_scroll != null and plant_direct_scroll.handle_pointer(event):
 		get_viewport().set_input_as_handled()
 		return
 	if _handle_station_list_pointer(event):
@@ -1854,9 +1858,9 @@ func _build_world() -> void:
 		"grow3": {"pos": Vector3(3.20, 1.40, -6.16), "rot": Vector3(-0.015, 0, 0), "fov": 84.0, "label": "Grow Tent 3 Overview"},
 		"grow_system": {"pos": Vector3(2.72, 1.92, -6.65), "rot": Vector3(0, -PI / 2.0, 0), "fov": 62.0, "label": "Grow Room System Panel"},
 		"grow_supply_shelf": {"pos": Vector3(-2.28, 1.38, -5.88), "rot": Vector3(0, PI / 2.0, 0), "fov": 68.0, "label": "Grow Supply Shelf"},
-		"workbench": {"pos": Vector3(1.15, 1.60, 1.34), "rot": Vector3(0, -PI / 2.0, 0), "label": "Bagging Station"},
+		"workbench": {"pos": Vector3(1.15, 1.60, 1.58), "rot": Vector3(0, -PI / 2.0, 0), "label": "Bagging Station"},
 		"locker": {"pos": Vector3(1.72, 1.56, -2.30), "rot": Vector3(0, -PI / 2.0, 0), "fov": 68.0, "label": "Dealer Locker"},
-		"storage": {"pos": Vector3(-1.15, 1.60, 0.65), "rot": Vector3(-0.04, atan2(3.18, 0.95), 0), "label": "Storage"},
+		"storage": {"pos": Vector3(-1.15, 1.60, 0.89), "rot": Vector3(-0.04, atan2(3.18, 0.95), 0), "label": "Storage"},
 		"door": {"pos": Vector3(0, 1.61, 3.75), "rot": Vector3(0, PI, 0), "label": "Front Door"}
 	}
 	current_room = "main"
@@ -2114,44 +2118,50 @@ func _build_bagging_station() -> void:
 	_add_box("BenchBaggieStackUnder", Vector3(3.92, 0.55, 1.15), Vector3(0.48, 0.42, 0.40), Color("d9ddd8"), 0.72)
 	_add_box("BenchSupplyBox", Vector3(3.92, 0.6, 1.68), Vector3(0.70, 0.50, 0.62), Color("8a6f55"), 0.82)
 
-	_add_box("ScaleBody", Vector3(3.60, 1.20, -0.04), Vector3(0.76, 0.18, 0.78), Color("181b1f"), 0.34, false, "res://assets/textures/matte_plastic.png")
-	_add_box("ScaleBaseLipFront", Vector3(3.60, 1.11, 0.26), Vector3(0.72, 0.04, 0.18), Color("111316"), 0.36)
-	_add_box("ScaleBaseLipBack", Vector3(3.60, 1.11, -0.31), Vector3(0.72, 0.04, 0.10), Color("121417"), 0.36)
-	_add_box("ScaleTopDeck", Vector3(3.60, 1.255, -0.06), Vector3(0.72, 0.08, 0.62), Color("202429"), 0.28, false, "res://assets/textures/matte_plastic.png")
-	_add_box("ScalePlatform", Vector3(3.60, 1.37, -0.12), Vector3(0.58, 0.05, 0.56), Color("c4c6c7"), 0.18, false, "res://assets/textures/brushed_metal.png")
-	_add_box("ScaleFrontPanel", Vector3(3.60, 1.21, 0.24), Vector3(0.64, 0.18, 0.04), Color("0f1114"), 0.30)
-	_add_box("ScaleDisplayFrame", Vector3(3.60, 1.27, 0.26), Vector3(0.42, 0.11, 0.02), Color("090b0d"), 0.12)
-	_add_box("ScaleDisplay", Vector3(3.60, 1.27, 0.282), Vector3(0.39, 0.09, 0.01), Color("6ccd6a"), 0.12, true)
-	_add_box("ScaleButtonTare", Vector3(3.34, 1.12, 0.26), Vector3(0.15, 0.08, 0.03), Color("1f2327"), 0.34)
-	_add_box("ScaleButtonMode", Vector3(3.53, 1.12, 0.26), Vector3(0.15, 0.08, 0.03), Color("1f2327"), 0.34)
-	_add_box("ScaleButtonPcs", Vector3(3.72, 1.12, 0.26), Vector3(0.15, 0.08, 0.03), Color("1f2327"), 0.34)
-	_add_box("ScaleButtonPower", Vector3(3.91, 1.12, 0.26), Vector3(0.15, 0.08, 0.03), Color("302224"), 0.34)
+	# Compact front-facing digital packing scale.
+	# Bench faces toward -X, so the control panel/display live on the -X face.
+	var scale_center: Vector3 = Vector3(3.86, 1.29, -0.08)
+	var scale_black: Color = Color("171a1d")
+	var scale_panel: Color = Color("0c0f11")
+	var scale_button: Color = Color("34393d")
+	var scale_green: Color = Color("a3d8ad")
+	var scale_steel: Color = Color("c9cdcb")
+
+	# Four rubber feet keep the body planted on the tabletop.
+	for foot_x: float in [3.52, 4.16]:
+		for foot_z: float in [-0.42, 0.26]:
+			_add_cylinder("ScaleFoot_%s_%s" % [str(foot_x), str(foot_z)], Vector3(foot_x, 1.18, foot_z), 0.035, 0.035, 0.04, Color("111416"), 0.84)
+
+	# Matte black body with a smaller upper deck and centered brushed-steel plate.
+	_add_box("ScaleBody", scale_center, Vector3(0.86, 0.18, 0.96), scale_black, 0.46, false, "res://assets/textures/matte_plastic.png")
+	_add_box("ScaleBodyUpper", Vector3(3.93, 1.37, -0.08), Vector3(0.70, 0.08, 0.88), Color("202428"), 0.40, false, "res://assets/textures/matte_plastic.png")
+	_add_box("ScalePlatform", Vector3(3.96, 1.445, -0.08), Vector3(0.76, 0.055, 0.82), scale_steel, 0.18, false, "res://assets/textures/brushed_metal.png", Vector3(1.3, 1.0, 1.3))
+
+	# Player-facing front control panel. Thin X dimension = vertical face toward room.
+	_add_box("ScaleFrontPanel", Vector3(3.418, 1.285, -0.08), Vector3(0.026, 0.145, 0.78), scale_panel, 0.28)
+	_add_box("ScaleDisplayFrame", Vector3(3.400, 1.292, -0.08), Vector3(0.012, 0.105, 0.37), Color("080a0b"), 0.16)
+	_add_box("ScaleDisplay", Vector3(3.391, 1.292, -0.08), Vector3(0.008, 0.086, 0.33), scale_green, 0.16, true)
+
+	# Two buttons to the left of the display and four to the right, like the reference scale.
+	for button_data: Dictionary in [
+		{"name":"ScaleButtonL1","y":1.325,"z":-0.365},
+		{"name":"ScaleButtonL2","y":1.250,"z":-0.365},
+		{"name":"ScaleButtonR1","y":1.325,"z":0.205},
+		{"name":"ScaleButtonR2","y":1.325,"z":0.335},
+		{"name":"ScaleButtonR3","y":1.250,"z":0.205},
+		{"name":"ScaleButtonR4","y":1.250,"z":0.335}
+	]:
+		_add_box(str(button_data["name"]), Vector3(3.387, float(button_data["y"]), float(button_data["z"])), Vector3(0.014, 0.052, 0.095), scale_button, 0.34)
+
 	var scale_text: Label3D = Label3D.new()
 	scale_text.name = "PackingScaleText"
 	scale_text.text = "0.00 g"
-	scale_text.font_size = 56
+	scale_text.font_size = 42
 	scale_text.modulate = Color("d9f5bb")
-	scale_text.position = Vector3(3.60, 1.274, 0.294)
-	scale_text.rotation_degrees = Vector3(-90, 0, 0)
-	scale_text.pixel_size = 0.00235
+	scale_text.position = Vector3(3.378, 1.292, -0.08)
+	scale_text.rotation_degrees = Vector3(0, -90, 0)
+	scale_text.pixel_size = 0.00175
 	add_child(scale_text)
-	for label_data in [
-		{"name": "ScaleTareLabel", "text": "TARE", "pos": Vector3(3.34, 1.12, 0.278), "color": Color("f2f2ed"), "size": 18},
-		{"name": "ScaleModeLabel", "text": "MODE", "pos": Vector3(3.53, 1.12, 0.278), "color": Color("f2f2ed"), "size": 18},
-		{"name": "ScalePcsLabel", "text": "PCS", "pos": Vector3(3.72, 1.12, 0.278), "color": Color("f2f2ed"), "size": 18},
-		{"name": "ScalePowerLabel", "text": "PWR", "pos": Vector3(3.91, 1.12, 0.278), "color": Color("ff8e7f"), "size": 26},
-		{"name": "ScaleStableLabel", "text": "STABLE", "pos": Vector3(3.405, 1.275, 0.294), "color": Color("a1d889"), "size": 14},
-		{"name": "ScaleTareIndicator", "text": " |  TARE", "pos": Vector3(3.375, 1.298, 0.294), "color": Color("628c5d"), "size": 13}
-	]:
-		var label3d: Label3D = Label3D.new()
-		label3d.name = label_data["name"]
-		label3d.text = label_data["text"]
-		label3d.font_size = int(label_data["size"])
-		label3d.modulate = label_data["color"]
-		label3d.position = label_data["pos"]
-		label3d.rotation_degrees = Vector3(-90, 0, 0)
-		label3d.pixel_size = 0.0021 if int(label_data["size"]) <= 18 else 0.0023
-		add_child(label3d)
 
 	_add_box("TrimTray", Vector3(3.56, 1.19, 0.81), Vector3(0.82, 0.045, 0.70), Color("3b4144"), 0.42, false, "res://assets/textures/matte_plastic.png")
 	_add_box("TrayRimBack", Vector3(3.56, 1.235, 1.13), Vector3(0.82, 0.075, 0.04), Color("24292d"), 0.50)
@@ -2191,7 +2201,7 @@ func _build_bagging_station() -> void:
 	for child_index: int in range(packing_station_start_index, get_child_count()):
 		var shifted_child: Node = get_child(child_index)
 		if shifted_child is Node3D:
-			(shifted_child as Node3D).position.z += 0.24
+			(shifted_child as Node3D).position.z += 0.48
 
 func _inventory_grams(inventory: Dictionary) -> int:
 	var total: int = 0
@@ -2286,6 +2296,7 @@ func _sync_packing_bench_visuals(force: bool = false) -> void:
 		scale_text.text = "%.2f g" % float(loose_total) if loose_total > 0 else "0.00 g"
 
 func _build_storage_area() -> void:
+	var storage_shelf_start_index: int = get_child_count()
 	_add_box("StorageBack", Vector3(-4.72, 1.38, -0.30), Vector3(0.08, 2.65, 3.35), Color("4a5054"), 0.56, false, "res://assets/textures/brushed_metal.png", Vector3(1.0, 2.0, 2.0))
 	_add_box("ShelfPostL", Vector3(-4.42, 1.35, -1.75), Vector3(0.10, 2.55, 0.10), Color("555c60"), 0.45, false, "res://assets/textures/brushed_metal.png")
 	_add_box("ShelfPostR", Vector3(-4.42, 1.35, 1.15), Vector3(0.10, 2.55, 0.10), Color("555c60"), 0.45, false, "res://assets/textures/brushed_metal.png")
@@ -2309,6 +2320,10 @@ func _build_storage_area() -> void:
 	label.rotation_degrees = Vector3(0, 90, 0)
 	label.modulate = Color("e7e3da")
 	add_child(label)
+	for child_index: int in range(storage_shelf_start_index, get_child_count()):
+		var shifted_child: Node = get_child(child_index)
+		if shifted_child is Node3D:
+			(shifted_child as Node3D).position.z += 0.24
 
 func _build_front_door() -> void:
 	_add_box("DoorFrameTop", Vector3(0, 2.93, 5.75), Vector3(2.24, 0.14, 0.20), Color("e2dbd0"), 0.70)
@@ -2346,12 +2361,49 @@ func _build_apartment_details() -> void:
 	_add_box("CurtainL", Vector3(-4.68, 2.08, 5.68), Vector3(0.32, 1.88, 0.10), Color("9f917e"), 0.94, false, "res://assets/textures/fabric_bluegray.png")
 	_add_box("CurtainR", Vector3(-2.56, 2.08, 5.68), Vector3(0.32, 1.88, 0.10), Color("9f917e"), 0.94, false, "res://assets/textures/fabric_bluegray.png")
 
-	_add_box("KitchenBase", Vector3(2.16, 0.46, -3.54), Vector3(2.25, 0.84, 0.72), Color("d8d3ca"), 0.78, false, "res://assets/textures/laminate.png", Vector3(2.0, 1.0, 1.0))
-	_add_box("KitchenCounter", Vector3(2.22, 0.93, -3.55), Vector3(2.38, 0.10, 0.82), Color("686f73"), 0.34, false, "res://assets/textures/brushed_metal.png", Vector3(2.0, 1.0, 1.0))
-	_add_box("KitchenBacksplash", Vector3(2.22, 1.38, -3.93), Vector3(2.38, 0.78, 0.06), Color("d7d9d8"), 0.72, false, "res://assets/textures/painted_wall.png", Vector3(2.0, 1.0, 1.0))
-	_add_box("KitchenUpper", Vector3(2.26, 2.08, -3.73), Vector3(2.10, 0.92, 0.48), Color("e0dbd1"), 0.80, false, "res://assets/textures/laminate.png", Vector3(2.0, 1.0, 1.0))
-	_add_box("SinkBasin", Vector3(1.68, 0.99, -3.54), Vector3(0.62, 0.06, 0.48), Color("aeb7bb"), 0.18, false, "res://assets/textures/brushed_metal.png")
-	_add_cylinder("FaucetStem", Vector3(1.68, 1.17, -3.86), 0.035, 0.035, 0.35, Color("c6ccce"), 0.22)
+	# Modern matte-black kitchen/sink run inspired by the approved reference.
+	var kitchen_black: Color = Color("17191c")
+	var kitchen_panel: Color = Color("202226")
+	var kitchen_stone: Color = Color("252b29")
+	var kitchen_steel: Color = Color("b9c0c1")
+	var kitchen_green: Color = Color("77d996")
+
+	# Lower cabinet carcass and dark stone worktop.
+	_add_box("KitchenBase", Vector3(2.42, 0.46, -3.54), Vector3(2.48, 0.84, 0.76), kitchen_black, 0.54, false, "res://assets/textures/matte_plastic.png", Vector3(2.0, 1.0, 1.0))
+	_add_box("KitchenToeKick", Vector3(2.42, 0.11, -3.46), Vector3(2.42, 0.16, 0.56), Color("101214"), 0.62, false, "res://assets/textures/matte_plastic.png")
+	_add_box("KitchenCounter", Vector3(2.42, 0.94, -3.52), Vector3(2.62, 0.12, 0.88), kitchen_stone, 0.38, false, "res://assets/textures/matte_plastic.png", Vector3(2.2, 1.0, 1.0))
+	_add_box("KitchenCounterLip", Vector3(2.42, 0.98, -3.08), Vector3(2.62, 0.07, 0.06), Color("333936"), 0.34)
+
+	# Three lower cabinet faces with recessed brushed-metal pulls.
+	var lower_centers: Array[float] = [1.64, 2.42, 3.20]
+	for lower_index: int in range(lower_centers.size()):
+		var lower_x: float = lower_centers[lower_index]
+		_add_box("KitchenLowerDoor%d" % lower_index, Vector3(lower_x, 0.48, -3.135), Vector3(0.72, 0.68, 0.045), kitchen_panel, 0.48, false, "res://assets/textures/matte_plastic.png")
+		_add_box("KitchenLowerHandle%d" % lower_index, Vector3(lower_x, 0.77, -3.105), Vector3(0.30, 0.055, 0.035), kitchen_steel, 0.22, false, "res://assets/textures/brushed_metal.png")
+
+	# Full-height dark stone backsplash.
+	_add_box("KitchenBacksplash", Vector3(2.42, 1.49, -3.935), Vector3(2.62, 0.98, 0.055), Color("252a29"), 0.42, false, "res://assets/textures/matte_plastic.png", Vector3(2.0, 1.0, 1.0))
+
+	# Matte-black upper cabinet bank with three doors.
+	_add_box("KitchenUpper", Vector3(2.42, 2.36, -3.72), Vector3(2.56, 0.94, 0.44), kitchen_black, 0.50, false, "res://assets/textures/matte_plastic.png", Vector3(2.0, 1.0, 1.0))
+	var upper_centers: Array[float] = [1.64, 2.42, 3.20]
+	for upper_index: int in range(upper_centers.size()):
+		var upper_x: float = upper_centers[upper_index]
+		_add_box("KitchenUpperDoor%d" % upper_index, Vector3(upper_x, 2.36, -3.485), Vector3(0.72, 0.82, 0.045), kitchen_panel, 0.46, false, "res://assets/textures/matte_plastic.png")
+		_add_box("KitchenUpperHandle%d" % upper_index, Vector3(upper_x, 2.02, -3.455), Vector3(0.30, 0.05, 0.035), kitchen_steel, 0.22, false, "res://assets/textures/brushed_metal.png")
+
+	# Subtle green under-cabinet task light.
+	_add_box("KitchenUnderCabinetGlow", Vector3(2.42, 1.85, -3.47), Vector3(2.28, 0.025, 0.025), kitchen_green, 0.10, true)
+
+	# Stainless inset sink and black rim.
+	_add_box("SinkRim", Vector3(2.42, 0.995, -3.46), Vector3(0.98, 0.045, 0.56), Color("111416"), 0.26)
+	_add_box("SinkBasin", Vector3(2.42, 1.005, -3.46), Vector3(0.88, 0.055, 0.46), kitchen_steel, 0.16, false, "res://assets/textures/brushed_metal.png")
+
+	# Tall gooseneck-style faucet built from stainless segments.
+	_add_cylinder("FaucetStem", Vector3(2.42, 1.25, -3.79), 0.035, 0.035, 0.48, kitchen_steel, 0.18)
+	_add_cylinder("FaucetTop", Vector3(2.42, 1.48, -3.70), 0.035, 0.035, 0.20, kitchen_steel, 0.18, Vector3(PI / 2.0, 0, 0))
+	_add_cylinder("FaucetSpout", Vector3(2.42, 1.43, -3.60), 0.032, 0.032, 0.15, kitchen_steel, 0.18)
+	_add_cylinder("FaucetControl", Vector3(2.69, 1.15, -3.77), 0.028, 0.028, 0.18, kitchen_steel, 0.20)
 	_add_box("LockerBody", Vector3(4.52, 1.28, -2.20), Vector3(0.82, 2.56, 0.80), Color("24262c"), 0.38, false, "res://assets/textures/brushed_metal.png", Vector3(1.0, 2.0, 1.0))
 	_add_box("LockerInnerDoor", Vector3(4.13, 1.30, -2.20), Vector3(0.05, 2.28, 0.58), Color("1b1d22"), 0.42, false, "res://assets/textures/matte_plastic.png")
 	_add_box("LockerDoorFrameTop", Vector3(4.13, 2.48, -2.20), Vector3(0.05, 0.08, 0.64), Color("33363d"), 0.34)
@@ -2446,6 +2498,7 @@ func _refresh_light_interaction_visuals() -> void:
 func _build_bagging_bench_level3_visual() -> void:
 	if get_node_or_null("BenchIIIBackBoard") != null:
 		return
+	var bench3_start_index: int = get_child_count()
 	var black: Color = Color("171a1d")
 	var dark: Color = Color("202428")
 	var steel: Color = Color("3a4146")
@@ -2480,6 +2533,10 @@ func _build_bagging_bench_level3_visual() -> void:
 	label.rotation_degrees = Vector3(0, -90, 0)
 	label.modulate = Color("9af4b6")
 	add_child(label)
+	for child_index: int in range(bench3_start_index, get_child_count()):
+		var shifted_child: Node = get_child(child_index)
+		if shifted_child is Node3D:
+			(shifted_child as Node3D).position.z += 0.24
 
 func _sync_bagging_bench_level3_visibility() -> void:
 	var upgraded: bool = bagging_level >= 3
@@ -2543,12 +2600,12 @@ func _apply_visual_upgrades() -> void:
 		_set_mesh_color("Shelf2", Color("6f767c"))
 		_set_mesh_color("Shelf3", Color("6f767c"))
 		if get_node_or_null("StorageUpgradeBin") == null:
-			_add_box("StorageUpgradeBin", Vector3(-4.14, 2.245, 0.28), Vector3(0.54, 0.26, 0.58), Color("667881"), 0.76)
+			_add_box("StorageUpgradeBin", Vector3(-4.14, 2.245, 0.52), Vector3(0.54, 0.26, 0.58), Color("667881"), 0.76)
 	if storage_level == 3 and get_node_or_null("StorageShelfBank2") == null:
-		_add_box("StorageShelfBank2", Vector3(-4.72, 1.28, -2.35), Vector3(0.08, 2.48, 1.00), Color("4d5459"), 0.50, false, "res://assets/textures/brushed_metal.png")
+		_add_box("StorageShelfBank2", Vector3(-4.72, 1.28, -2.11), Vector3(0.08, 2.48, 1.00), Color("4d5459"), 0.50, false, "res://assets/textures/brushed_metal.png")
 		for extra_index in range(4):
 			var extra_y: float = 0.34 + float(extra_index) * 0.62
-			_add_box("StorageExtraShelf%d" % extra_index, Vector3(-4.30, extra_y, -2.35), Vector3(0.72, 0.09, 1.00), Color("717980"), 0.50, false, "res://assets/textures/brushed_metal.png")
+			_add_box("StorageExtraShelf%d" % extra_index, Vector3(-4.30, extra_y, -2.11), Vector3(0.72, 0.09, 1.00), Color("717980"), 0.50, false, "res://assets/textures/brushed_metal.png")
 
 	_sync_storage_furniture()
 
@@ -3558,25 +3615,40 @@ func _build_direct_plant_panel() -> void:
 	plant_direct_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	plant_direct_panel.offset_left = 22
 	plant_direct_panel.offset_right = -22
-	plant_direct_panel.offset_top = -392
+	plant_direct_panel.offset_top = -450
 	plant_direct_panel.offset_bottom = -82
 	plant_direct_panel.visible = false
 	plant_direct_panel.add_theme_stylebox_override("panel", _style_box(Color("11191f"), Color("40515b"), 18, 2))
 	hud.add_child(plant_direct_panel)
+
+	plant_direct_scroll = PhoneTouchScroll.new()
+	plant_direct_scroll.name = "plant_direct_scroll"
+	plant_direct_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	plant_direct_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	plant_direct_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	plant_direct_scroll.scroll_deadzone = 10
+	plant_direct_panel.add_child(plant_direct_scroll)
+
 	plant_direct_box = VBoxContainer.new()
+	plant_direct_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	plant_direct_box.add_theme_constant_override("separation", 8)
-	plant_direct_panel.add_child(plant_direct_box)
+	plant_direct_scroll.add_child(plant_direct_box)
 
 func _open_direct_plant(slot_index: int) -> void:
 	if slot_index < 0 or slot_index >= plant_slots.size():
 		return
 	selected_plant_slot = slot_index
+	if plant_direct_scroll != null:
+		plant_direct_scroll.cancel_touch()
+		plant_direct_scroll.scroll_vertical = 0
 	plant_direct_panel.visible = true
 	_set_world_controls_visible(false)
 	_refresh_direct_plant_panel()
 
 func _close_direct_plant() -> void:
 	plant_direct_panel.visible = false
+	if plant_direct_scroll != null:
+		plant_direct_scroll.cancel_touch()
 	selected_plant_slot = -1
 	_set_world_controls_visible(true)
 	status_label.text = "Tent overview. Tap a plant or empty pot directly to interact."
@@ -3610,8 +3682,17 @@ func _refresh_direct_plant_panel() -> void:
 		seed_row.add_theme_constant_override("h_separation", 7)
 		seed_row.add_theme_constant_override("v_separation", 7)
 		plant_direct_box.add_child(seed_row)
+		var owned_seed_names: Array[String] = []
+		for seed_name: String in SEED_ORDER:
+			if int(seed_inventory.get(seed_name, 0)) > 0:
+				owned_seed_names.append(seed_name)
+		for seed_variant: Variant in seed_inventory.keys():
+			var extra_seed_name: String = str(seed_variant)
+			if int(seed_inventory.get(extra_seed_name, 0)) > 0 and not owned_seed_names.has(extra_seed_name):
+				owned_seed_names.append(extra_seed_name)
+
 		var shown: int = 0
-		for seed_name in SEED_ORDER:
+		for seed_name: String in owned_seed_names:
 			var seed_count: int = int(seed_inventory.get(seed_name, 0))
 			if seed_count <= 0:
 				continue
@@ -3622,8 +3703,6 @@ func _refresh_direct_plant_panel() -> void:
 			seed_button.pressed.connect(_direct_plant_seed.bind(seed_name))
 			seed_row.add_child(seed_button)
 			shown += 1
-			if shown >= 3:
-				break
 		if shown == 0:
 			var none: Label = Label.new()
 			none.text = "No seeds owned. Buy unlocked seeds from the phone."
@@ -10861,7 +10940,7 @@ func _build_hidden_wall_stash_visual() -> void:
 		return
 	hidden_stash_interior_root = Node3D.new()
 	hidden_stash_interior_root.name = "HiddenWallStash"
-	hidden_stash_interior_root.position = StorageVault.ANCHOR
+	hidden_stash_interior_root.position = StorageVault.ANCHOR + Vector3(-0.24, 0.0, 0.0)
 	hidden_stash_interior_root.rotation.y = StorageVault.FACING
 	add_child(hidden_stash_interior_root)
 

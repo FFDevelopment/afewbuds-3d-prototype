@@ -29,3 +29,7 @@ Uses `afewbuds-beta/shared/config.js` and its existing RPC request contracts wit
 ## Simulation update: prototype 0.5
 
 Full main simulation synchronized from release `0.7.9-beta.19-cloudtest.53`, commit `a646dc568a7e9bea08d6a2e1cd0d3dd4acc46121`. PCK SHA-256: `c171f3d8b8c20fc9a6ca034c50f2fb12fb4933a71300ed80786a54f4e671633c`. All eight packaged scripts were compared; the other gameplay scripts were unchanged. Retains export-safe room texture loading, recovered PNG/sample paths, and the prototype local-save filename. Asset entry hashes matched the prior package. Only the prototype repository is changed; no database or beta changes.
+
+## Simulation update: prototype 0.6
+
+Reviewed cloud-test54–57 commits and synchronized the runtime at `e0a132fcbd4749a066f8a88fcece17266a2a04c2` (cloudtest57). PCK SHA-256 `017c8e40687a7ad3d1ff069e62bfed17cdcd2a0495b3029f71f691d018068dc4`. Compared all packaged scripts; only main.gd changed since cloudtest53. All 83 advancement definitions and advancement/task functions match. Preserves native account adapter, export texture fixes, and desktop save isolation. No source repository or backend changes.
