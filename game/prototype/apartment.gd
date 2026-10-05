@@ -83,7 +83,7 @@ func _process(delta: float) -> void:
 	fp_prompt.visible = not modal
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
-	fp_info.text = "AFEWBUDS   /   APARTMENT 0.8\n%s   ·   %s   ·   $%d" % ["GROW ROOM" if current_room == "grow" else "LIVING ROOM", _format_game_clock(), cash]
+	fp_info.text = "AFEWBUDS   /   APARTMENT 0.8.1\n%s   ·   %s   ·   $%d" % ["GROW ROOM" if current_room == "grow" else "LIVING ROOM", _format_game_clock(), cash]
 	fp_hint.text = "WASD  Walk     E  Interact     P  Phone     Esc  Pause     F5  Save"
 	_hide_old_navigation()
 
@@ -404,6 +404,34 @@ func _setup_desktop_panels() -> void:
 	status_label.add_theme_font_size_override("font_size", 16)
 	# Prototype-only wording; the original account UI cannot access a live backend.
 	# Account and cloud wording now reflects the native integration.
+
+func _build_advancements_app() -> void:
+	super._build_advancements_app()
+	# The base Rewards view was designed for the wider/mobile shell. In the
+	# portrait desktop phone, long labels can otherwise increase the minimum
+	# width of the PanelContainer and make the whole phone stretch sideways.
+	_constrain_portrait_phone_content(phone_list)
+	phone_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	phone_list.custom_minimum_size.x = 0.0
+	phone_scroll.custom_minimum_size.x = 0.0
+	phone_list.queue_sort()
+	phone_scroll.queue_sort()
+	call_deferred("_setup_desktop_panels")
+
+func _constrain_portrait_phone_content(node: Node) -> void:
+	for child: Node in node.get_children():
+		if child is Control:
+			var control := child as Control
+			control.custom_minimum_size.x = 0.0
+			control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			if control is Label:
+				var label := control as Label
+				label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				label.clip_text = false
+			elif control is Button:
+				var button := control as Button
+				button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_constrain_portrait_phone_content(child)
 
 func _build_fp_hud() -> void:
 	var layer := CanvasLayer.new()
