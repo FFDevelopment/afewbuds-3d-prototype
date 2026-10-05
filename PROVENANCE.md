@@ -33,3 +33,7 @@ Full main simulation synchronized from release `0.7.9-beta.19-cloudtest.53`, com
 ## Simulation update: prototype 0.6
 
 Reviewed cloud-test54–57 commits and synchronized the runtime at `e0a132fcbd4749a066f8a88fcece17266a2a04c2` (cloudtest57). PCK SHA-256 `017c8e40687a7ad3d1ff069e62bfed17cdcd2a0495b3029f71f691d018068dc4`. Compared all packaged scripts; only main.gd changed since cloudtest53. All 83 advancement definitions and advancement/task functions match. Preserves native account adapter, export texture fixes, and desktop save isolation. No source repository or backend changes.
+
+## Visual update: prototype 0.7
+
+Ports the exact main.gd transformations from cloud-test58 preparation commit `d3568348816ee711ce3a9a52b8b996f5e4c1d88a`, deployed at `f702bb7357809a92952bc5802a07293560b89600`: remove WindowBuildingA/B/C and change Hidden Wall Stash X offset from -0.24 to -0.36. No other simulation or asset changes. Engine integration checks verify the new stash position, unchanged vault anchor, and removal of placeholders while retaining the window.

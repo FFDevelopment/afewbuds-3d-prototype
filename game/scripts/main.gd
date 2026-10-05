@@ -2354,9 +2354,6 @@ func _build_living_furniture() -> void:
 func _build_apartment_details() -> void:
 	_add_box("WindowFrame", Vector3(-3.62, 2.15, 5.86), Vector3(2.10, 1.55, 0.08), Color("e5e0d8"), 0.58)
 	living_window_glass = _add_box("WindowGlass", Vector3(-3.62, 2.15, 5.80), Vector3(1.80, 1.28, 0.035), Color("7192a4"), 0.14, true)
-	_add_box("WindowBuildingA", Vector3(-4.18, 1.85, 5.74), Vector3(0.34, 0.58, 0.022), Color("202a31"), 0.92)
-	_add_box("WindowBuildingB", Vector3(-3.65, 1.72, 5.74), Vector3(0.46, 0.84, 0.022), Color("263038"), 0.92)
-	_add_box("WindowBuildingC", Vector3(-3.05, 1.90, 5.74), Vector3(0.38, 0.48, 0.022), Color("1e282f"), 0.92)
 	window_sun_disc = _add_sphere("WindowSun", Vector3(-4.05, 2.48, 5.70), Vector3(0.12, 0.12, 0.035), Color("ffd58a"), 0.22)
 	_add_box("CurtainL", Vector3(-4.68, 2.08, 5.68), Vector3(0.32, 1.88, 0.10), Color("9f917e"), 0.94, false, "res://assets/textures/fabric_bluegray.png")
 	_add_box("CurtainR", Vector3(-2.56, 2.08, 5.68), Vector3(0.32, 1.88, 0.10), Color("9f917e"), 0.94, false, "res://assets/textures/fabric_bluegray.png")
@@ -10940,7 +10937,7 @@ func _build_hidden_wall_stash_visual() -> void:
 		return
 	hidden_stash_interior_root = Node3D.new()
 	hidden_stash_interior_root.name = "HiddenWallStash"
-	hidden_stash_interior_root.position = StorageVault.ANCHOR + Vector3(-0.24, 0.0, 0.0)
+	hidden_stash_interior_root.position = StorageVault.ANCHOR + Vector3(-0.36, 0.0, 0.0)
 	hidden_stash_interior_root.rotation.y = StorageVault.FACING
 	add_child(hidden_stash_interior_root)
 

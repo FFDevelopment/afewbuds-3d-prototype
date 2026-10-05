@@ -82,7 +82,7 @@ func _process(delta: float) -> void:
 	fp_prompt.visible = not modal
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
-	fp_info.text = "AFEWBUDS   /   APARTMENT 0.6\n%s   ·   %s   ·   $%d" % ["GROW ROOM" if current_room == "grow" else "LIVING ROOM", _format_game_clock(), cash]
+	fp_info.text = "AFEWBUDS   /   APARTMENT 0.7\n%s   ·   %s   ·   $%d" % ["GROW ROOM" if current_room == "grow" else "LIVING ROOM", _format_game_clock(), cash]
 	fp_hint.text = "WASD  Walk     E  Interact     P  Phone     Esc  Pause     F5  Save"
 	_hide_old_navigation()
 

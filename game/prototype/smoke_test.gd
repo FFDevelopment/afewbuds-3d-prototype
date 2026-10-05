@@ -195,6 +195,8 @@ func run() -> void:
 			check(game.bag_minigame_panel.visible and game.bag_current_units == 0, "bench III continues next bag without reopening")
 	check(batches > 1 and not game.bag_minigame_panel.visible and game.bagged_inventory["Purple Dream"] == bags_before + 17, "continuous bagging finishes and conserves all product")
 	game._close_bagging_panel()
+	check(not game.has_node("WindowBuildingA") and not game.has_node("WindowBuildingB") and not game.has_node("WindowBuildingC"), "window placeholder squares removed")
+	check(game.has_node("WindowGlass") and game.has_node("WindowFrame") and game.has_node("WindowSun"), "window glass frame and sun preserved")
 	# Latest furniture must line up with its first-person targets.
 	check(is_equal_approx(game.get_node("BenchTop").position.z, 0.78), "bench moved toward front door")
 	check(is_equal_approx(game.get_node("StorageBack").position.z, -0.06), "shelves moved toward front door")
@@ -208,7 +210,7 @@ func run() -> void:
 	check(game.storage_vault.position.is_equal_approx(Vector3(-4.33, 0, -0.30)), "vault anchor remains unchanged")
 	game.storage_level = 5
 	game._apply_visual_upgrades()
-	check(game.hidden_stash_interior_root.position.is_equal_approx(Vector3(-4.57, 0, -0.30)), "stash moves toward wall without moving along it")
+	check(game.hidden_stash_interior_root.position.is_equal_approx(Vector3(-4.69, 0, -0.30)), "stash moves toward wall without moving along it")
 	game._open_storage_panel()
 	check(game.fp_station_opening, "stash animation blocks movement")
 	game._pause_gameplay()
