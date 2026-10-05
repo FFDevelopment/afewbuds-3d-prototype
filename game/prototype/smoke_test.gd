@@ -239,6 +239,11 @@ func run() -> void:
 	check(game.phone_open and not game.fp_player.enabled, "phone releases cursor and locks movement")
 	check(game.phone_panel.size.y > game.phone_panel.size.x * 1.35, "desktop phone maintains portrait proportions")
 	check(game.phone_panel.get_global_rect().end.y <= game.hud.size.y, "portrait phone fits viewport")
+	var phone_width_before_rewards: float = game.phone_panel.size.x
+	game._open_phone_app("advancements")
+	await frames()
+	check(absf(game.phone_panel.size.x - phone_width_before_rewards) <= 2.0, "Rewards does not stretch portrait phone width")
+	check(game.phone_scroll.horizontal_scroll_mode == ScrollContainer.SCROLL_MODE_DISABLED, "Rewards stays vertical-scroll only")
 	game.customer_waiting = true
 	game.customer_answered = false
 	game._refresh_door_alert()
