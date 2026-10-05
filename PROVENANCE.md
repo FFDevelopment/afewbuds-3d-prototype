@@ -25,3 +25,7 @@ The account UI and save abstraction are staged locally with a mock service for t
 ## Existing account service: prototype 0.4
 
 Uses `afewbuds-beta/shared/config.js` and its existing RPC request contracts without changing that repository or the backend. The desktop upload flow uses the existing timestamp-based save API with a client-side comparison; it does not depend on the reverted revision guard.
+
+## Simulation update: prototype 0.5
+
+Full main simulation synchronized from release `0.7.9-beta.19-cloudtest.53`, commit `a646dc568a7e9bea08d6a2e1cd0d3dd4acc46121`. PCK SHA-256: `c171f3d8b8c20fc9a6ca034c50f2fb12fb4933a71300ed80786a54f4e671633c`. All eight packaged scripts were compared; the other gameplay scripts were unchanged. Retains export-safe room texture loading, recovered PNG/sample paths, and the prototype local-save filename. Asset entry hashes matched the prior package. Only the prototype repository is changed; no database or beta changes.

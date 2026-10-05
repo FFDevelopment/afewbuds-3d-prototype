@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.4.0**.
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.5.0**.
 
 ## Play the Windows build
 
@@ -103,3 +103,7 @@ Adds the disconnected account entry screen, isolated career slots, separate desk
 ## Prototype 0.4
 
 Enables the native account connection with the regular game's existing public API configuration. Removed the staged revision protocol; save checks now work with the unchanged get/save endpoints. Tests cover the native HTTP request/response flow with a local fixture, remembered sessions, account isolation, save conflicts, rejected uploads, and guest migration. The live service was checked for invalid-login rejection and public leaderboard availability; a successful sign-in with a real player's credentials requires the player to sign in.
+
+## Prototype 0.5
+
+Synchronizes the full cloud-test53 simulation: Bagging Bench III and continuous 1–4g bagging, premium double-door dealer locker from tier III, relocated locker/bench/kitchen, and updated upgrade cards. First-person targets and collision follow the furniture, including purchases made during play. Locker doors animate before its menu opens; pause/resume preserves the locker menu without moving the camera. The 1.90-unit viewpoint and existing account integration remain. Integration tests cover purchases, inventory conservation, continuous bagging, premium visuals/collision, and interrupted locker opening.

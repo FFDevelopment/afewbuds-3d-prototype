@@ -72,7 +72,7 @@ func run() -> void:
 	await frames()
 	check(game._target_from_ray(Vector3(3, 1.4, -3.4), Vector3.FORWARD) == null, "wall blocks interaction through partition")
 	game.get_node("QA_WallTarget").queue_free()
-	aim(Vector3(1.8, 0.08, 0.35), Vector3(3.25, 1.35, 0.35))
+	aim(Vector3(1.8, 0.08, 0.54), Vector3(3.25, 1.35, 0.54))
 	await frames()
 	game._use_target()
 	check(game.bagging_panel.visible, "bench opens original packaging pipeline")
@@ -128,7 +128,7 @@ func run() -> void:
 	check(game.system_control_panel.visible, "wall terminal opens grow controls")
 	game._close_system_control_panel()
 	check(is_equal_approx(game.camera.global_position.y - game.fp_player.global_position.y, 1.90), "raised adult viewpoint stays above player feet")
-	aim(Vector3(2.4, 0.08, 2.68), Vector3(3.95, 1.3, 2.68))
+	aim(Vector3(2.4, 0.08, -2.20), Vector3(3.95, 1.3, -2.20))
 	await frames()
 	game._use_target()
 	check(game.dealer_storage_panel.visible, "E opens native dealer storage")
@@ -152,6 +152,49 @@ func run() -> void:
 	for tier in range(2, 5):
 		game._buy_dealer_locker_upgrade()
 		check(game.dealer_locker_level == tier and game._dealer_locker_capacity() == tier * 100, "locker upgrades sequentially to tier %d" % tier)
+	check(game.premium_dealer_locker_root.visible and not game.get_node("LockerBody").visible, "premium locker replaces basic locker at tier III")
+	game._use_target()
+	await create_timer(0.4).timeout
+	check(game.dealer_storage_panel.visible and game.premium_dealer_locker_open, "premium locker doors open before first-person menu")
+	game._pause_gameplay()
+	check(not game.dealer_storage_panel.visible, "pause hides locker controls")
+	game._resume_gameplay()
+	check(game.dealer_storage_panel.visible, "resume restores locker in first-person view")
+	game._close_dealer_storage_panel()
+	game._use_target()
+	game._pause_gameplay()
+	await create_timer(0.4).timeout
+	check(not game.dealer_storage_panel.visible and not game.fp_station_opening, "pause cancels pending locker opening")
+	game._resume_gameplay()
+	game.grower_level = 6
+	game.cash = 10000
+	game.bagging_level = 1
+	game._buy_supply("Bagging Bench III")
+	check(game.bagging_level == 1 and game.cash == 10000, "bench III requires bench II")
+	game._buy_supply("Bagging Bench II")
+	var bench_cash: int = game.cash
+	game._buy_supply("Bagging Bench III")
+	check(game.bagging_level == 3 and game.cash == bench_cash - 850, "bench III purchase charges 850")
+	await frames()
+	check(game.get_node("BenchIIIBackBoard").visible and not game.get_node("BenchLowerShelf").visible, "bench III replaces old lower furniture")
+	check(game.get_node("BenchIIIBackBoard").has_node("PrototypeCollision"), "newly purchased bench has collision")
+	var collider_count: int = game.fp_collisions.size()
+	game._apply_visual_upgrades()
+	check(game.fp_collisions.size() == collider_count, "repeated upgrades do not duplicate collision")
+	game.trimmed_inventory["Purple Dream"] = 17
+	var bags_before: int = game.bagged_inventory.get("Purple Dream", 0)
+	game._start_bag_minigame("Purple Dream")
+	var batches := 0
+	while game.bag_minigame_panel.visible and batches < 20:
+		var remaining: int = game.trimmed_inventory["Purple Dream"]
+		check(game.bag_target_units >= 1 and game.bag_target_units <= mini(4, remaining), "continuous target fits 1–4g and remaining product")
+		game.bag_current_units = game.bag_target_units
+		game._seal_current_bag()
+		batches += 1
+		if game.trimmed_inventory["Purple Dream"] > 0:
+			check(game.bag_minigame_panel.visible and game.bag_current_units == 0, "bench III continues next bag without reopening")
+	check(batches > 1 and not game.bag_minigame_panel.visible and game.bagged_inventory["Purple Dream"] == bags_before + 17, "continuous bagging finishes and conserves all product")
+	game._close_bagging_panel()
 	var position_before: Vector3 = game.fp_player.position
 	game._toggle_phone()
 	await frames()

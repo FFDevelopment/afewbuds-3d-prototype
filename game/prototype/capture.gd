@@ -48,4 +48,15 @@ func run() -> void:
 	game.products["Purple Dream"]["stock"] = 10
 	game._open_dealer_storage_panel()
 	await capture("05-dealer-storage.png")
+	game._close_dealer_storage_panel()
+	game.bagging_level = 3
+	game.dealer_locker_level = 3
+	game._apply_visual_upgrades()
+	game._sync_dealer_locker_visual()
+	aim(Vector3(0.7, 0.08, 1.4), Vector3(4.3, 1.5, -0.7))
+	await capture("06-upgraded-furniture.png")
+	game._set_premium_dealer_locker_open(true)
+	await create_timer(0.4).timeout
+	aim(Vector3(2.0, 0.08, -1.8), Vector3(4.4, 1.5, -2.2))
+	await capture("07-premium-locker.png")
 	quit()

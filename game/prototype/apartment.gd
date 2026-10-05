@@ -1,5 +1,5 @@
 extends "res://scripts/main.gd"
-## Adapter over the pinned AFewBuds simulation. Never imports production saves.
+## Adapter over the pinned AFewBuds simulation. Uses the shared simulation with native account integration.
 const FirstPersonPlayer = preload("res://prototype/player.gd")
 const REACH := 2.6
 const WALL_NAMES := ["FrontWall", "RearWall", "LeftWall", "RightWall", "PartitionLeft", "PartitionRight", "PartitionHeader"]
@@ -15,6 +15,8 @@ var fp_hud: Control
 var fp_was_modal := true
 var fp_collisions: Array[Dictionary] = []
 var fp_collision_timer := 0.0
+var fp_station_opening := false
+var fp_open_epoch := 0
 
 func _load_game() -> void:
 	super._load_game()
@@ -80,7 +82,7 @@ func _process(delta: float) -> void:
 	fp_prompt.visible = not modal
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
-	fp_info.text = "AFEWBUDS   /   APARTMENT 0.4\n%s   ·   %s   ·   $%d" % ["GROW ROOM" if current_room == "grow" else "LIVING ROOM", _format_game_clock(), cash]
+	fp_info.text = "AFEWBUDS   /   APARTMENT 0.5\n%s   ·   %s   ·   $%d" % ["GROW ROOM" if current_room == "grow" else "LIVING ROOM", _format_game_clock(), cash]
 	fp_hint.text = "WASD  Walk     E  Interact     P  Phone     Esc  Pause     F5  Save"
 	_hide_old_navigation()
 
@@ -195,7 +197,7 @@ func _phone_safe_quit() -> void:
 	_show_save_notification("SAVE & SLEEP", AFBCloud.last_status)
 
 func _any_modal_open() -> bool:
-	return is_instance_valid(account_overlay) or super._any_modal_open()
+	return fp_station_opening or is_instance_valid(account_overlay) or super._any_modal_open()
 
 func _open_web_account_settings() -> void:
 	_open_account_overlay(false)
@@ -256,7 +258,7 @@ func _add_physical_collisions(root: Node) -> void:
 			continue
 		if child is MeshInstance3D and child.mesh is BoxMesh:
 			var size_value: Vector3 = child.mesh.size
-			if size_value.y >= 0.12 and maxf(size_value.x, size_value.z) >= 0.3:
+			if not child.has_node("PrototypeCollision") and size_value.y >= 0.12 and maxf(size_value.x, size_value.z) >= 0.3:
 				var body := StaticBody3D.new()
 				body.name = "PrototypeCollision"
 				body.collision_layer = 3 if str(child.name) in WALL_NAMES else 1
@@ -305,8 +307,8 @@ func _sync_physical_collisions() -> void:
 
 func _add_station_targets() -> void:
 	# Target fronts sit just ahead of the relevant surfaces, not at fixed-view anchors.
-	_add_interaction_area("FP_Locker", Vector3(3.95, 1.3, 2.68), Vector3(0.25, 2.0, 0.8), "station_locker")
-	_add_interaction_area("FP_Bench", Vector3(3.25, 1.35, 0.35), Vector3(0.3, 0.8, 2.25), "station_workbench")
+	_add_interaction_area("FP_Locker", Vector3(3.95, 1.3, -2.20), Vector3(0.25, 2.0, 1.5), "station_locker")
+	_add_interaction_area("FP_Bench", Vector3(3.25, 1.35, 0.54), Vector3(0.3, 0.8, 2.25), "station_workbench")
 	_add_interaction_area("FP_Storage", Vector3(-3.95, 1.3, -0.3), Vector3(0.3, 1.8, 2.4), "station_storage")
 	_add_interaction_area("FP_Door", Vector3(0, 1.4, 5.62), Vector3(1.7, 2.6, 0.18), "station_door")
 	_add_interaction_area("FP_System", Vector3(4.45, 1.8, -6.65), Vector3(0.25, 1.0, 1.2), "station_system", "grow")
@@ -357,7 +359,7 @@ func _use_target() -> void:
 	else:
 		var id := str(fp_target.get_meta("interaction_id"))
 		match id:
-			"station_locker": _open_dealer_storage_panel()
+			"station_locker": _open_fp_locker()
 			"station_workbench": _open_bagging_panel()
 			"station_storage", "storage_vault": _open_storage_panel()
 			"station_supply": _open_supply_inventory_panel()
@@ -427,3 +429,44 @@ func _fp_label(pos: Vector2, font_size: int) -> Label:
 	label.add_theme_constant_override("shadow_offset_y", 2)
 	fp_hud.add_child(label)
 	return label
+
+func _apply_visual_upgrades() -> void:
+	super._apply_visual_upgrades()
+	if fp_ready:
+		_add_physical_collisions(self)
+		_sync_physical_collisions()
+
+func _sync_dealer_locker_visual() -> void:
+	super._sync_dealer_locker_visual()
+	if fp_ready:
+		_sync_physical_collisions()
+
+func _open_fp_locker() -> void:
+	if dealer_locker_level >= 3:
+		fp_station_opening = true
+		fp_player.enabled = false
+		fp_open_epoch += 1
+		var epoch := fp_open_epoch
+		_set_premium_dealer_locker_open(true)
+		await get_tree().create_timer(0.32).timeout
+		if epoch != fp_open_epoch:
+			return
+		fp_station_opening = false
+		if session_paused:
+			return
+	_open_dealer_storage_panel()
+
+func _pause_gameplay(message: String = "Paused. Resume whenever you are ready.", start_unix: float = 0.0) -> void:
+	if fp_station_opening:
+		fp_open_epoch += 1
+		fp_station_opening = false
+		_set_premium_dealer_locker_open(false)
+	super._pause_gameplay(message, start_unix)
+
+func _resume_gameplay() -> void:
+	var reopen := dealer_storage_reopen_after_pause
+	super._resume_gameplay()
+	if reopen and not session_paused and fp_ready:
+		_open_dealer_storage_panel()
+		if dealer_locker_level >= 3:
+			_set_premium_dealer_locker_open(true)

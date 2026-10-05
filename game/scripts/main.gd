@@ -491,6 +491,7 @@ var supply_catalog: Dictionary = {
 	"Grow Tent Slot 2": {"unlock": 3, "cost": 480, "description": "Install a second grow tent in Grow Room expansion bay 2 and add 3 plant slots."},
 	"Grow Room Ventilation": {"unlock": 2, "cost": 350, "description": "Install the grow-room ventilation system. Plants grow slowly when ventilation is unavailable or switched off."},
 	"Bagging Bench II": {"unlock": 3, "cost": 275, "description": "Better packaging adds value to every sale."},
+	"Bagging Bench III": {"unlock": 6, "cost": 850, "description": "Industrial production workstation. Enables continuous manual bagging with variable 1-4g bags until the selected strain is fully packaged."},
 	"Tent Upgrade II": {"unlock": 3, "cost": 320, "description": "Improve output from all installed grow tents."},
 	"Storage Shelving III": {"unlock": 5, "cost": 650, "description": "Expand storage to 160g with a second shelving bank."},
 	"AFB Storage Vault": {"unlock": 7, "cost": 1800, "description": "Replace all storage shelves with the AFB steel-and-green vault. 400g TOTAL sellable storage. Requires Storage Shelving III. Existing stock, reservations and listings stay unchanged."},
@@ -569,8 +570,8 @@ const ROOM_SWITCH_TARGETS: Array[Dictionary] = [
 const ROOM_DIRECT_STATIONS: Array[Dictionary] = [
 	{"id": "room_enter_grow", "room": "main", "pos": Vector3(0.0, 1.55, -3.88), "view": ""},
 	{"id": "room_enter_main", "room": "grow", "pos": Vector3(0.0, 1.55, -3.88), "view": ""},
-	{"id": "station_workbench", "room": "main", "pos": Vector3(3.95, 1.15, 0.30), "view": "workbench"},
-	{"id": "station_locker", "room": "main", "pos": Vector3(4.13, 1.30, 2.68), "view": "locker"},
+	{"id": "station_workbench", "room": "main", "pos": Vector3(3.95, 1.15, 0.54), "view": "workbench"},
+	{"id": "station_locker", "room": "main", "pos": Vector3(4.13, 1.30, -2.20), "view": "locker"},
 	{"id": "station_storage", "room": "main", "pos": Vector3(-4.35, 1.35, -0.30), "view": "storage"},
 	{"id": "station_door", "room": "main", "pos": Vector3(0.0, 1.50, 5.78), "view": "door"},
 	{"id": "station_tent1", "room": "grow", "pos": Vector3(0.0, 1.25, -9.10), "view": "grow"},
@@ -616,6 +617,13 @@ var storage_refresh_revision: int = 0
 var dealer_storage_panel: PanelContainer
 var dealer_storage_list: VBoxContainer
 var dealer_storage_scroll: PhoneTouchScroll
+var premium_dealer_locker_root: Node3D
+var premium_dealer_locker_left_door_pivot: Node3D
+var premium_dealer_locker_right_door_pivot: Node3D
+var premium_dealer_locker_open: bool = false
+var premium_dealer_locker_left_tween: Tween
+var premium_dealer_locker_right_tween: Tween
+var dealer_storage_reopen_after_pause: bool = false
 var supply_inventory_panel: PanelContainer
 var supply_inventory_list: VBoxContainer
 var supply_inventory_scroll: PhoneTouchScroll
@@ -979,6 +987,9 @@ func _open_dealer_locker_after_approach() -> void:
 	if dealer_storage_panel == null:
 		status_label.text = "Dealer Storage panel failed to initialize."
 		return
+	if dealer_locker_level >= 3:
+		_set_premium_dealer_locker_open(true)
+		await get_tree().create_timer(0.30).timeout
 	_open_dealer_storage_panel()
 
 func _finish_direct_station_approach(action_id: String) -> void:
@@ -1843,8 +1854,8 @@ func _build_world() -> void:
 		"grow3": {"pos": Vector3(3.20, 1.40, -6.16), "rot": Vector3(-0.015, 0, 0), "fov": 84.0, "label": "Grow Tent 3 Overview"},
 		"grow_system": {"pos": Vector3(2.72, 1.92, -6.65), "rot": Vector3(0, -PI / 2.0, 0), "fov": 62.0, "label": "Grow Room System Panel"},
 		"grow_supply_shelf": {"pos": Vector3(-2.28, 1.38, -5.88), "rot": Vector3(0, PI / 2.0, 0), "fov": 68.0, "label": "Grow Supply Shelf"},
-		"workbench": {"pos": Vector3(1.15, 1.60, 1.10), "rot": Vector3(0, -PI / 2.0, 0), "label": "Bagging Station"},
-		"locker": {"pos": Vector3(1.72, 1.56, 2.58), "rot": Vector3(0, -PI / 2.0, 0), "fov": 68.0, "label": "Dealer Locker"},
+		"workbench": {"pos": Vector3(1.15, 1.60, 1.34), "rot": Vector3(0, -PI / 2.0, 0), "label": "Bagging Station"},
+		"locker": {"pos": Vector3(1.72, 1.56, -2.30), "rot": Vector3(0, -PI / 2.0, 0), "fov": 68.0, "label": "Dealer Locker"},
 		"storage": {"pos": Vector3(-1.15, 1.60, 0.65), "rot": Vector3(-0.04, atan2(3.18, 0.95), 0), "label": "Storage"},
 		"door": {"pos": Vector3(0, 1.61, 3.75), "rot": Vector3(0, PI, 0), "label": "Front Door"}
 	}
@@ -2085,6 +2096,7 @@ func _update_room_status_panel() -> void:
 
 
 func _build_bagging_station() -> void:
+	var packing_station_start_index: int = get_child_count()
 	_add_box("BenchTop", Vector3(3.95, 1.1, 0.3), Vector3(1.28, 0.12, 3.52), Color("9b6d42"), 0.52, false, "res://assets/textures/walnut.png", Vector3(1.0, 1.0, 2.6))
 	_add_box("BenchFrontApron", Vector3(3.37, 0.94, 0.3), Vector3(0.10, 0.20, 3.38), Color("25292d"), 0.50, false, "res://assets/textures/matte_plastic.png")
 	_add_box("BenchBackApron", Vector3(4.53, 0.94, 0.3), Vector3(0.10, 0.20, 3.38), Color("25292d"), 0.50, false, "res://assets/textures/matte_plastic.png")
@@ -2176,6 +2188,10 @@ func _build_bagging_station() -> void:
 	station_label.modulate = Color("e8ddd0")
 	add_child(station_label)
 	_sync_packing_bench_visuals(true)
+	for child_index: int in range(packing_station_start_index, get_child_count()):
+		var shifted_child: Node = get_child(child_index)
+		if shifted_child is Node3D:
+			(shifted_child as Node3D).position.z += 0.24
 
 func _inventory_grams(inventory: Dictionary) -> int:
 	var total: int = 0
@@ -2317,6 +2333,8 @@ func _build_living_furniture() -> void:
 	_add_box("TVConsole", Vector3(-3.02, 0.45, -3.52), Vector3(2.35, 0.72, 0.54), Color("ddd7cb"), 0.75, false, "res://assets/textures/laminate.png", Vector3(2.0, 1.0, 1.0))
 	_add_box("TVScreen", Vector3(-3.02, 1.42, -3.73), Vector3(1.95, 1.08, 0.075), Color("14191d"), 0.18, false, "res://assets/textures/matte_plastic.png")
 	_add_box("TVStand", Vector3(-3.02, 0.87, -3.60), Vector3(0.48, 0.09, 0.28), Color("383d41"), 0.42, false, "res://assets/textures/brushed_metal.png")
+	_build_premium_dealer_locker_visual()
+	_sync_dealer_locker_visual()
 
 func _build_apartment_details() -> void:
 	_add_box("WindowFrame", Vector3(-3.62, 2.15, 5.86), Vector3(2.10, 1.55, 0.08), Color("e5e0d8"), 0.58)
@@ -2328,42 +2346,44 @@ func _build_apartment_details() -> void:
 	_add_box("CurtainL", Vector3(-4.68, 2.08, 5.68), Vector3(0.32, 1.88, 0.10), Color("9f917e"), 0.94, false, "res://assets/textures/fabric_bluegray.png")
 	_add_box("CurtainR", Vector3(-2.56, 2.08, 5.68), Vector3(0.32, 1.88, 0.10), Color("9f917e"), 0.94, false, "res://assets/textures/fabric_bluegray.png")
 
-	_add_box("KitchenBase", Vector3(3.43, 0.46, -3.54), Vector3(2.25, 0.84, 0.72), Color("d8d3ca"), 0.78, false, "res://assets/textures/laminate.png", Vector3(2.0, 1.0, 1.0))
-	_add_box("KitchenCounter", Vector3(3.43, 0.93, -3.55), Vector3(2.38, 0.10, 0.82), Color("686f73"), 0.34, false, "res://assets/textures/brushed_metal.png", Vector3(2.0, 1.0, 1.0))
-	_add_box("KitchenBacksplash", Vector3(3.43, 1.38, -3.93), Vector3(2.38, 0.78, 0.06), Color("d7d9d8"), 0.72, false, "res://assets/textures/painted_wall.png", Vector3(2.0, 1.0, 1.0))
-	_add_box("KitchenUpper", Vector3(3.53, 2.08, -3.73), Vector3(2.10, 0.92, 0.48), Color("e0dbd1"), 0.80, false, "res://assets/textures/laminate.png", Vector3(2.0, 1.0, 1.0))
-	_add_box("SinkBasin", Vector3(2.95, 0.99, -3.54), Vector3(0.62, 0.06, 0.48), Color("aeb7bb"), 0.18, false, "res://assets/textures/brushed_metal.png")
-	_add_cylinder("FaucetStem", Vector3(2.95, 1.17, -3.86), 0.035, 0.035, 0.35, Color("c6ccce"), 0.22)
-	_add_box("LockerBody", Vector3(4.52, 1.28, 2.68), Vector3(0.82, 2.56, 0.80), Color("24262c"), 0.38, false, "res://assets/textures/brushed_metal.png", Vector3(1.0, 2.0, 1.0))
-	_add_box("LockerInnerDoor", Vector3(4.13, 1.30, 2.68), Vector3(0.05, 2.28, 0.58), Color("1b1d22"), 0.42, false, "res://assets/textures/matte_plastic.png")
-	_add_box("LockerDoorFrameTop", Vector3(4.13, 2.48, 2.68), Vector3(0.05, 0.08, 0.64), Color("33363d"), 0.34)
-	_add_box("LockerDoorFrameBottom", Vector3(4.13, 0.13, 2.68), Vector3(0.05, 0.08, 0.64), Color("33363d"), 0.34)
-	_add_box("LockerDoorFrameL", Vector3(4.13, 1.30, 2.37), Vector3(0.05, 2.34, 0.05), Color("33363d"), 0.34)
-	_add_box("LockerDoorFrameR", Vector3(4.13, 1.30, 2.99), Vector3(0.05, 2.34, 0.05), Color("33363d"), 0.34)
+	_add_box("KitchenBase", Vector3(2.16, 0.46, -3.54), Vector3(2.25, 0.84, 0.72), Color("d8d3ca"), 0.78, false, "res://assets/textures/laminate.png", Vector3(2.0, 1.0, 1.0))
+	_add_box("KitchenCounter", Vector3(2.22, 0.93, -3.55), Vector3(2.38, 0.10, 0.82), Color("686f73"), 0.34, false, "res://assets/textures/brushed_metal.png", Vector3(2.0, 1.0, 1.0))
+	_add_box("KitchenBacksplash", Vector3(2.22, 1.38, -3.93), Vector3(2.38, 0.78, 0.06), Color("d7d9d8"), 0.72, false, "res://assets/textures/painted_wall.png", Vector3(2.0, 1.0, 1.0))
+	_add_box("KitchenUpper", Vector3(2.26, 2.08, -3.73), Vector3(2.10, 0.92, 0.48), Color("e0dbd1"), 0.80, false, "res://assets/textures/laminate.png", Vector3(2.0, 1.0, 1.0))
+	_add_box("SinkBasin", Vector3(1.68, 0.99, -3.54), Vector3(0.62, 0.06, 0.48), Color("aeb7bb"), 0.18, false, "res://assets/textures/brushed_metal.png")
+	_add_cylinder("FaucetStem", Vector3(1.68, 1.17, -3.86), 0.035, 0.035, 0.35, Color("c6ccce"), 0.22)
+	_add_box("LockerBody", Vector3(4.52, 1.28, -2.20), Vector3(0.82, 2.56, 0.80), Color("24262c"), 0.38, false, "res://assets/textures/brushed_metal.png", Vector3(1.0, 2.0, 1.0))
+	_add_box("LockerInnerDoor", Vector3(4.13, 1.30, -2.20), Vector3(0.05, 2.28, 0.58), Color("1b1d22"), 0.42, false, "res://assets/textures/matte_plastic.png")
+	_add_box("LockerDoorFrameTop", Vector3(4.13, 2.48, -2.20), Vector3(0.05, 0.08, 0.64), Color("33363d"), 0.34)
+	_add_box("LockerDoorFrameBottom", Vector3(4.13, 0.13, -2.20), Vector3(0.05, 0.08, 0.64), Color("33363d"), 0.34)
+	_add_box("LockerDoorFrameL", Vector3(4.13, 1.30, -2.51), Vector3(0.05, 2.34, 0.05), Color("33363d"), 0.34)
+	_add_box("LockerDoorFrameR", Vector3(4.13, 1.30, -1.89), Vector3(0.05, 2.34, 0.05), Color("33363d"), 0.34)
 	for vent_offset in [0.72, 0.58, 0.44, -0.54, -0.68]:
-		_add_box("LockerVent_%s" % str(vent_offset).replace('-', 'n').replace('.', '_'), Vector3(4.08, 1.30 + vent_offset, 2.68), Vector3(0.03, 0.05, 0.26), Color("535860"), 0.26)
-	_add_box("LockerHandleInset", Vector3(4.08, 1.28, 2.56), Vector3(0.03, 0.40, 0.12), Color("111317"), 0.20)
-	_add_cylinder("LockerDialOuter", Vector3(4.06, 1.26, 2.56), 0.06, 0.06, 0.025, Color("73777d"), 0.20, Vector3(PI / 2.0, 0, 0))
-	_add_cylinder("LockerDialInner", Vector3(4.045, 1.26, 2.56), 0.028, 0.028, 0.02, Color("24282c"), 0.22, Vector3(PI / 2.0, 0, 0))
-	_add_box("LockerHingeTop", Vector3(4.10, 2.00, 3.02), Vector3(0.035, 0.20, 0.05), Color("5d6268"), 0.28)
-	_add_box("LockerHingeBottom", Vector3(4.10, 0.64, 3.02), Vector3(0.035, 0.20, 0.05), Color("5d6268"), 0.28)
-	_add_box("LockerFootFront", Vector3(4.80, 0.08, 2.95), Vector3(0.12, 0.16, 0.12), Color("363940"), 0.34)
-	_add_box("LockerFootRear", Vector3(4.80, 0.08, 2.41), Vector3(0.12, 0.16, 0.12), Color("363940"), 0.34)
+		_add_box("LockerVent_%s" % str(vent_offset).replace('-', 'n').replace('.', '_'), Vector3(4.08, 1.30 + vent_offset, -2.20), Vector3(0.03, 0.05, 0.26), Color("535860"), 0.26)
+	_add_box("LockerHandleInset", Vector3(4.08, 1.28, -2.32), Vector3(0.03, 0.40, 0.12), Color("111317"), 0.20)
+	_add_cylinder("LockerDialOuter", Vector3(4.06, 1.26, -2.32), 0.06, 0.06, 0.025, Color("73777d"), 0.20, Vector3(PI / 2.0, 0, 0))
+	_add_cylinder("LockerDialInner", Vector3(4.045, 1.26, -2.32), 0.028, 0.028, 0.02, Color("24282c"), 0.22, Vector3(PI / 2.0, 0, 0))
+	_add_box("LockerHingeTop", Vector3(4.10, 2.00, -1.86), Vector3(0.035, 0.20, 0.05), Color("5d6268"), 0.28)
+	_add_box("LockerHingeBottom", Vector3(4.10, 0.64, -1.86), Vector3(0.035, 0.20, 0.05), Color("5d6268"), 0.28)
+	_add_box("LockerFootFront", Vector3(4.80, 0.08, -1.93), Vector3(0.12, 0.16, 0.12), Color("363940"), 0.34)
+	_add_box("LockerFootRear", Vector3(4.80, 0.08, -2.47), Vector3(0.12, 0.16, 0.12), Color("363940"), 0.34)
 	var locker_logo: Label3D = Label3D.new()
+	locker_logo.name = "DealerBasicLogo"
 	locker_logo.text = "DEALER\nSTORAGE"
 	locker_logo.font_size = 27
 	locker_logo.pixel_size = 0.0030
-	locker_logo.position = Vector3(4.09, 1.62, 2.70)
+	locker_logo.position = Vector3(4.09, 1.62, -2.18)
 	locker_logo.rotation_degrees = Vector3(0, -90, 0)
 	locker_logo.modulate = Color("dbe0d4")
 	add_child(locker_logo)
 	var locker_tag: Label3D = Label3D.new()
+	locker_tag.name = "DealerBasicTag"
 	locker_tag.text = "DEALER
 STOCK
 LOCKER"
 	locker_tag.font_size = 22
 	locker_tag.pixel_size = 0.0025
-	locker_tag.position = Vector3(4.88, 1.46, 2.51)
+	locker_tag.position = Vector3(4.88, 1.46, -2.37)
 	locker_tag.rotation_degrees = Vector3(0, 180, 0)
 	locker_tag.modulate = Color("8572a8")
 	add_child(locker_tag)
@@ -2423,6 +2443,87 @@ func _refresh_light_interaction_visuals() -> void:
 	_set_mesh_emission_enabled("ExpansionTent2Light", grow_lights_on)
 	_set_mesh_emission_enabled("ExpansionTent3Light", grow_lights_on)
 
+func _build_bagging_bench_level3_visual() -> void:
+	if get_node_or_null("BenchIIIBackBoard") != null:
+		return
+	var black: Color = Color("171a1d")
+	var dark: Color = Color("202428")
+	var steel: Color = Color("3a4146")
+	var green: Color = Color("46e884")
+	var wood: Color = Color("765238")
+
+	# Tall industrial back / pegboard silhouette.
+	_add_box("BenchIIIBackBoard", Vector3(4.62, 1.96, 0.54), Vector3(0.12, 1.48, 3.14), dark, 0.42, false, "res://assets/textures/brushed_metal.png", Vector3(1.0, 1.0, 2.0))
+	_add_box("BenchIIIUpperCabinet", Vector3(4.43, 2.83, 0.54), Vector3(0.48, 0.58, 3.08), black, 0.34, false, "res://assets/textures/brushed_metal.png", Vector3(1.0, 1.0, 2.0))
+	_add_box("BenchIIIUpperLip", Vector3(4.14, 2.50, 0.54), Vector3(0.54, 0.08, 3.02), steel, 0.30, false, "res://assets/textures/brushed_metal.png")
+	_add_box("BenchIIITaskLight", Vector3(4.08, 2.43, 0.54), Vector3(0.035, 0.035, 2.76), green, 0.10, true)
+
+	# Enclosed lower cabinets/drawers while retaining the existing walnut work surface.
+	_add_box("BenchIIILowerCabinetL", Vector3(3.48, 0.58, -0.34), Vector3(0.22, 0.86, 1.20), black, 0.36, false, "res://assets/textures/brushed_metal.png")
+	_add_box("BenchIIILowerCabinetR", Vector3(3.48, 0.58, 1.42), Vector3(0.22, 0.86, 1.20), black, 0.36, false, "res://assets/textures/brushed_metal.png")
+	for y_value: float in [0.34, 0.58, 0.82]:
+		_add_box("BenchIIIDrawerL_%s" % str(y_value), Vector3(3.34, y_value, -0.34), Vector3(0.035, 0.18, 1.02), steel, 0.28)
+		_add_box("BenchIIIDrawerR_%s" % str(y_value), Vector3(3.34, y_value, 1.42), Vector3(0.035, 0.18, 1.02), steel, 0.28)
+
+	# Tool rail / small shelf details.
+	_add_box("BenchIIIToolRail", Vector3(4.52, 1.90, 0.54), Vector3(0.10, 0.08, 2.70), Color("565e63"), 0.26, false, "res://assets/textures/brushed_metal.png")
+	_add_box("BenchIIISmallShelf", Vector3(4.33, 1.58, 1.54), Vector3(0.46, 0.08, 0.72), wood, 0.54, false, "res://assets/textures/walnut.png")
+	for tool_z: float in [-0.70, -0.28, 0.14, 0.56]:
+		_add_box("BenchIIITool_%s" % str(tool_z), Vector3(4.49, 1.98, tool_z), Vector3(0.08, 0.36, 0.08), Color("b7bdc1"), 0.25, false, "res://assets/textures/brushed_metal.png")
+
+	var label: Label3D = Label3D.new()
+	label.name = "BenchIIIWorldLabel"
+	label.text = "BAGGING BENCH III"
+	label.font_size = 26
+	label.pixel_size = 0.0028
+	label.position = Vector3(3.98, 2.92, 0.54)
+	label.rotation_degrees = Vector3(0, -90, 0)
+	label.modulate = Color("9af4b6")
+	add_child(label)
+
+func _sync_bagging_bench_level3_visibility() -> void:
+	var upgraded: bool = bagging_level >= 3
+	var legacy_lower_parts: Array[String] = [
+		"BenchFrontApron",
+		"BenchBackApron",
+		"BenchLeg_0_0",
+		"BenchLeg_0_1",
+		"BenchLeg_1_0",
+		"BenchLeg_1_1",
+		"BenchLowerShelf",
+		"BenchGreenBin",
+		"BenchGreenBinLid",
+		"BenchClearBin",
+		"BenchClearBinLid",
+		"BenchBaggieStackUnder",
+		"BenchSupplyBox"
+	]
+	for node_name: String in legacy_lower_parts:
+		var legacy_node: Node3D = get_node_or_null(node_name) as Node3D
+		if legacy_node != null:
+			legacy_node.visible = not upgraded
+
+	var bench3_names: Array[String] = [
+		"BenchIIIBackBoard",
+		"BenchIIIUpperCabinet",
+		"BenchIIIUpperLip",
+		"BenchIIITaskLight",
+		"BenchIIILowerCabinetL",
+		"BenchIIILowerCabinetR",
+		"BenchIIIToolRail",
+		"BenchIIISmallShelf",
+		"BenchIIIWorldLabel"
+	]
+	for node_name: String in bench3_names:
+		var upgraded_node: Node3D = get_node_or_null(node_name) as Node3D
+		if upgraded_node != null:
+			upgraded_node.visible = upgraded
+	for child: Node in get_children():
+		var child_name: String = str(child.name)
+		if child_name.begins_with("BenchIIIDrawer") or child_name.begins_with("BenchIIITool_"):
+			if child is Node3D:
+				(child as Node3D).visible = upgraded
+
 func _apply_visual_upgrades() -> void:
 	if tent_level >= 2:
 		_set_mesh_color("TentBody", Color("303842"))
@@ -2432,6 +2533,10 @@ func _apply_visual_upgrades() -> void:
 	if bagging_level >= 2:
 		_set_mesh_color("ScaleBody", Color("16191d"))
 		_set_mesh_color("BenchTop", Color("594231"))
+	if bagging_level >= 3:
+		_build_bagging_bench_level3_visual()
+		_set_mesh_color("BenchTop", Color("332c28"))
+	_sync_bagging_bench_level3_visibility()
 	if storage_level >= 2 and storage_level < 4:
 		_set_mesh_color("Shelf0", Color("6f767c"))
 		_set_mesh_color("Shelf1", Color("6f767c"))
@@ -4094,7 +4199,10 @@ func _start_bag_minigame(strain_name: String) -> void:
 	bag_active_strain = strain_name
 	bag_available_units = amount
 	bag_current_units = 0
-	bag_target_units = mini(3, amount)
+	if bagging_level >= 3 and not tutorial_active:
+		bag_target_units = rng.randi_range(1, mini(4, amount))
+	else:
+		bag_target_units = mini(3, amount)
 	bag_dragging = false
 	bag_bud_token.position = bag_token_home
 	bag_bud_token.visible = true
@@ -4134,12 +4242,28 @@ func _seal_current_bag() -> void:
 	var moved: int = mini(available, bag_target_units)
 	if moved <= 0:
 		return
+
 	trimmed_inventory[bag_active_strain] = available - moved
 	_add_inventory(bagged_inventory, bag_active_strain, moved)
 	_increment_advancement_stat("bags_sealed")
 	_tutorial_record("bag", -1, bag_active_strain)
-	status_label.text = "Sealed a %dg bag of %s. Move it into storage from the station." % [moved, bag_active_strain]
 	_save_game()
+
+	var remaining: int = int(trimmed_inventory.get(bag_active_strain, 0))
+	if bagging_level >= 3 and not tutorial_active and remaining > 0:
+		bag_available_units = remaining
+		bag_current_units = 0
+		bag_target_units = rng.randi_range(1, mini(4, remaining))
+		bag_dragging = false
+		bag_bud_token.position = bag_token_home
+		bag_bud_token.visible = true
+		bag_seal_button.disabled = true
+		status_label.text = "Sealed %dg of %s. %dg remains - keep bagging." % [moved, bag_active_strain, remaining]
+		_refresh_bag_weight()
+		_sync_packing_bench_visuals(true)
+		return
+
+	status_label.text = "Sealed %dg of %s. All selected product is packaged." % [moved, bag_active_strain]
 	_close_bag_minigame()
 
 func _close_bag_minigame() -> void:
@@ -5643,6 +5767,7 @@ func _buy_dealer_locker_upgrade() -> void:
 	cash -= cost
 	_record_daily_expense("Dealer Locker upgrade", cost)
 	dealer_locker_level = next_level
+	_sync_dealer_locker_visual()
 	_update_cash_ui()
 	status_label.text = "Dealer Locker %s installed. Capacity: %dg." % [_roman(dealer_locker_level), _dealer_locker_capacity()]
 	_save_game()
@@ -5999,8 +6124,11 @@ func _open_dealer_storage_panel() -> void:
 	status_label.text = "Dealer Storage opened."
 
 func _close_dealer_storage_panel() -> void:
+	dealer_storage_reopen_after_pause = false
 	if dealer_storage_scroll != null:
 		dealer_storage_scroll.cancel_touch()
+	if dealer_locker_level >= 3:
+		_set_premium_dealer_locker_open(false)
 	dealer_storage_panel.visible = false
 	_go_to_view("main_workbench")
 	_set_world_controls_visible(true)
@@ -6892,9 +7020,15 @@ Seeds: %d/%d   |   Fertilizer: %d/%d" % [_roman(supply_shelf_level), _total_seed
 	_add_upgrade_family_card(phone_list, "GROW TENT SLOTS", "Installed: %d / 3
 Plant slots: %d   |   Tent equipment level: %d" % [grow_tent_count, plant_slots.size(), tent_level], tent_next)
 
+	var bagging_next: String = ""
+	if bagging_level <= 1: bagging_next = "Bagging Bench II"
+	elif bagging_level == 2: bagging_next = "Bagging Bench III"
+	var bagging_detail: String = "Current: Bench %s\nLevel III perk: continuous 1-4g manual bagging until the selected strain is fully packaged." % _roman(bagging_level)
+	_add_upgrade_family_card(phone_list, "BAGGING BENCH", bagging_detail, bagging_next)
+
 	_add_dealer_locker_family_card(phone_list)
 
-	var chain_names: Array[String] = ["Grow Supply Shelf II", "Grow Supply Shelf III", "Storage Shelving II", "Storage Shelving III", VAULT_SUPPLY, HIDDEN_STASH_SUPPLY, "Grow Tent Slot 2", "Grow Tent Slot 3"]
+	var chain_names: Array[String] = ["Grow Supply Shelf II", "Grow Supply Shelf III", "Storage Shelving II", "Storage Shelving III", VAULT_SUPPLY, HIDDEN_STASH_SUPPLY, "Grow Tent Slot 2", "Grow Tent Slot 3", "Bagging Bench II", "Bagging Bench III"]
 	var installed: Array[String] = []
 	var available: Array[String] = []
 	for supply_variant: Variant in supply_catalog.keys():
@@ -8538,6 +8672,9 @@ func _buy_supply(supply_name: String) -> void:
 	if supply_name == HIDDEN_STASH_SUPPLY and storage_level < 4:
 		status_label.text = "Install the AFB Storage Vault before buying the Hidden Wall Stash."
 		return
+	if supply_name == "Bagging Bench III" and bagging_level < 2:
+		status_label.text = "Install Bagging Bench II first."
+		return
 	if _supply_is_purchased(supply_name) and supply_name != "Fertilizer Pack":
 		return
 	cash -= cost
@@ -8570,6 +8707,8 @@ func _buy_supply(supply_name: String) -> void:
 			_sync_grow_expansion_visuals()
 		"Bagging Bench II":
 			bagging_level = maxi(bagging_level, 2)
+		"Bagging Bench III":
+			bagging_level = maxi(bagging_level, 3)
 		"Tent Upgrade II":
 			tent_level = maxi(tent_level, 2)
 		"Auto Water Kit":
@@ -8594,6 +8733,7 @@ func _supply_is_purchased(supply_name: String) -> bool:
 		"Grow Room Ventilation": return ventilation_installed
 		"Grow Tent Slot 3": return grow_tent_count >= 3
 		"Bagging Bench II": return bagging_level >= 2
+		"Bagging Bench III": return bagging_level >= 3
 		"Tent Upgrade II": return tent_level >= 2
 		"Auto Water Kit": return auto_water_unlocked
 	return false
@@ -10151,6 +10291,7 @@ func _build_pause_overlay() -> void:
 func _pause_gameplay(reason: String = "Paused. Resume whenever you are ready.", start_unix: float = 0.0) -> void:
 	if not gameplay_ready or session_paused or reset_in_progress:
 		return
+	dealer_storage_reopen_after_pause = dealer_storage_panel != null and dealer_storage_panel.visible
 	if away_started_unix <= 0.0:
 		away_started_unix = start_unix if start_unix > 0.0 else Time.get_unix_time_from_system()
 		away_growth_allowed = _offline_crops_enabled()
@@ -10158,10 +10299,16 @@ func _pause_gameplay(reason: String = "Paused. Resume whenever you are ready.", 
 		away_worker_next_service = OfflinePlantCare.CARE_INTERVAL
 		offline_plant_report.clear()
 	session_paused = true
-	_cancel_beta_reset() # An interrupted confirmation must be requested again.
+	_cancel_beta_reset()
 	_cancel_phone_gesture()
 	room_look_drag_active = false
 	_cancel_station_drag()
+
+	if dealer_storage_panel != null:
+		dealer_storage_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if dealer_storage_reopen_after_pause:
+			dealer_storage_panel.visible = false
+
 	_sync_simulation_pause()
 	if knock_player != null:
 		knock_player.stop()
@@ -10175,7 +10322,10 @@ func _pause_gameplay(reason: String = "Paused. Resume whenever you are ready.", 
 		if lay_low_active:
 			heat_copy = "Heat cools slowly. Lay Low time continues."
 		pause_message.text = "PAUSED\nDay %d  |  %s\n\nGameplay is frozen: visitors, sales, wages and story.\n\nWHILE AWAY\n%s\n%s" % [game_day, _format_game_clock(), crop_copy, heat_copy]
+		pause_overlay.z_index = 1000
+		pause_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 		pause_overlay.visible = true
+		pause_overlay.move_to_front()
 	_refresh_tutorial_coach()
 	_save_game()
 
@@ -10198,13 +10348,26 @@ func _resume_gameplay() -> void:
 		_refresh_direct_plant_panel()
 	if not offline_plant_report.is_empty():
 		status_label.text = _offline_plant_summary()
+
 	session_paused = false
 	if web_lifecycle != null:
 		web_lifecycle.away = false
 	last_active_frame_msec = Time.get_ticks_msec()
 	last_active_frame_unix = Time.get_unix_time_from_system()
+
 	if pause_overlay != null:
 		pause_overlay.visible = false
+
+	if dealer_storage_panel != null:
+		dealer_storage_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+		if dealer_storage_reopen_after_pause and current_view == "locker":
+			dealer_storage_panel.visible = true
+			dealer_storage_panel.move_to_front()
+			_refresh_dealer_storage_panel()
+			if dealer_locker_level >= 3:
+				_set_premium_dealer_locker_open(true)
+	dealer_storage_reopen_after_pause = false
+
 	_sync_simulation_pause()
 	_refresh_utility_controls()
 	_set_world_controls_visible(not _any_modal_open())
@@ -10747,6 +10910,175 @@ func _set_hidden_stash_open(opened: bool) -> void:
 	var target_angle: float = deg_to_rad(-92.0) if opened else 0.0
 	hidden_stash_frame_tween = create_tween()
 	hidden_stash_frame_tween.tween_property(hidden_stash_frame_pivot, "rotation:y", target_angle, 0.32)
+
+func _dealer_premium_box(parent: Node3D, part_name: String, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.45, texture_path: String = "", emissive: bool = false) -> MeshInstance3D:
+	var part: MeshInstance3D = MeshInstance3D.new()
+	part.name = part_name
+	var mesh: BoxMesh = BoxMesh.new()
+	mesh.size = size
+	var material: StandardMaterial3D = StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = roughness
+	if not texture_path.is_empty():
+		var tex: Texture2D = load(texture_path) as Texture2D
+		if tex != null:
+			material.albedo_texture = tex
+	if emissive:
+		material.emission_enabled = true
+		material.emission = color
+		material.emission_energy_multiplier = 2.4
+	mesh.material = material
+	part.mesh = mesh
+	part.position = pos
+	parent.add_child(part)
+	return part
+
+func _dealer_premium_jar(parent: Node3D, part_name: String, pos: Vector3, radius: float, height: float, bud_color: Color) -> void:
+	var jar: MeshInstance3D = MeshInstance3D.new()
+	jar.name = part_name
+	var jar_mesh: CylinderMesh = CylinderMesh.new()
+	jar_mesh.top_radius = radius
+	jar_mesh.bottom_radius = radius
+	jar_mesh.height = height
+	jar_mesh.material = _make_flat_material(Color(bud_color.r * 0.72, bud_color.g * 0.72, bud_color.b * 0.72), 0.28)
+	jar.mesh = jar_mesh
+	jar.position = pos
+	parent.add_child(jar)
+	var cap: MeshInstance3D = MeshInstance3D.new()
+	var cap_mesh: CylinderMesh = CylinderMesh.new()
+	cap_mesh.top_radius = radius * 1.05
+	cap_mesh.bottom_radius = radius * 1.05
+	cap_mesh.height = 0.035
+	cap_mesh.material = _make_flat_material(Color("202428"), 0.24)
+	cap.mesh = cap_mesh
+	cap.position = pos + Vector3(0, height * 0.52, 0)
+	parent.add_child(cap)
+
+func _build_premium_dealer_locker_visual() -> void:
+	if premium_dealer_locker_root != null:
+		return
+	premium_dealer_locker_root = Node3D.new()
+	premium_dealer_locker_root.name = "PremiumDealerStorage"
+	premium_dealer_locker_root.position = Vector3(4.52, 0.0, -2.20)
+	add_child(premium_dealer_locker_root)
+
+	var black: Color = Color("171a1d")
+	var edge: Color = Color("252a2e")
+	var green: Color = Color("43f08a")
+	var interior: Color = Color("0e1712")
+
+	_dealer_premium_box(premium_dealer_locker_root, "PremiumBack", Vector3(0.28, 1.42, 0.0), Vector3(0.12, 2.70, 1.38), interior, 0.34, "res://assets/textures/brushed_metal.png")
+	_dealer_premium_box(premium_dealer_locker_root, "PremiumTop", Vector3(-0.02, 2.77, 0.0), Vector3(0.72, 0.12, 1.50), black, 0.32, "res://assets/textures/brushed_metal.png")
+	_dealer_premium_box(premium_dealer_locker_root, "PremiumBottom", Vector3(-0.02, 0.08, 0.0), Vector3(0.72, 0.16, 1.50), black, 0.32, "res://assets/textures/brushed_metal.png")
+	_dealer_premium_box(premium_dealer_locker_root, "PremiumSideL", Vector3(-0.02, 1.42, -0.72), Vector3(0.72, 2.62, 0.10), black, 0.32, "res://assets/textures/brushed_metal.png")
+	_dealer_premium_box(premium_dealer_locker_root, "PremiumSideR", Vector3(-0.02, 1.42, 0.72), Vector3(0.72, 2.62, 0.10), black, 0.32, "res://assets/textures/brushed_metal.png")
+
+	for shelf_y: float in [0.68, 1.13, 1.58, 2.03]:
+		_dealer_premium_box(premium_dealer_locker_root, "PremiumShelf", Vector3(-0.10, shelf_y, 0.0), Vector3(0.55, 0.055, 1.20), edge, 0.30, "res://assets/textures/brushed_metal.png")
+	_dealer_premium_box(premium_dealer_locker_root, "PremiumDrawer1", Vector3(-0.34, 0.42, 0.0), Vector3(0.08, 0.30, 1.10), Color("202428"), 0.28, "res://assets/textures/brushed_metal.png")
+	_dealer_premium_box(premium_dealer_locker_root, "PremiumDrawer2", Vector3(-0.34, 0.15, 0.0), Vector3(0.08, 0.20, 1.10), Color("1b1f22"), 0.28, "res://assets/textures/brushed_metal.png")
+
+	_dealer_premium_box(premium_dealer_locker_root, "PremiumLedTop", Vector3(-0.38, 2.59, 0.0), Vector3(0.025, 0.025, 1.28), green, 0.10, "", true)
+	_dealer_premium_box(premium_dealer_locker_root, "PremiumLedLeft", Vector3(-0.38, 1.42, -0.63), Vector3(0.025, 2.35, 0.025), green, 0.10, "", true)
+	_dealer_premium_box(premium_dealer_locker_root, "PremiumLedRight", Vector3(-0.38, 1.42, 0.63), Vector3(0.025, 2.35, 0.025), green, 0.10, "", true)
+	var glow: OmniLight3D = OmniLight3D.new()
+	glow.name = "PremiumInteriorGlow"
+	glow.position = Vector3(-0.18, 1.65, 0.0)
+	glow.light_color = Color("4cff96")
+	glow.light_energy = 0.45
+	glow.omni_range = 2.1
+	premium_dealer_locker_root.add_child(glow)
+
+	# Shelf-relative stock placement: x stays safely behind the front face; y sits on each shelf top.
+	_dealer_premium_jar(premium_dealer_locker_root, "PremiumJarA", Vector3(-0.18, 2.1675, -0.38), 0.11, 0.22, Color("718d48"))
+	_dealer_premium_jar(premium_dealer_locker_root, "PremiumJarB", Vector3(-0.18, 2.1575, -0.05), 0.10, 0.20, Color("87934e"))
+	_dealer_premium_jar(premium_dealer_locker_root, "PremiumJarC", Vector3(-0.18, 2.1425, 0.28), 0.08, 0.17, Color("667e40"))
+	_dealer_premium_jar(premium_dealer_locker_root, "PremiumJarD", Vector3(-0.18, 1.7075, -0.27), 0.10, 0.20, Color("8b7d45"))
+	_dealer_premium_jar(premium_dealer_locker_root, "PremiumJarE", Vector3(-0.18, 1.7075, 0.18), 0.10, 0.20, Color("6d8a4a"))
+	_dealer_premium_box(premium_dealer_locker_root, "PremiumPouchA", Vector3(-0.20, 1.3075, -0.22), Vector3(0.08, 0.30, 0.28), Color("485f52"), 0.62)
+	_dealer_premium_box(premium_dealer_locker_root, "PremiumPouchB", Vector3(-0.20, 1.2825, 0.15), Vector3(0.08, 0.25, 0.24), Color("58715d"), 0.62)
+
+	# Two true door leaves. Both are mounted from the front face and hinge from
+	# opposite outer edges. Their open angles are opposite signs so both swing
+	# toward the player, never through the cabinet interior.
+	premium_dealer_locker_left_door_pivot = Node3D.new()
+	premium_dealer_locker_left_door_pivot.name = "PremiumLeftDoorPivot"
+	premium_dealer_locker_left_door_pivot.position = Vector3(-0.42, 1.43, -0.73)
+	premium_dealer_locker_root.add_child(premium_dealer_locker_left_door_pivot)
+	_dealer_premium_box(premium_dealer_locker_left_door_pivot, "PremiumLeftDoor", Vector3(-0.02, 0.0, 0.36), Vector3(0.08, 2.55, 0.70), Color("181b1e"), 0.30, "res://assets/textures/brushed_metal.png")
+	_dealer_premium_box(premium_dealer_locker_left_door_pivot, "PremiumLeftLedOuter", Vector3(-0.07, 0.0, 0.03), Vector3(0.025, 2.30, 0.025), green, 0.10, "", true)
+	_dealer_premium_box(premium_dealer_locker_left_door_pivot, "PremiumLeftHandle", Vector3(-0.09, 0.0, 0.08), Vector3(0.08, 0.42, 0.09), Color("555d61"), 0.22, "res://assets/textures/brushed_metal.png")
+
+	premium_dealer_locker_right_door_pivot = Node3D.new()
+	premium_dealer_locker_right_door_pivot.name = "PremiumRightDoorPivot"
+	premium_dealer_locker_right_door_pivot.position = Vector3(-0.42, 1.43, 0.73)
+	premium_dealer_locker_root.add_child(premium_dealer_locker_right_door_pivot)
+	_dealer_premium_box(premium_dealer_locker_right_door_pivot, "PremiumRightDoor", Vector3(-0.02, 0.0, -0.36), Vector3(0.08, 2.55, 0.70), Color("181b1e"), 0.30, "res://assets/textures/brushed_metal.png")
+	_dealer_premium_box(premium_dealer_locker_right_door_pivot, "PremiumRightLedOuter", Vector3(-0.07, 0.0, -0.03), Vector3(0.025, 2.30, 0.025), green, 0.10, "", true)
+	_dealer_premium_box(premium_dealer_locker_right_door_pivot, "PremiumRightHandle", Vector3(-0.09, 0.0, -0.08), Vector3(0.08, 0.42, 0.09), Color("555d61"), 0.22, "res://assets/textures/brushed_metal.png")
+	_dealer_premium_box(premium_dealer_locker_right_door_pivot, "PremiumKeypad", Vector3(-0.095, -0.08, -0.22), Vector3(0.06, 0.28, 0.16), Color("111416"), 0.22)
+	_dealer_premium_box(premium_dealer_locker_right_door_pivot, "PremiumKeypadRing", Vector3(-0.13, -0.12, -0.22), Vector3(0.018, 0.07, 0.07), green, 0.10, "", true)
+
+	var left_label: Label3D = Label3D.new()
+	left_label.text = "DEALER"
+	left_label.font_size = 22
+	left_label.pixel_size = 0.0026
+	left_label.position = Vector3(-0.10, 0.42, 0.34)
+	left_label.rotation_degrees = Vector3(0, -90, 0)
+	left_label.modulate = Color("7df5a9")
+	premium_dealer_locker_left_door_pivot.add_child(left_label)
+
+	var right_label: Label3D = Label3D.new()
+	right_label.text = "STORAGE"
+	right_label.font_size = 22
+	right_label.pixel_size = 0.0026
+	right_label.position = Vector3(-0.10, 0.42, -0.34)
+	right_label.rotation_degrees = Vector3(0, -90, 0)
+	right_label.modulate = Color("7df5a9")
+	premium_dealer_locker_right_door_pivot.add_child(right_label)
+
+	premium_dealer_locker_root.visible = false
+	premium_dealer_locker_open = false
+
+func _sync_dealer_locker_visual() -> void:
+	var premium: bool = dealer_locker_level >= 3
+	for child: Node in get_children():
+		if not child is Node3D:
+			continue
+		var node: Node3D = child as Node3D
+		var part_name: String = str(node.name)
+		if part_name.begins_with("Locker") or part_name in ["DealerBasicLogo", "DealerBasicTag"]:
+			node.visible = not premium
+	if premium_dealer_locker_root != null:
+		premium_dealer_locker_root.visible = premium
+	if not premium:
+		if premium_dealer_locker_left_door_pivot != null:
+			premium_dealer_locker_left_door_pivot.rotation.y = 0.0
+		if premium_dealer_locker_right_door_pivot != null:
+			premium_dealer_locker_right_door_pivot.rotation.y = 0.0
+		premium_dealer_locker_open = false
+
+func _set_premium_dealer_locker_open(opened: bool) -> void:
+	if premium_dealer_locker_left_door_pivot == null or premium_dealer_locker_right_door_pivot == null or dealer_locker_level < 3:
+		return
+	if premium_dealer_locker_left_tween != null and premium_dealer_locker_left_tween.is_running():
+		premium_dealer_locker_left_tween.kill()
+	if premium_dealer_locker_right_tween != null and premium_dealer_locker_right_tween.is_running():
+		premium_dealer_locker_right_tween.kill()
+	premium_dealer_locker_open = opened
+
+	# Front of the cabinet is negative X. Left leaf uses negative Y rotation,
+	# right leaf positive Y rotation; both move toward negative X/outward.
+	var left_target: float = deg_to_rad(-102.0) if opened else 0.0
+	var right_target: float = deg_to_rad(102.0) if opened else 0.0
+
+	premium_dealer_locker_left_tween = create_tween()
+	premium_dealer_locker_left_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	premium_dealer_locker_left_tween.tween_property(premium_dealer_locker_left_door_pivot, "rotation:y", left_target, 0.32)
+
+	premium_dealer_locker_right_tween = create_tween()
+	premium_dealer_locker_right_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	premium_dealer_locker_right_tween.tween_property(premium_dealer_locker_right_door_pivot, "rotation:y", right_target, 0.32)
 
 func _sync_storage_furniture() -> void:
 	var show_hidden_stash: bool = storage_level >= 5
