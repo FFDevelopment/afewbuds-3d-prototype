@@ -22,6 +22,12 @@ func aim(pos: Vector3, target: Vector3) -> void:
 	game.fp_player.pitch = game.camera.rotation.x
 
 func run() -> void:
+	var login = load("res://account/login.tscn").instantiate()
+	root.add_child(login)
+	await capture("00-account-entry.png")
+	login.queue_free()
+	await process_frame
+	await root.get_node("AFBCloud").prepare(true)
 	game = load("res://prototype/apartment.tscn").instantiate()
 	root.add_child(game)
 	await capture("00-instructions.png")

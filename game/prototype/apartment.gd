@@ -3,6 +3,7 @@ extends "res://scripts/main.gd"
 const FirstPersonPlayer = preload("res://prototype/player.gd")
 const REACH := 2.6
 const WALL_NAMES := ["FrontWall", "RearWall", "LeftWall", "RightWall", "PartitionLeft", "PartitionRight", "PartitionHeader"]
+var account_overlay: CanvasLayer
 var fp_player: CharacterBody3D
 var fp_ready := false
 var fp_target: Area3D
@@ -34,7 +35,7 @@ func _ready() -> void:
 	fp_player.view = camera
 	camera.near = 0.05
 	camera.fov = 76.0
-	var saved: Dictionary = restored_runtime.get("prototype_player", {})
+	var saved: Dictionary = AFBCloud.read_json(AFBCloud.settings_path()) if AFBCloud.launched else restored_runtime.get("prototype_player", {})
 	if not saved.is_empty():
 		fp_player.position = Vector3(clampf(float(saved.get("x", 0)), -4.5, 4.5), 0.12, clampf(float(saved.get("z", 1.2)), -7.8, 5.2))
 		fp_player.yaw = float(saved.get("yaw", 0))
@@ -44,12 +45,13 @@ func _ready() -> void:
 	_add_station_targets()
 	_setup_desktop_panels()
 	_build_fp_hud()
+	AFBCloud.sync_changed.connect(_on_cloud_status)
 	fp_ready = true
 	current_view = "fp_walk"
 	fp_player.sync_camera()
 	_refresh_navigation_ui()
 	if not session_paused:
-		_pause_gameplay("FIRST-PERSON APARTMENT TEST\n\nWASD to walk · Mouse to look · Shift to move faster\nE to use a plant or workstation · P for phone\nEsc to pause · F5 to save\n\nWalk through the opening into the grow room. Harvest the ready Purple Dream plant, then take it to the packaging bench.\n\nThis prototype uses its own local save.")
+		_pause_gameplay("FIRST-PERSON APARTMENT TEST\n\nWASD to walk · Mouse to look · Shift to move faster\nE to use a plant or workstation · P for phone\nEsc to pause · F5 to save\n\nWalk through the opening into the grow room. Harvest the ready Purple Dream plant, then take it to the packaging bench.\n\nYour career is saved locally. Account connection is not enabled yet.")
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 func _process(delta: float) -> void:
@@ -78,7 +80,7 @@ func _process(delta: float) -> void:
 	fp_prompt.visible = not modal
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
-	fp_info.text = "AFEWBUDS   /   APARTMENT 0.2\n%s   ·   %s   ·   $%d" % ["GROW ROOM" if current_room == "grow" else "LIVING ROOM", _format_game_clock(), cash]
+	fp_info.text = "AFEWBUDS   /   APARTMENT 0.3\n%s   ·   %s   ·   $%d" % ["GROW ROOM" if current_room == "grow" else "LIVING ROOM", _format_game_clock(), cash]
 	fp_hint.text = "WASD  Walk     E  Interact     P  Phone     Esc  Pause     F5  Save"
 	_hide_old_navigation()
 
@@ -106,6 +108,8 @@ func _input(event: InputEvent) -> void:
 			_use_target()
 			get_viewport().set_input_as_handled()
 			return
+	if is_instance_valid(account_overlay):
+		return
 	if _any_modal_open():
 		# Preserve existing drag-to-bag and trim controls, scrolling, and UI buttons.
 		if _handle_station_list_pointer(event) or _handle_station_pointer(event):
@@ -158,17 +162,58 @@ func _capture_runtime_state() -> Dictionary:
 		data["prototype_player"] = {"x": fp_player.position.x, "z": fp_player.position.z, "yaw": fp_player.yaw, "pitch": fp_player.pitch}
 	return data
 
+func _confirm_beta_reset() -> void:
+	super._confirm_beta_reset()
+	if reset_in_progress:
+		AFBCloud.baseline = {}
+		AFBCloud.pending = {}
+		AFBCloud.write_json(AFBCloud.cache_path(), {})
+		AFBCloud.write_json(AFBCloud.settings_path(), {})
+
+func _save_game() -> void:
+	super._save_game()
+	if not reset_in_progress and FileAccess.file_exists(SAVE_PATH):
+		AFBCloud.queue_save(AFBCloud.read_json(SAVE_PATH))
+
 func _phone_manual_save() -> void:
 	_save_game()
-	_show_save_notification("PROTOTYPE SAVED", "Saved on this device in the separate prototype save.")
+	_show_save_notification("GAME SAVED", "Saved locally. Cloud sync is queued." if not AFBCloud.session.is_empty() else "Saved on this device — guest.")
+
+func _phone_safe_quit() -> void:
+	phone_open = false
+	phone_panel.hide()
+	_pause_gameplay()
+	_save_game()
+	await AFBCloud.flush()
+	while AFBCloud.busy: await get_tree().process_frame
+	_show_save_notification("SAVE & SLEEP", AFBCloud.last_status)
+
+func _any_modal_open() -> bool:
+	return is_instance_valid(account_overlay) or super._any_modal_open()
 
 func _open_web_account_settings() -> void:
-	status_label.text = "Accounts are disabled in this local prototype."
+	_open_account_overlay(false)
 
 func _open_web_leaderboard() -> void:
-	status_label.text = "Leaderboards are disabled in this local prototype."
+	_open_account_overlay(true)
+
+func _open_account_overlay(rankings: bool) -> void:
+	if is_instance_valid(account_overlay): return
+	_pause_gameplay()
+	account_overlay = load("res://account/account_panel.gd").new()
+	account_overlay.game = self
+	add_child(account_overlay)
+	if rankings: account_overlay.show_leaderboard()
+	else: account_overlay.show_account()
+
+func _on_cloud_status(message: String) -> void:
+	if is_instance_valid(status_label): status_label.text = message
+	if AFBCloud.blocked and not session_paused: _pause_gameplay()
 
 func _close_active_panel() -> bool:
+	if is_instance_valid(account_overlay):
+		account_overlay.close()
+		return true
 	if reset_confirmation_open:
 		_cancel_beta_reset()
 	elif phone_open:
@@ -335,13 +380,7 @@ func _setup_desktop_panels() -> void:
 	status_label.offset_bottom = -44
 	status_label.add_theme_font_size_override("font_size", 16)
 	# Prototype-only wording; the original account UI cannot access a live backend.
-	_replace_ui_copy(hud)
-
-func _replace_ui_copy(root: Node) -> void:
-	if root is Label and ("cloud" in root.text.to_lower() or "signed-in" in root.text.to_lower()):
-		root.text = "Prototype progress is saved locally on this device."
-	for child in root.get_children():
-		_replace_ui_copy(child)
+	# Account and cloud wording now reflects the native integration.
 
 func _build_fp_hud() -> void:
 	var layer := CanvasLayer.new()

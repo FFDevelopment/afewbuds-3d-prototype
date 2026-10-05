@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.1.0**.
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.3.0**.
 
 ## Play the Windows build
 
@@ -9,7 +9,7 @@ An experimental PC version of the **actual AFewBuds apartment**, with first-pers
 3. Under **Artifacts**, download **AFewBuds-3D-Prototype-Windows**.
 4. Extract the ZIP and launch `AFewBuds-3D-Prototype.exe`.
 
-GitHub requires you to be signed in to download artifacts from this private repository. The executable is an unsigned development build. No Godot installation is required to play.
+GitHub requires you to be signed in to download artifacts from this repository. The executable is an unsigned development build. No Godot installation is required to play.
 
 ## Controls
 
@@ -21,9 +21,9 @@ GitHub requires you to be signed in to download artifacts from this private repo
 | E | Use the plant, workstation, shelf, switch, or door under the crosshair |
 | P | Open/close the existing phone |
 | Esc | Close the current panel, or pause/resume |
-| F5 | Save prototype progress |
+| F5 | Save local progress |
 
-Click **RESUME GAME** on the opening instructions. Look for the green crosshair and `[ E ]` prompt. Walk through the open doorway into the grow room; no camera transition is required. Menus release the cursor and stop player movement.
+Choose **CONTINUE LOCAL CAREER**, then click **RESUME GAME**. Look for the green crosshair and `[ E ]` prompt. Walk through the open doorway into the grow room; no camera transition is required. Menus release the cursor and stop player movement.
 
 ## First test route
 
@@ -51,9 +51,13 @@ The prototype skips the old fixed-view tutorial. It retains the normal starting 
 
 This is **Apartment 2.0 groundwork**, not the complete larger-world redesign. Packaging still uses the existing menu/minigame; there is no grab-and-place object system yet. Customers still use the existing peephole flow. NPC pathfinding, new animations, an open city, larger properties, and mobile touch movement are future work. Current worker visuals and gameplay logic are inherited; this does not claim a new navigation system.
 
-The old experimental backpack/dealer-locker interaction is not exposed in first-person mode. The inherited phone and simulation still contain unfinished legacy features. They are not all covered by this prototype's test suite. Close menus with their buttons or Esc; sales and daily closeouts require their explicit choices.
+The native dealer locker is available through E, with four capacity tiers and transfer controls. The inherited phone and simulation still contain unfinished legacy features. They are not all covered by this prototype's test suite. Close menus with their buttons or Esc; sales and daily closeouts require their explicit choices.
 
-Accounts and global leaderboard access are disabled. There is no cloud client in this project. Saves live in `%APPDATA%/AFewBuds-3D-Prototype/afewbuds_3d_prototype_save.json` on Windows. This build does not import or migrate current AFewBuds player saves.
+The account screen and account/save interfaces are prepared, but **live account access, registration, cloud saves, and leaderboards are disconnected**. The production transport contains no HTTP request, endpoint, or API key. Account controls are visibly disabled. This build makes no backend changes and does not contact the regular game's account service.
+
+Your existing 0.2 prototype save is preserved automatically as the local career. Saves remain in `%APPDATA%/AFewBuds-3D-Prototype/`; `career_guest.json` holds local gameplay and `desktop_guest.json` holds camera position. `afewbuds_3d_prototype_save.json` is the active game snapshot. No regular-game cloud save is imported.
+
+Future shared accounts still require end-to-end integration and compatible conflict protection. The current account tests use an in-memory mock; they do not establish live sync compatibility.
 
 ## Edit the project
 
@@ -89,3 +93,7 @@ The smoke test exercises collision, the doorway, raycast reach/occlusion, plant 
 ## Prototype 0.2
 
 Synchronized cloud-test47 dealer storage and sequential upgrade cards. Walk to the locker and press E to transfer product using +1 / +5 / MAX and -1 / -5 / ALL. Buy locker capacity tiers from Phone → Business → Upgrades. The viewpoint is raised from 1.64 to 1.90 world units, with a matching taller collision body. Existing prototype saves remain supported.
+
+## Prototype 0.3
+
+Adds the disconnected account entry screen, isolated career slots, separate desktop camera settings, and local save migration. The higher viewpoint, locker controls, and gameplay from 0.2 remain. Development is limited to this repository.

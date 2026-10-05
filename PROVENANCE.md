@@ -12,8 +12,12 @@ Recovered from the user's existing `FFDevelopment/afewbuds-cloud-test` repositor
 - The door-knock sound remains its original Godot AudioStreamWAV `.sample` resource because the inherited compressed format cannot be written back as WAV by Godot's saver.
 - Unused runtime import caches and binary exported scenes were discarded.
 
-This is an isolated snapshot, not a promise to track later cloud-test changes automatically. No production repository, database, or account service was modified.
+This is an isolated snapshot, not a promise to track later cloud-test changes automatically. The source recovery did not modify the production repository or account service.
 
 ## Simulation update: prototype 0.2
 
 Simulation synchronized from cloud-test47 at `14698f4669d535fcaac8ea8aa5f68e9449dbe82b` (PCK SHA-256 `4c5abcdbafeed713abe43c4de6b5ee6433668b89408b36191be6009fed7daf1d`). Includes native dealer storage, legacy inventory migration, and expandable upgrade cards. Artwork recovery remains pinned to the original asset snapshot above. First-person integration and separate local saves are retained.
+
+## Account preparation: prototype 0.3
+
+The account UI and save abstraction are staged locally with a mock service for testing. Live transport is absent. No regular repository update is included. A temporary database save-function change made during integration work was restored to its previous definition; this release does not depend on it.
