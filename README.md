@@ -85,3 +85,7 @@ The smoke test exercises collision, the doorway, raycast reach/occlusion, plant 
 3. Give one worker real navigation between stations.
 4. Add a customer standing at the door and direct interaction.
 5. Expand into a second property only after the apartment loop is solid.
+
+## Prototype 0.2
+
+Synchronized cloud-test47 dealer storage and sequential upgrade cards. Walk to the locker and press E to transfer product using +1 / +5 / MAX and -1 / -5 / ALL. Buy locker capacity tiers from Phone → Business → Upgrades. The viewpoint is raised from 1.64 to 1.90 world units, with a matching taller collision body. Existing prototype saves remain supported.

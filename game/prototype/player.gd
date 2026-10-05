@@ -3,7 +3,7 @@ extends CharacterBody3D
 const WALK_SPEED := 3.0
 const RUN_SPEED := 4.8
 const LOOK_SENSITIVITY := 0.0022
-const EYE_HEIGHT := 1.64
+const EYE_HEIGHT := 1.90
 var yaw := 0.0
 var pitch := 0.0
 var enabled := false
@@ -15,10 +15,10 @@ func _ready() -> void:
 	floor_snap_length = 0.25
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.27
-	capsule.height = 1.75
+	capsule.height = 2.0
 	var shape := CollisionShape3D.new()
 	shape.shape = capsule
-	shape.position.y = 0.88
+	shape.position.y = 1.0
 	add_child(shape)
 
 func look(relative: Vector2) -> void:

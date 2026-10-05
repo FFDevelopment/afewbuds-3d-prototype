@@ -16,7 +16,7 @@ func capture(filename: String) -> void:
 func aim(pos: Vector3, target: Vector3) -> void:
 	game.fp_player.position = pos
 	game.fp_player.velocity = Vector3.ZERO
-	game.camera.global_position = pos + Vector3.UP * 1.64
+	game.camera.global_position = pos + Vector3.UP * game.fp_player.EYE_HEIGHT
 	game.camera.look_at(target)
 	game.fp_player.yaw = game.camera.rotation.y
 	game.fp_player.pitch = game.camera.rotation.x
@@ -35,4 +35,9 @@ func run() -> void:
 	game._close_bagging_panel()
 	game._toggle_phone()
 	await capture("04-phone.png")
+	game._toggle_phone()
+	game.dealer_locker_level = 1
+	game.products["Purple Dream"]["stock"] = 10
+	game._open_dealer_storage_panel()
+	await capture("05-dealer-storage.png")
 	quit()

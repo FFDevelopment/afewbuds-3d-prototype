@@ -20,7 +20,7 @@ func frames(count: int = 4) -> void:
 func aim(player_pos: Vector3, target: Vector3) -> void:
 	game.fp_player.position = player_pos
 	game.fp_player.velocity = Vector3.ZERO
-	game.camera.global_position = player_pos + Vector3.UP * 1.64
+	game.camera.global_position = player_pos + Vector3.UP * game.fp_player.EYE_HEIGHT
 	game.camera.look_at(target)
 	game.fp_player.yaw = game.camera.rotation.y
 	game.fp_player.pitch = game.camera.rotation.x
@@ -127,6 +127,31 @@ func run() -> void:
 	game._use_target()
 	check(game.system_control_panel.visible, "wall terminal opens grow controls")
 	game._close_system_control_panel()
+	check(is_equal_approx(game.camera.global_position.y - game.fp_player.global_position.y, 1.90), "raised adult viewpoint stays above player feet")
+	aim(Vector3(2.4, 0.08, 2.68), Vector3(3.95, 1.3, 2.68))
+	await frames()
+	game._use_target()
+	check(game.dealer_storage_panel.visible, "E opens native dealer storage")
+	await frames()
+	check(not game.fp_player.enabled, "dealer storage locks walking")
+	game.cash = 10000
+	game.dealer_locker_level = 0
+	game._buy_dealer_locker_upgrade()
+	check(game.dealer_locker_level == 1 and game._dealer_locker_capacity() == 100 and game.cash == 9700, "first locker tier costs 300 and holds 100g")
+	game.storage_level = 5
+	game.products["Purple Dream"]["stock"] = 150
+	game.locker_weed.clear()
+	var moved: int = game._dealer_locker_add_from_storage("Purple Dream", 999999)
+	check(moved == 100 and game.products["Purple Dream"]["stock"] == 50, "MAX transfer respects locker capacity and conserves stock")
+	game._dealer_storage_transfer("Purple Dream", 5, false)
+	check(game.locker_weed["Purple Dream"] == 95 and game.products["Purple Dream"]["stock"] == 55, "minus five returns dealer stock to storage")
+	game._refresh_dealer_storage_panel()
+	check(game.dealer_storage_list.find_children("", "Button", true, false).size() >= 6, "dealer rows provide transfer controls")
+	game._close_active_panel()
+	check(not game.dealer_storage_panel.visible, "Escape closes dealer storage")
+	for tier in range(2, 5):
+		game._buy_dealer_locker_upgrade()
+		check(game.dealer_locker_level == tier and game._dealer_locker_capacity() == tier * 100, "locker upgrades sequentially to tier %d" % tier)
 	var position_before: Vector3 = game.fp_player.position
 	game._toggle_phone()
 	await frames()

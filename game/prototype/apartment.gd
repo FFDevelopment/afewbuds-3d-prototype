@@ -78,7 +78,7 @@ func _process(delta: float) -> void:
 	fp_prompt.visible = not modal
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
-	fp_info.text = "AFEWBUDS   /   APARTMENT 0.1\n%s   ·   %s   ·   $%d" % ["GROW ROOM" if current_room == "grow" else "LIVING ROOM", _format_game_clock(), cash]
+	fp_info.text = "AFEWBUDS   /   APARTMENT 0.2\n%s   ·   %s   ·   $%d" % ["GROW ROOM" if current_room == "grow" else "LIVING ROOM", _format_game_clock(), cash]
 	fp_hint.text = "WASD  Walk     E  Interact     P  Phone     Esc  Pause     F5  Save"
 	_hide_old_navigation()
 
@@ -135,7 +135,7 @@ func _refresh_navigation_ui() -> void:
 	_hide_old_navigation()
 
 func _hide_old_navigation() -> void:
-	for control in [left_button, right_button, forward_button, back_button, contextual_button, door_quick_button, view_label, world_top_bar, backpack_quick_button]:
+	for control in [left_button, right_button, forward_button, back_button, contextual_button, door_quick_button, view_label, world_top_bar]:
 		if is_instance_valid(control):
 			control.visible = false
 
@@ -181,6 +181,8 @@ func _close_active_panel() -> bool:
 		_close_direct_plant()
 	elif bagging_panel.visible:
 		_close_bagging_panel()
+	elif dealer_storage_panel.visible:
+		_close_dealer_storage_panel()
 	elif storage_panel.visible:
 		_close_storage_panel()
 	elif supply_inventory_panel.visible:
@@ -252,6 +254,7 @@ func _sync_physical_collisions() -> void:
 
 func _add_station_targets() -> void:
 	# Target fronts sit just ahead of the relevant surfaces, not at fixed-view anchors.
+	_add_interaction_area("FP_Locker", Vector3(3.95, 1.3, 2.68), Vector3(0.25, 2.0, 0.8), "station_locker")
 	_add_interaction_area("FP_Bench", Vector3(3.25, 1.35, 0.35), Vector3(0.3, 0.8, 2.25), "station_workbench")
 	_add_interaction_area("FP_Storage", Vector3(-3.95, 1.3, -0.3), Vector3(0.3, 1.8, 2.4), "station_storage")
 	_add_interaction_area("FP_Door", Vector3(0, 1.4, 5.62), Vector3(1.7, 2.6, 0.18), "station_door")
@@ -275,7 +278,7 @@ func _target_from_ray(origin: Vector3, direction: Vector3) -> Area3D:
 	if area.has_meta("plant_slot"):
 		return area
 	var id := str(area.get_meta("interaction_id", ""))
-	if id in ["room_enter_grow", "room_enter_main", "station_locker"]:
+	if id in ["room_enter_grow", "room_enter_main"]:
 		return null
 	return area if not id.is_empty() else null
 
@@ -290,7 +293,7 @@ func _update_target() -> void:
 			label_text = "Pot %d · %s" % [i + 1, str(slot.get("strain", "")) if int(slot.get("stage", -1)) >= 0 else "Plant a seed"]
 		else:
 			var id := str(fp_target.get_meta("interaction_id"))
-			label_text = {"station_workbench": "Packaging bench", "station_storage": "Product storage", "storage_vault": "Storage vault", "station_door": "Answer door" if customer_waiting else "Front door / peephole", "station_system": "Grow-room controls", "station_supply": "Seeds & fertilizer", "main_light_switch": "Main lights", "floor_lamp": "Floor lamp", "grow_room_light_switch": "Grow-room light"}.get(id, id.replace("_", " ").capitalize())
+			label_text = {"station_locker": "Dealer Storage", "station_workbench": "Packaging bench", "station_storage": "Product storage", "storage_vault": "Storage vault", "station_door": "Answer door" if customer_waiting else "Front door / peephole", "station_system": "Grow-room controls", "station_supply": "Seeds & fertilizer", "main_light_switch": "Main lights", "floor_lamp": "Floor lamp", "grow_room_light_switch": "Grow-room light"}.get(id, id.replace("_", " ").capitalize())
 		fp_prompt.text = "[ E ]   " + label_text
 	fp_crosshair.modulate = Color("b6f38a") if fp_target != null else Color(1, 1, 1, 0.7)
 
@@ -303,6 +306,7 @@ func _use_target() -> void:
 	else:
 		var id := str(fp_target.get_meta("interaction_id"))
 		match id:
+			"station_locker": _open_dealer_storage_panel()
 			"station_workbench": _open_bagging_panel()
 			"station_storage", "storage_vault": _open_storage_panel()
 			"station_supply": _open_supply_inventory_panel()
@@ -318,7 +322,7 @@ func _use_target() -> void:
 		fp_player.enabled = false
 
 func _setup_desktop_panels() -> void:
-	for panel in [phone_panel, grow_panel, plant_direct_panel, bagging_panel, storage_panel, supply_inventory_panel, system_control_panel, trim_panel, bag_minigame_panel]:
+	for panel in [phone_panel, grow_panel, plant_direct_panel, bagging_panel, dealer_storage_panel, storage_panel, supply_inventory_panel, system_control_panel, trim_panel, bag_minigame_panel]:
 		panel.set_anchors_preset(Control.PRESET_CENTER)
 		panel.offset_left = -345
 		panel.offset_right = 345

@@ -8,7 +8,6 @@ const StorageVault = preload("res://scripts/storage_vault.gd")
 const LivingCouch = preload("res://scripts/living_couch.gd")
 const GrowSupplyShelf = preload("res://scripts/grow_supply_shelf.gd")
 const RoomSurfaces = preload("res://scripts/room_surfaces.gd")
-const PersonalInventory = preload("res://scripts/personal_inventory.gd")
 const VAULT_SUPPLY: String = "AFB Storage Vault"
 const HIDDEN_STASH_SUPPLY: String = "Hidden Wall Stash"
 
@@ -106,10 +105,7 @@ var hidden_stash_frame_open: bool = false
 var hidden_stash_frame_tween: Tween
 var hidden_stash_art_texture: Texture2D
 var storage_world_label: Label3D
-var personal_inventory: Node
-var personal_weed: Dictionary = {}
 var locker_weed: Dictionary = {}
-var locker_cash: int = 0
 var supply_shelf_level: int = 1
 var supply_shelf_ref: Node3D
 var climate_status_label: Label3D
@@ -617,6 +613,9 @@ var storage_list: VBoxContainer
 var storage_scroll: PhoneTouchScroll
 var storage_refresh_pending: bool = false
 var storage_refresh_revision: int = 0
+var dealer_storage_panel: PanelContainer
+var dealer_storage_list: VBoxContainer
+var dealer_storage_scroll: PhoneTouchScroll
 var supply_inventory_panel: PanelContainer
 var supply_inventory_list: VBoxContainer
 var supply_inventory_scroll: PhoneTouchScroll
@@ -633,7 +632,6 @@ var left_button: Button
 var right_button: Button
 var forward_button: Button
 var back_button: Button
-var backpack_quick_button: Button
 var visit_timer: Timer
 var customer_patience_timer: Timer
 var customer_exit_timer: Timer
@@ -718,13 +716,6 @@ func _ready() -> void:
 		_schedule_next_customer()
 		_check_reeves_trigger()
 		_maybe_start_reeves_visit()
-
-func _init_personal_inventory_deferred() -> void:
-	if personal_inventory != null:
-		return
-	personal_inventory = PersonalInventory.new()
-	add_child(personal_inventory)
-	personal_inventory.setup(self)
 
 func _process(delta: float) -> void:
 	_refresh_door_alert()
@@ -973,11 +964,8 @@ func _approach_station_then_open(action_id: String) -> bool:
 	status_label.text = "Approaching..."
 	_go_to_view(target_view, true)
 	if action_id == "station_locker":
-		# Do not depend on Tween.finished for the Dealer Locker. Repeated taps or a
-		# camera retarget can kill that signal before it fires. The arrival timer
-		# guarantees the locker opens once the 0.34s camera move finishes.
-		var locker_arrival_timer: SceneTreeTimer = get_tree().create_timer(0.38)
-		locker_arrival_timer.timeout.connect(_open_dealer_locker_after_approach, CONNECT_ONE_SHOT)
+		var locker_timer: SceneTreeTimer = get_tree().create_timer(0.40)
+		locker_timer.timeout.connect(_open_dealer_locker_after_approach, CONNECT_ONE_SHOT)
 		return true
 	if camera_view_tween != null:
 		camera_view_tween.finished.connect(_finish_direct_station_approach.bind(action_id), CONNECT_ONE_SHOT)
@@ -988,11 +976,10 @@ func _approach_station_then_open(action_id: String) -> bool:
 func _open_dealer_locker_after_approach() -> void:
 	if current_view != "locker":
 		return
-	if personal_inventory == null:
-		status_label.text = "Dealer Locker UI failed to initialize."
+	if dealer_storage_panel == null:
+		status_label.text = "Dealer Storage panel failed to initialize."
 		return
-	personal_inventory.open_locker()
-	status_label.text = "Dealer Locker opened. Stock dealer inventory here."
+	_open_dealer_storage_panel()
 
 func _finish_direct_station_approach(action_id: String) -> void:
 	match action_id:
@@ -2363,8 +2350,8 @@ func _build_apartment_details() -> void:
 	_add_box("LockerFootFront", Vector3(4.80, 0.08, 2.95), Vector3(0.12, 0.16, 0.12), Color("363940"), 0.34)
 	_add_box("LockerFootRear", Vector3(4.80, 0.08, 2.41), Vector3(0.12, 0.16, 0.12), Color("363940"), 0.34)
 	var locker_logo: Label3D = Label3D.new()
-	locker_logo.text = "AFewBuds"
-	locker_logo.font_size = 34
+	locker_logo.text = "DEALER\nSTORAGE"
+	locker_logo.font_size = 27
 	locker_logo.pixel_size = 0.0030
 	locker_logo.position = Vector3(4.09, 1.62, 2.70)
 	locker_logo.rotation_degrees = Vector3(0, -90, 0)
@@ -2987,6 +2974,7 @@ func _build_ui() -> void:
 	_build_direct_plant_panel()
 	_build_bagging_panel()
 	_build_storage_panel()
+	_build_dealer_storage_panel()
 	_build_supply_inventory_panel()
 	_build_system_control_panel()
 	_build_trim_minigame()
@@ -3096,12 +3084,6 @@ func _add_app_logo(parent: Control, edge: float = 48.0) -> TextureRect:
 	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(logo)
 	return logo
-
-func _open_backpack_direct() -> void:
-	if personal_inventory != null and personal_inventory.has_method("toggle_backpack"):
-		personal_inventory.call("toggle_backpack")
-		return
-	status_label.text = "Backpack inventory is unavailable."
 
 func _build_phone_panel() -> void:
 	phone_panel = PanelContainer.new()
@@ -3723,6 +3705,26 @@ func _build_storage_panel() -> void:
 	leave_station.add_theme_font_size_override("font_size", 18)
 	leave_station.pressed.connect(_close_storage_panel)
 	root.add_child(leave_station)
+
+func _build_dealer_storage_panel() -> void:
+	dealer_storage_panel = _make_full_panel(34, 132, -34, -72)
+	var root: VBoxContainer = _panel_root(dealer_storage_panel, "DEALER STORAGE", _close_dealer_storage_panel)
+	var help: Label = Label.new()
+	help.text = "Dealers sell only product stored here. You stock it manually from normal storage. Production can overflow here only when normal storage is completely full."
+	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	root.add_child(help)
+	dealer_storage_scroll = PhoneTouchScroll.new()
+	dealer_storage_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(dealer_storage_scroll)
+	dealer_storage_list = VBoxContainer.new()
+	dealer_storage_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dealer_storage_list.add_theme_constant_override("separation", 10)
+	dealer_storage_scroll.add_child(dealer_storage_list)
+	var leave: Button = Button.new()
+	leave.text = "CLOSE DEALER STORAGE"
+	leave.custom_minimum_size = Vector2(0, 58)
+	leave.pressed.connect(_close_dealer_storage_panel)
+	root.add_child(leave)
 
 func _build_supply_inventory_panel() -> void:
 	supply_inventory_panel = _make_full_panel(34, 132, -34, -72)
@@ -4555,8 +4557,7 @@ func _context_action() -> void:
 				_open_peephole()
 
 func _any_modal_open() -> bool:
-	return reset_confirmation_open or reset_in_progress or session_paused or phone_open or sale_panel.visible or grow_panel.visible or (plant_direct_panel != null and plant_direct_panel.visible) or bagging_panel.visible or storage_panel.visible or (supply_inventory_panel != null and supply_inventory_panel.visible) or (system_control_panel != null and system_control_panel.visible) or trim_panel.visible or bag_minigame_panel.visible or (peephole_panel != null and peephole_panel.visible) or (tutorial_panel != null and tutorial_panel.visible) or (daily_report_panel != null and daily_report_panel.visible) or (personal_inventory != null and personal_inventory.is_modal_open())
-
+	return reset_confirmation_open or reset_in_progress or session_paused or phone_open or sale_panel.visible or grow_panel.visible or (plant_direct_panel != null and plant_direct_panel.visible) or bagging_panel.visible or storage_panel.visible or (dealer_storage_panel != null and dealer_storage_panel.visible) or (supply_inventory_panel != null and supply_inventory_panel.visible) or (system_control_panel != null and system_control_panel.visible) or trim_panel.visible or bag_minigame_panel.visible or (peephole_panel != null and peephole_panel.visible) or (tutorial_panel != null and tutorial_panel.visible) or (daily_report_panel != null and daily_report_panel.visible)
 
 func _open_grow_panel() -> void:
 	grow_panel.visible = true
@@ -5645,8 +5646,6 @@ func _buy_dealer_locker_upgrade() -> void:
 	_update_cash_ui()
 	status_label.text = "Dealer Locker %s installed. Capacity: %dg." % [_roman(dealer_locker_level), _dealer_locker_capacity()]
 	_save_game()
-	if personal_inventory != null:
-		personal_inventory.refresh()
 	if phone_open:
 		_refresh_phone()
 
@@ -5788,8 +5787,6 @@ func _dealer_sell_one(show_feedback: bool, assigned_dealer_name: String = "") ->
 	_update_cash_ui()
 	if show_feedback:
 		status_label.text = "%s served %s: %dg %s  |  $%d gross, $%d commission  |  Locker %dg/%dg." % [sale_dealer_name if not sale_dealer_name.is_empty() else "Dealer", last_dealer_customer_name, qty, product_name, gross_revenue, commission, _dealer_locker_total(), _dealer_locker_capacity()]
-	if personal_inventory != null:
-		personal_inventory.refresh()
 	if phone_open:
 		_refresh_phone()
 	return true
@@ -5990,6 +5987,121 @@ func _close_storage_panel() -> void:
 	_go_to_view("main_storage")
 	_set_world_controls_visible(true)
 	status_label.text = "You close the hidden stash." if storage_level >= 5 else "You step back from storage."
+
+func _open_dealer_storage_panel() -> void:
+	if dealer_storage_panel == null:
+		status_label.text = "Dealer Storage panel failed to initialize."
+		return
+	dealer_storage_panel.visible = true
+	dealer_storage_panel.move_to_front()
+	_set_world_controls_visible(false)
+	_refresh_dealer_storage_panel()
+	status_label.text = "Dealer Storage opened."
+
+func _close_dealer_storage_panel() -> void:
+	if dealer_storage_scroll != null:
+		dealer_storage_scroll.cancel_touch()
+	dealer_storage_panel.visible = false
+	_go_to_view("main_workbench")
+	_set_world_controls_visible(true)
+
+func _dealer_storage_transfer(strain: String, amount: int, moving_in: bool) -> void:
+	if moving_in:
+		_dealer_locker_add_from_storage(strain, amount)
+	else:
+		_dealer_locker_remove_to_storage(strain, amount)
+	_refresh_dealer_storage_panel()
+
+func _dealer_storage_row(parent: VBoxContainer, strain: String, storage_amount: int, dealer_amount: int) -> void:
+	var parts: Dictionary = _make_inventory_card("bag")
+	var card: PanelContainer = parts["card"] as PanelContainer
+	var content: VBoxContainer = parts["content"] as VBoxContainer
+	parent.add_child(card)
+
+	var title: Label = Label.new()
+	title.text = strain
+	title.add_theme_font_size_override("font_size", 20)
+	content.add_child(title)
+
+	var detail: Label = Label.new()
+	detail.text = "Storage %dg   |   Dealer %dg" % [storage_amount, dealer_amount]
+	detail.modulate = Color("b8c3c9")
+	content.add_child(detail)
+
+	var controls: HBoxContainer = HBoxContainer.new()
+	controls.add_theme_constant_override("separation", 5)
+	content.add_child(controls)
+
+	for qty: int in [1, 5]:
+		var add_button: Button = Button.new()
+		add_button.text = "+%d" % qty
+		add_button.custom_minimum_size = Vector2(72, 42)
+		add_button.disabled = storage_amount <= 0 or _dealer_locker_free_capacity() <= 0
+		add_button.pressed.connect(_dealer_storage_transfer.bind(strain, qty, true))
+		controls.add_child(add_button)
+
+	var max_button: Button = Button.new()
+	max_button.text = "MAX"
+	max_button.custom_minimum_size = Vector2(76, 42)
+	max_button.disabled = storage_amount <= 0 or _dealer_locker_free_capacity() <= 0
+	max_button.pressed.connect(_dealer_storage_transfer.bind(strain, 999999, true))
+	controls.add_child(max_button)
+
+	for qty: int in [1, 5]:
+		var remove_button: Button = Button.new()
+		remove_button.text = "-%d" % qty
+		remove_button.custom_minimum_size = Vector2(72, 42)
+		remove_button.disabled = dealer_amount <= 0
+		remove_button.pressed.connect(_dealer_storage_transfer.bind(strain, qty, false))
+		controls.add_child(remove_button)
+
+	var all_button: Button = Button.new()
+	all_button.text = "ALL"
+	all_button.custom_minimum_size = Vector2(76, 42)
+	all_button.disabled = dealer_amount <= 0
+	all_button.pressed.connect(_dealer_storage_transfer.bind(strain, 999999, false))
+	controls.add_child(all_button)
+
+func _refresh_dealer_storage_panel() -> void:
+	if dealer_storage_list == null:
+		return
+	if dealer_storage_scroll != null and dealer_storage_scroll.is_gesture_busy():
+		return
+	_clear_children(dealer_storage_list)
+
+	var summary: Label = Label.new()
+	summary.text = "DEALER STORAGE %s   |   %dg / %dg
++ moves product into Dealer Storage. - moves it back to normal Storage." % ["LOCKED" if dealer_locker_level <= 0 else _roman(dealer_locker_level), _dealer_locker_total(), _dealer_locker_capacity()]
+	summary.add_theme_font_size_override("font_size", 20)
+	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dealer_storage_list.add_child(summary)
+
+	if dealer_locker_level <= 0:
+		var locked: Label = Label.new()
+		locked.text = "Unlock Dealer Locker I in Phone -> Business -> Upgrades."
+		dealer_storage_list.add_child(locked)
+		return
+
+	var strains: Array[String] = []
+	for key_variant: Variant in products.keys():
+		var strain: String = str(key_variant)
+		if _available_amount(strain) > 0 and not strains.has(strain):
+			strains.append(strain)
+	for key_variant: Variant in locker_weed.keys():
+		var strain: String = str(key_variant)
+		if int(locker_weed.get(strain, 0)) > 0 and not strains.has(strain):
+			strains.append(strain)
+	strains.sort()
+
+	if strains.is_empty():
+		var empty: Label = Label.new()
+		empty.text = "No packaged product is available in normal Storage or Dealer Storage."
+		empty.modulate = Color(1.0, 1.0, 1.0, 0.58)
+		dealer_storage_list.add_child(empty)
+		return
+
+	for strain: String in strains:
+		_dealer_storage_row(dealer_storage_list, strain, _available_amount(strain), maxi(0, int(locker_weed.get(strain, 0))))
 
 func _open_supply_inventory_panel() -> void:
 	if supply_inventory_panel == null:
@@ -6301,7 +6413,7 @@ func _restore_phone_scroll(restore_y: int, app_name: String, revision: int) -> v
 	phone_scroll.scroll_vertical = restore_y
 
 func _cancel_phone_gesture() -> void:
-	for scroll: PhoneTouchScroll in [phone_scroll, bagging_scroll, storage_scroll, supply_inventory_scroll]:
+	for scroll: PhoneTouchScroll in [phone_scroll, bagging_scroll, storage_scroll, dealer_storage_scroll, supply_inventory_scroll]:
 		if scroll != null:
 			scroll.cancel_touch()
 
@@ -6648,91 +6760,214 @@ func _build_supplies_app() -> void:
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	phone_list.add_child(intro)
 
+func _add_upgrade_family_card(parent: VBoxContainer, title_text: String, detail_text: String, next_supply: String) -> void:
+	var card: PanelContainer = PanelContainer.new()
+	card.add_theme_stylebox_override("panel", _style_box(Color("151b20"), Color("37434c"), 14, 1))
+	parent.add_child(card)
+	var box: VBoxContainer = VBoxContainer.new()
+	box.add_theme_constant_override("separation", 7)
+	card.add_child(box)
+	var title: Label = Label.new()
+	title.text = title_text
+	title.add_theme_font_size_override("font_size", 21)
+	box.add_child(title)
+	var detail: Label = Label.new()
+	detail.text = detail_text
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail.modulate = Color("b8c3c9")
+	box.add_child(detail)
+	if next_supply.is_empty():
+		var maxed: Label = Label.new()
+		maxed.text = "MAX FOR CURRENT BUILD"
+		maxed.add_theme_font_size_override("font_size", 17)
+		maxed.modulate = Color("91c59d")
+		box.add_child(maxed)
+		return
+	var info: Dictionary = supply_catalog[next_supply]
+	var unlock_level: int = int(info.get("unlock", 1))
+	var cost: int = int(info.get("cost", 0))
+	var next_label: Label = Label.new()
+	next_label.text = "NEXT: %s
+%s" % [next_supply, str(info.get("description", ""))]
+	next_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	next_label.modulate = Color("d8e1e5")
+	box.add_child(next_label)
+	var buy: Button = Button.new()
+	buy.custom_minimum_size.y = 48
+	if grower_level < unlock_level:
+		buy.text = "LOCKED   |   LEVEL %d" % unlock_level
+		buy.disabled = true
+	else:
+		buy.text = "BUY NEXT   |   $%d" % cost
+		buy.disabled = cash < cost
+	buy.pressed.connect(_buy_supply.bind(next_supply))
+	box.add_child(buy)
+
+func _add_dealer_locker_family_card(parent: VBoxContainer) -> void:
+	var card: PanelContainer = PanelContainer.new()
+	card.add_theme_stylebox_override("panel", _style_box(Color("151b20"), Color("37434c"), 14, 1))
+	parent.add_child(card)
+	var box: VBoxContainer = VBoxContainer.new()
+	box.add_theme_constant_override("separation", 7)
+	card.add_child(box)
+	var title: Label = Label.new()
+	title.text = "DEALER STORAGE"
+	title.add_theme_font_size_override("font_size", 21)
+	box.add_child(title)
+	var detail: Label = Label.new()
+	var tier_text: String = "NOT INSTALLED" if dealer_locker_level <= 0 else "Locker %s" % _roman(dealer_locker_level)
+	detail.text = "Current: %s
+Capacity: %dg   |   Stored: %dg" % [tier_text, _dealer_locker_capacity(), _dealer_locker_total()]
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail.modulate = Color("b8c3c9")
+	box.add_child(detail)
+	if dealer_locker_level >= 4:
+		var maxed: Label = Label.new()
+		maxed.text = "MAX FOR CURRENT BUILD"
+		maxed.add_theme_font_size_override("font_size", 17)
+		maxed.modulate = Color("91c59d")
+		box.add_child(maxed)
+		return
+	var next_level: int = dealer_locker_level + 1
+	var next_cost: int = DEALER_LOCKER_COST_BY_LEVEL[next_level]
+	var next_capacity: int = DEALER_LOCKER_CAPACITY_BY_LEVEL[next_level]
+	var next_label: Label = Label.new()
+	next_label.text = "NEXT: Dealer Locker %s   |   %dg" % [_roman(next_level), next_capacity]
+	next_label.modulate = Color("d8e1e5")
+	box.add_child(next_label)
+	var buy: Button = Button.new()
+	buy.text = "BUY NEXT   |   $%d" % next_cost
+	buy.disabled = cash < next_cost
+	buy.custom_minimum_size.y = 48
+	buy.pressed.connect(_buy_dealer_locker_upgrade)
+	box.add_child(buy)
+
 func _build_upgrades_app() -> void:
 	var intro: Label = Label.new()
-	intro.text = "Improve your equipment and storage here. Seeds and fertilizer stay in Shop. All existing prices and unlock requirements are unchanged."
+	intro.text = "Upgrade your operation one step at a time. Expandable systems stay visible even when maxed so future tiers can be added without the category disappearing."
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	phone_list.add_child(intro)
+
 	var equipment: Label = Label.new()
-	equipment.text = "CURRENT EQUIPMENT\nGrow tents %d / 3   |   Tent Lv %d   |   Plant slots %d\nBagging Lv %d   |   Storage Lv %d (%dg)\nSupply Shelf Lv %d  |  Seeds %d/%d  |  Fertilizer %d/%d" % [grow_tent_count, tent_level, plant_slots.size(), bagging_level, storage_level, _storage_capacity(), supply_shelf_level, _total_seed_inventory(), _supply_seed_capacity(), fertilizer_units, _supply_fertilizer_capacity()]
+	equipment.text = "CURRENT EQUIPMENT
+Grow tents %d / 3   |   Tent Lv %d   |   Plant slots %d
+Bagging Lv %d   |   Storage Lv %d (%dg)
+Supply Shelf Lv %d   |   Seeds %d/%d   |   Fertilizer %d/%d" % [grow_tent_count, tent_level, plant_slots.size(), bagging_level, storage_level, _storage_capacity(), supply_shelf_level, _total_seed_inventory(), _supply_seed_capacity(), fertilizer_units, _supply_fertilizer_capacity()]
 	equipment.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	phone_list.add_child(equipment)
 
-	var dealer_locker_card: PanelContainer = PanelContainer.new()
-	phone_list.add_child(dealer_locker_card)
-	var dealer_locker_box: VBoxContainer = VBoxContainer.new()
-	dealer_locker_box.add_theme_constant_override("separation", 7)
-	dealer_locker_card.add_child(dealer_locker_box)
-	var dealer_locker_title: Label = Label.new()
-	dealer_locker_title.text = "DEALER LOCKER"
-	dealer_locker_title.add_theme_font_size_override("font_size", 20)
-	dealer_locker_box.add_child(dealer_locker_title)
-	var dealer_locker_detail: Label = Label.new()
-	dealer_locker_detail.text = "Tier: %s  |  Capacity: %dg  |  Stored: %dg\nDealers sell only from this locker. You stock it manually at the physical locker. The production worker can use it only as overflow after normal storage is completely full." % ["LOCKED" if dealer_locker_level <= 0 else _roman(dealer_locker_level), _dealer_locker_capacity(), _dealer_locker_total()]
-	dealer_locker_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	dealer_locker_box.add_child(dealer_locker_detail)
-	if dealer_locker_level < 4:
-		var next_locker_level: int = dealer_locker_level + 1
-		var next_locker_cost: int = DEALER_LOCKER_COST_BY_LEVEL[next_locker_level]
-		var next_locker_capacity: int = DEALER_LOCKER_CAPACITY_BY_LEVEL[next_locker_level]
-		var dealer_locker_buy: Button = Button.new()
-		dealer_locker_buy.text = "%s DEALER LOCKER %s  |  %dg  |  $%d" % ["UNLOCK" if dealer_locker_level <= 0 else "UPGRADE TO", _roman(next_locker_level), next_locker_capacity, next_locker_cost]
-		dealer_locker_buy.disabled = cash < next_locker_cost
-		dealer_locker_buy.custom_minimum_size.y = 50
-		dealer_locker_buy.pressed.connect(_buy_dealer_locker_upgrade)
-		dealer_locker_box.add_child(dealer_locker_buy)
-	else:
-		var dealer_locker_max: Label = Label.new()
-		dealer_locker_max.text = "MAX TIER  |  400g"
-		dealer_locker_max.modulate = Color("a8d389")
-		dealer_locker_box.add_child(dealer_locker_max)
+	var systems_heading: Label = Label.new()
+	systems_heading.text = "EXPANDABLE SYSTEMS"
+	systems_heading.add_theme_font_size_override("font_size", 19)
+	systems_heading.modulate = Color("aeb9c0")
+	phone_list.add_child(systems_heading)
 
-	for supply_variant in supply_catalog.keys():
+	var storage_name: String = "Storage I"
+	var storage_next: String = ""
+	match storage_level:
+		1: storage_next = "Storage Shelving II"
+		2:
+			storage_name = "Storage Shelving II"
+			storage_next = "Storage Shelving III"
+		3:
+			storage_name = "Storage Shelving III"
+			storage_next = VAULT_SUPPLY
+		4:
+			storage_name = "AFB Storage Vault"
+			storage_next = HIDDEN_STASH_SUPPLY
+		_:
+			storage_name = "Hidden Wall Stash"
+	_add_upgrade_family_card(phone_list, "STORAGE", "Current: %s
+Capacity: %dg   |   Stored: %dg" % [storage_name, _storage_capacity(), _total_stored_stock()], storage_next)
+
+	var shelf_next: String = ""
+	if supply_shelf_level == 1: shelf_next = "Grow Supply Shelf II"
+	elif supply_shelf_level == 2: shelf_next = "Grow Supply Shelf III"
+	_add_upgrade_family_card(phone_list, "GROW SUPPLY SHELF", "Current: Shelf %s
+Seeds: %d/%d   |   Fertilizer: %d/%d" % [_roman(supply_shelf_level), _total_seed_inventory(), _supply_seed_capacity(), fertilizer_units, _supply_fertilizer_capacity()], shelf_next)
+
+	var tent_next: String = ""
+	if grow_tent_count == 1: tent_next = "Grow Tent Slot 2"
+	elif grow_tent_count == 2: tent_next = "Grow Tent Slot 3"
+	_add_upgrade_family_card(phone_list, "GROW TENT SLOTS", "Installed: %d / 3
+Plant slots: %d   |   Tent equipment level: %d" % [grow_tent_count, plant_slots.size(), tent_level], tent_next)
+
+	_add_dealer_locker_family_card(phone_list)
+
+	var chain_names: Array[String] = ["Grow Supply Shelf II", "Grow Supply Shelf III", "Storage Shelving II", "Storage Shelving III", VAULT_SUPPLY, HIDDEN_STASH_SUPPLY, "Grow Tent Slot 2", "Grow Tent Slot 3"]
+	var installed: Array[String] = []
+	var available: Array[String] = []
+	for supply_variant: Variant in supply_catalog.keys():
 		var supply_name: String = str(supply_variant)
-		if supply_name == "Fertilizer Pack":
+		if supply_name == "Fertilizer Pack" or chain_names.has(supply_name):
 			continue
+		if _supply_is_purchased(supply_name):
+			installed.append(supply_name)
+		else:
+			available.append(supply_name)
+	installed.sort()
+	available.sort()
+
+	var installed_heading: Label = Label.new()
+	installed_heading.text = "INSTALLED EQUIPMENT"
+	installed_heading.add_theme_font_size_override("font_size", 19)
+	installed_heading.modulate = Color("aeb9c0")
+	phone_list.add_child(installed_heading)
+
+	var installed_card: PanelContainer = PanelContainer.new()
+	installed_card.add_theme_stylebox_override("panel", _style_box(Color("151b20"), Color("37434c"), 14, 1))
+	phone_list.add_child(installed_card)
+	var installed_box: VBoxContainer = VBoxContainer.new()
+	installed_box.add_theme_constant_override("separation", 5)
+	installed_card.add_child(installed_box)
+	if installed.is_empty():
+		var none: Label = Label.new()
+		none.text = "No standalone equipment installed yet."
+		installed_box.add_child(none)
+	else:
+		for item_name: String in installed:
+			var installed_row: Label = Label.new()
+			installed_row.text = "✓  %s" % item_name
+			installed_row.modulate = Color("91c59d")
+			installed_box.add_child(installed_row)
+
+	if available.is_empty():
+		return
+
+	var available_heading: Label = Label.new()
+	available_heading.text = "AVAILABLE EQUIPMENT"
+	available_heading.add_theme_font_size_override("font_size", 19)
+	available_heading.modulate = Color("aeb9c0")
+	phone_list.add_child(available_heading)
+
+	for supply_name: String in available:
 		var info: Dictionary = supply_catalog[supply_name]
 		var unlock_level: int = int(info.get("unlock", 1))
-		var cost: int = int(info.get("cost", 10))
-		var unlocked: bool = grower_level >= unlock_level
-		var purchased: bool = _supply_is_purchased(supply_name)
+		var cost: int = int(info.get("cost", 0))
 		var card: PanelContainer = PanelContainer.new()
+		card.add_theme_stylebox_override("panel", _style_box(Color("151b20"), Color("37434c"), 14, 1))
 		phone_list.add_child(card)
-		var row: VBoxContainer = VBoxContainer.new()
-		card.add_child(row)
+		var box: VBoxContainer = VBoxContainer.new()
+		box.add_theme_constant_override("separation", 6)
+		card.add_child(box)
 		var title: Label = Label.new()
 		title.text = supply_name
 		title.add_theme_font_size_override("font_size", 20)
-		row.add_child(title)
+		box.add_child(title)
 		var detail: Label = Label.new()
 		detail.text = str(info.get("description", "Operation upgrade."))
 		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		row.add_child(detail)
+		box.add_child(detail)
 		var buy: Button = Button.new()
-		if tutorial_active:
-			buy.text = "AVAILABLE AFTER GUIDED BASICS"
-			buy.disabled = true
-		elif purchased and supply_name != "Fertilizer Pack":
-			buy.text = "OWNED"
-			buy.disabled = true
-		elif supply_name == "Grow Supply Shelf III" and supply_shelf_level < 2:
-			buy.text = "REQUIRES SUPPLY SHELF II"
-			buy.disabled = true
-		elif supply_name == VAULT_SUPPLY and storage_level < 3:
-			buy.text = "REQUIRES SHELVING III + LEVEL 7"
-			buy.disabled = true
-		elif supply_name == HIDDEN_STASH_SUPPLY and storage_level < 4:
-			buy.text = "REQUIRES AFB STORAGE VAULT"
-			buy.disabled = true
-		elif not unlocked:
+		buy.custom_minimum_size.y = 48
+		if grower_level < unlock_level:
 			buy.text = "LOCKED   |   LEVEL %d" % unlock_level
 			buy.disabled = true
 		else:
 			buy.text = "BUY   |   $%d" % cost
 			buy.disabled = cash < cost
-		buy.custom_minimum_size.y = 48
 		buy.pressed.connect(_buy_supply.bind(supply_name))
-		row.add_child(buy)
+		box.add_child(buy)
 
 func _build_business_app() -> void:
 	var summary: Label = Label.new()
@@ -8567,9 +8802,7 @@ func _save_game() -> void:
 		"untrimmed_inventory": untrimmed_inventory,
 		"trimmed_inventory": trimmed_inventory,
 		"bagged_inventory": bagged_inventory,
-		"personal_weed": personal_weed,
 		"locker_weed": locker_weed,
-		"locker_cash": locker_cash,
 		"products": products,
 		"customer_relationships": customer_relationships,
 		"preferred_customer_name": preferred_customer_name,
@@ -8763,28 +8996,29 @@ func _load_game() -> void:
 	var loaded_bagged: Variant = data.get("bagged_inventory", bagged_inventory)
 	if loaded_bagged is Dictionary:
 		bagged_inventory = loaded_bagged as Dictionary
-	var loaded_personal_weed: Variant = data.get("personal_weed", personal_weed)
-	if loaded_personal_weed is Dictionary:
-		personal_weed = loaded_personal_weed as Dictionary
-	var loaded_locker_weed: Variant = data.get("locker_weed", locker_weed)
-	if loaded_locker_weed is Dictionary:
-		locker_weed = loaded_locker_weed as Dictionary
-	locker_cash = maxi(0, int(data.get("locker_cash", locker_cash)))
-	# Migrate the unfinished personal-locker test safely into Dealer Storage.
-	# Existing locker product is preserved and receives the minimum tier needed to hold it.
-	var legacy_dealer_stock: int = _dealer_locker_total()
-	if dealer_locker_level <= 0 and legacy_dealer_stock > 0:
-		dealer_locker_level = clampi(int(ceil(float(legacy_dealer_stock) / 100.0)), 1, 4)
-	if locker_cash > 0:
-		cash += locker_cash
-		locker_cash = 0
+	var legacy_personal: Dictionary = {}
+	var lp: Variant = data.get("personal_weed", {})
+	if lp is Dictionary:
+		legacy_personal = (lp as Dictionary).duplicate(true)
+	var lw: Variant = data.get("locker_weed", locker_weed)
+	if lw is Dictionary:
+		locker_weed = (lw as Dictionary).duplicate(true)
+	var legacy_cash: int = maxi(0, int(data.get("locker_cash", 0)))
 	var loaded_products: Variant = data.get("products", products)
 	if loaded_products is Dictionary:
 		products = loaded_products as Dictionary
-	for pocket_strain_variant in personal_weed.keys():
-		_ensure_product_exists(str(pocket_strain_variant))
-	for dealer_strain_variant: Variant in locker_weed.keys():
-		_ensure_product_exists(str(dealer_strain_variant))
+	for k: Variant in legacy_personal.keys():
+		var s: String = str(k)
+		var amount: int = maxi(0, int(legacy_personal.get(s, 0)))
+		if amount > 0:
+			_ensure_product_exists(s)
+			var pd: Dictionary = products[s]
+			pd["stock"] = int(pd.get("stock", 0)) + amount
+			products[s] = pd
+	for dealer_key: Variant in locker_weed.keys():
+		_ensure_product_exists(str(dealer_key))
+	if legacy_cash > 0:
+		cash += legacy_cash
 	var loaded_relationships: Variant = data.get("customer_relationships", customer_relationships)
 	if loaded_relationships is Dictionary:
 		customer_relationships = loaded_relationships as Dictionary
@@ -9390,12 +9624,8 @@ func _schedule_next_customer(restart: bool = false) -> void:
 	visit_timer.start()
 
 func _has_listed_stock() -> bool:
-	for name_variant in products.keys():
-		if _player_product_sellable(str(name_variant)):
-			return true
-	for pocket_name_variant in personal_weed.keys():
-		if int(personal_weed.get(pocket_name_variant, 0)) > 0:
-			return true
+	for k: Variant in products.keys():
+		if _player_product_sellable(str(k)): return true
 	return false
 
 func _customer_arrives() -> void:
@@ -9501,41 +9731,18 @@ func _viable_customers() -> Array[Dictionary]:
 	return result
 
 func _player_available_amount(product_name: String) -> int:
-	var total: int = _available_amount(product_name)
-	total += maxi(0, int(personal_weed.get(product_name, 0)))
-	return total
+	return _available_amount(product_name)
 
 func _player_product_sellable(product_name: String) -> bool:
-	var pocket: int = maxi(0, int(personal_weed.get(product_name, 0)))
-	if pocket > 0:
-		return true
-	if not products.has(product_name):
-		return false
+	if not products.has(product_name): return false
 	var data: Dictionary = products[product_name]
 	return bool(data.get("listed", false)) and _available_amount(product_name) > 0
 
 func _consume_player_sale_stock(product_name: String, qty: int) -> bool:
-	if qty <= 0 or _player_available_amount(product_name) < qty:
-		return false
-	var business_available: int = _available_amount(product_name)
-	var from_business: int = mini(qty, business_available)
-	if from_business > 0 and products.has(product_name):
-		var data: Dictionary = products[product_name]
-		data["stock"] = maxi(0, int(data.get("stock", 0)) - from_business)
-		products[product_name] = data
-	var remaining: int = qty - from_business
-	if remaining > 0:
-		var used: int = 0
-		if personal_inventory != null:
-			used = int(personal_inventory.consume_weed(product_name, remaining))
-		else:
-			var have: int = maxi(0, int(personal_weed.get(product_name, 0)))
-			used = mini(have, remaining)
-			personal_weed[product_name] = have - used
-			if int(personal_weed.get(product_name, 0)) <= 0:
-				personal_weed.erase(product_name)
-		if used < remaining:
-			return false
+	if qty <= 0 or not products.has(product_name) or _available_amount(product_name) < qty: return false
+	var data: Dictionary = products[product_name]
+	data["stock"] = maxi(0, int(data.get("stock",0)) - qty)
+	products[product_name] = data
 	return true
 
 func _open_customer_sale() -> void:
@@ -9576,7 +9783,7 @@ func _open_customer_sale() -> void:
 			"Tyler": request_quote = "You got any head sets? ...and %dg of %s?" % [qty, product_name]
 			"Mahto": request_quote = "I got a lot going on. Just give me %dg of %s." % [qty, product_name]
 			"Mike": request_quote = "Man, after everything with my back, just give me %dg of %s and keep it simple." % [qty, product_name]
-		line = "\"%s\"\n\n%s is packaged and available from storage or your backpack.\nTotal: $%d" % [request_quote, product_name, total]
+		line = "\"%s\"\n\n%s is packaged and available from normal storage.\nTotal: $%d" % [request_quote, product_name, total]
 	else:
 		var missing_quote: String = "You got any %s? Looking for %dg." % [product_name, qty]
 		match customer_name_raw:
@@ -9588,7 +9795,7 @@ func _open_customer_sale() -> void:
 			"Tyler": missing_quote = "No %s? You got any head sets at least?" % product_name
 			"Mahto": missing_quote = "No %s? Man, I already got enough problems." % product_name
 			"Mike": missing_quote = "No %s? Figures. The one time I need something easy, it is never easy." % product_name
-		line = "\"%s\"\n\nThat strain is not available from business storage or your backpack. Offer something else or decline." % missing_quote
+		line = "\"%s\"\n\nThat strain is not available from business normal storage. Offer something else or decline." % missing_quote
 	var sale_name: String = _customer_display_name(current_customer)
 	sale_title.text = "%s   |   %s" % [sale_name, str(current_customer.get("tier", "Local")) if _customer_is_known(current_customer) else "Unidentified"]
 	_apply_customer_art(sale_customer_art, current_customer, "door_art")
@@ -9607,7 +9814,7 @@ func _sell_requested() -> void:
 		return
 	var data: Dictionary = products[product_name]
 	if not _player_product_sellable(product_name) or _player_available_amount(product_name) < qty:
-		sale_body.text += "\n\nThat product isn't available in business storage or your backpack."
+		sale_body.text += "\n\nThat product isn't available in business normal storage."
 		return
 	_complete_sale(product_name, qty)
 
@@ -9663,7 +9870,7 @@ func _show_substitutes() -> void:
 			options.append(product_name)
 	if options.is_empty():
 		var empty: Label = Label.new()
-		empty.text = "No substitute has enough stock between storage and your backpack."
+		empty.text = "No substitute has enough stock in normal storage."
 		substitute_box.add_child(empty)
 		return
 	var label: Label = Label.new()
@@ -10203,7 +10410,7 @@ func _tutorial_record(action: String, slot_index: int = -1, strain_name: String 
 
 func _hide_learning_panels() -> void:
 	_cancel_station_drag()
-	for panel: Control in [phone_panel, grow_panel, plant_direct_panel, bagging_panel, storage_panel, trim_panel, bag_minigame_panel, sale_panel, peephole_panel]:
+	for panel: Control in [phone_panel, grow_panel, plant_direct_panel, bagging_panel, storage_panel, dealer_storage_panel, trim_panel, bag_minigame_panel, sale_panel, peephole_panel]:
 		if panel != null:
 			panel.visible = false
 	phone_open = false
@@ -10568,14 +10775,11 @@ func _sync_storage_furniture() -> void:
 		storage_world_label.text = "STORAGE   |   %dg CAP" % _storage_capacity()
 
 func _handle_station_list_pointer(event: InputEvent) -> bool:
-	if phone_open or trim_panel.visible or bag_minigame_panel.visible:
-		return false
-	if bagging_panel.visible and bagging_scroll != null:
-		return bagging_scroll.handle_pointer(event)
-	if storage_panel.visible and storage_scroll != null:
-		return storage_scroll.handle_pointer(event)
-	if supply_inventory_panel != null and supply_inventory_panel.visible and supply_inventory_scroll != null:
-		return supply_inventory_scroll.handle_pointer(event)
+	if phone_open or trim_panel.visible or bag_minigame_panel.visible: return false
+	if bagging_panel.visible and bagging_scroll != null: return bagging_scroll.handle_pointer(event)
+	if storage_panel.visible and storage_scroll != null: return storage_scroll.handle_pointer(event)
+	if dealer_storage_panel != null and dealer_storage_panel.visible and dealer_storage_scroll != null: return dealer_storage_scroll.handle_pointer(event)
+	if supply_inventory_panel != null and supply_inventory_panel.visible and supply_inventory_scroll != null: return supply_inventory_scroll.handle_pointer(event)
 	return false
 
 func _clear_station_list(list: VBoxContainer) -> void:
@@ -10705,7 +10909,7 @@ func _refresh_door_alert() -> void:
 	if not show:
 		_cancel_door_alert_pointer()
 		return
-	var covering_panel: bool = phone_open or bagging_panel.visible or storage_panel.visible or (supply_inventory_panel != null and supply_inventory_panel.visible) or (system_control_panel != null and system_control_panel.visible) or trim_panel.visible or bag_minigame_panel.visible or grow_panel.visible or (plant_direct_panel != null and plant_direct_panel.visible)
+	var covering_panel: bool = phone_open or bagging_panel.visible or storage_panel.visible or (dealer_storage_panel != null and dealer_storage_panel.visible) or (supply_inventory_panel != null and supply_inventory_panel.visible) or (system_control_panel != null and system_control_panel.visible) or trim_panel.visible or bag_minigame_panel.visible or grow_panel.visible or (plant_direct_panel != null and plant_direct_panel.visible)
 	knock_banner.offset_top = 12.0 if covering_panel else 194.0
 	knock_banner.offset_bottom = knock_banner.offset_top + 108.0
 	door_alert_button.disabled = customer_departing
