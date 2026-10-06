@@ -177,14 +177,7 @@ func _build_block() -> void:
 	piece("ApartmentBrickHeader",Vector3(0,3.715,6.115),Vector3(2.1,1.37,0.01),"8e5743",1).material_override = brick
 	piece("ApartmentOutsideWindowFrame",Vector3(-3.62,2.15,6.17),Vector3(2.1,1.55,0.08),"c7baa1")
 	piece("ApartmentOutsideWindow",Vector3(-3.62,2.15,6.22),Vector3(1.8,1.28,0.03),"46595c")
-	building("CornerShop",Vector3(12,0,-2),Vector3(10,3.6,8),"925c42",false)
-	piece("ShopGlass",Vector3(17,1.55,6.08),Vector3(8.6,2.5,0.12),"617776")
-	piece("ShopAwning",Vector3(17,2.9,6.6),Vector3(10.3,0.25,1.2),"315e4c",3)
-	for x in [13.0,16.0,19.0,21.0]:
-		piece("ShopFrame",Vector3(x,1.55,6.2),Vector3(0.08,2.5,0.08),"c0b292")
-	entrance(Vector3(17.5,0,6.22),Vector3.BACK)
-	_label("CORNER MARKET",Vector3(17,3.3,6.18),0.008)
-	building("House",Vector3(25,0,-14),Vector3(20,3.5,17),"986848",false)
+	load("res://prototype/interiors.gd").new().build(self)
 	# A true sloped hip roof, instead of overlapping stacked slabs.
 	var vertices := PackedVector3Array([Vector3(24.6,3.6,-14.4),Vector3(45.4,3.6,-14.4),Vector3(45.4,3.6,3.4),Vector3(24.6,3.6,3.4),Vector3(31,6.8,-5.5),Vector3(39,6.8,-5.5)])
 	var st := SurfaceTool.new()
@@ -197,16 +190,6 @@ func _build_block() -> void:
 	roof.mesh = st.commit()
 	roof.material_override = _surface(4,"383e42")
 	add_child(roof)
-	for x in [27.5,31.0,39.0,42.5]:
-		piece("HouseWindowFrame",Vector3(x,1.8,3.08),Vector3(1.4,1.8,0.14),"d1c3a4")
-		piece("HouseWindow",Vector3(x,1.8,3.17),Vector3(1.2,1.6,0.05),"495f61")
-	for z in [-10.0,-5.0,0.0]:
-		facade_window(Vector3(24.95,1.8,z),Vector3.LEFT)
-		facade_window(Vector3(45.05,1.8,z),Vector3.RIGHT)
-	for x in [28.0,32.0,38.0,42.0]:
-		facade_window(Vector3(x,1.8,-14.05),Vector3.FORWARD)
-	piece("HouseDoor",Vector3(35,1.4,3.13),Vector3(1.7,2.8,0.16),"554630",3)
-	entrance(Vector3(35,0,3.23),Vector3.BACK)
 	piece("HousePath",Vector3(35,-0.08,5.6),Vector3(2.4,0.14,5),"a9a394",2)
 	for x in [29.25,40.75]:
 		var lawn := Rect2(Vector2(x-4.25,3.3),Vector2(8.5,4.8))
@@ -325,4 +308,9 @@ func refresh_controls() -> void:
 	controls.hide()
 
 func _interact() -> void:
-	host.status_label.text = "Rod's property offer is ready. Tours and ownership are coming later." if host.property_offer_unlocked else "This house is not available yet. Keep building your operation and watch for Rod's text."
+	host.status_label.text = "Rod's property offer is ready. Walk inside for a preview tour. Ownership is coming later." if host.property_offer_unlocked else "This house is not available yet. Keep building your operation and watch for Rod's text."
+
+func location_label(pos: Vector3) -> String:
+	if Rect2(12,-2,10,8).has_point(Vector2(pos.x,pos.z)): return "CORNER MARKET"
+	if Rect2(25,-14,20,17).has_point(Vector2(pos.x,pos.z)): return "HOUSE TOUR"
+	return "NEIGHBORHOOD"

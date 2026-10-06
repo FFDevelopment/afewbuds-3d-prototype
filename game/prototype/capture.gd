@@ -91,6 +91,41 @@ func run() -> void:
 	await capture("18-opposite-entrances.png")
 	aim(Vector3(-12,0.08,5),Vector3(-24,1.8,-5))
 	await capture("19-side-entrances.png")
+
+	for door_name in ["ShopEntrance", "HouseEntrance", "StockroomDoor", "BathroomDoor", "BedroomDoor"]:
+		game.neighborhood.get_node(door_name).toggle(Vector3(0,0,20))
+		await create_timer(0.45).timeout
+	aim(Vector3(20.5,0.08,4.6),Vector3(15.5,1.3,0.0))
+	await capture("20-shop-interior.png")
+	aim(Vector3(17.5,0.08,0.2),Vector3(19,1.5,7))
+	await capture("21-shop-window-out.png")
+	aim(Vector3(14.2,0.08,0.4),Vector3(12.8,1.2,-1))
+	await capture("22-stockroom.png")
+	aim(Vector3(35,0.08,1.7),Vector3(35,1.5,-8))
+	await capture("23-house-hall.png")
+	aim(Vector3(32.3,0.08,0.5),Vector3(28,1.0,-2))
+	await capture("24-living.png")
+	aim(Vector3(29,0.08,-7.8),Vector3(28,1.2,-13))
+	await capture("25-kitchen.png")
+	aim(Vector3(37,0.08,-8),Vector3(36.5,1.2,-12))
+	await capture("26-bedroom.png")
+	aim(Vector3(40,0.08,-8),Vector3(42,1.4,-12))
+	await capture("27-grow-preview.png")
+	aim(Vector3(38,0.08,0),Vector3(41,1.2,-4))
+	await capture("28-packing-preview.png")
+	aim(Vector3(32.7,0.08,-8),Vector3(32.7,1.1,-12))
+	await capture("29-bathroom.png")
+	aim(Vector3(17,0.08,9),Vector3(17,1.5,2))
+	await capture("30-shop-window-in.png")
+
+	game.game_time_minutes = 22*60
+	game._update_day_night_visuals()
+	aim(Vector3(17,0.08,9),Vector3(17,1.5,2))
+	await capture("31-shop-night.png")
+	aim(Vector3(30,0.08,0.8),Vector3(29.2,1.5,8))
+	await capture("32-house-night-out.png")
+	game.game_time_minutes = 12*60
+	game._update_day_night_visuals()
 	var plan := Camera3D.new()
 	game.add_child(plan)
 	plan.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -101,4 +136,16 @@ func run() -> void:
 	plan.make_current()
 	game.fp_hud.hide()
 	await capture("15-top-down.png")
+	# Review-only cutaways of real geometry; gameplay keeps ceilings and roofs.
+	game.neighborhood.get_node("HouseCeiling").hide()
+	game.neighborhood.get_node("HouseHipRoof").hide()
+	plan.size = 23
+	plan.position = Vector3(35,45,-5.5)
+	await capture("33-house-plan.png")
+	game.neighborhood.get_node("ShopCeiling").hide()
+	plan.size = 12
+	plan.position = Vector3(17,35,2)
+	await capture("34-shop-plan.png")
+	var schedule := FileAccess.open(OS.get_cmdline_user_args()[0].path_join("interior-openings.json"),FileAccess.WRITE)
+	schedule.store_string(JSON.stringify(game.neighborhood.get_meta("interior_openings"),"  "))
 	quit()

@@ -1,6 +1,6 @@
 # House and corner-shop interior direction
 
-User references supplied October 5, 2026, during the 0.9.3 exterior pass. These are design requirements for a subsequent interior implementation, not features delivered in 0.9.3.
+User references supplied October 5, 2026, during the 0.9.3 exterior pass. The walkthrough interiors are implemented in 0.9.4; ownership, equipment migration and shop services remain future work. See INTERIOR_REVIEW.md.
 
 House: enlarged 20 × 17 metre gross footprint. Central entrance hall with living room at front left, packing/storage room at front right, kitchen/dining at rear left, bathroom and bedroom centrally, grow room at rear right. Keep circulation clear between each room and the hall. Actual room dimensions must accommodate player and worker movement, stations, storage and upgrade clearances; subtract walls and hall area from gross floor area.
 

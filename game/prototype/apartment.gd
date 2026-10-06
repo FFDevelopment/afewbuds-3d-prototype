@@ -86,7 +86,7 @@ func _process(delta: float) -> void:
 	fp_prompt.visible = not modal
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
-	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.9.3 PREVIEW\n%s   ·   %s   ·   $%d" % ["NEIGHBORHOOD" if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
+	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.9.4 PREVIEW\n%s   ·   %s   ·   $%d" % [neighborhood.location_label(fp_player.position) if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
 	fp_hint.text = "WASD  Walk     E  Interact     P  Phone     Esc  Pause     F5  Save"
 	_hide_old_navigation()
 
@@ -271,12 +271,12 @@ func _add_physical_collisions(root: Node) -> void:
 	for child in root.get_children():
 		if child == fp_player or child == production_worker_node:
 			continue
-		if child is MeshInstance3D and child.mesh is BoxMesh:
+		if child is MeshInstance3D and child.mesh is BoxMesh and not child.get_meta("no_collision", false):
 			var size_value: Vector3 = child.mesh.size
 			if not child.has_node("PrototypeCollision") and size_value.y >= 0.12 and maxf(size_value.x, size_value.z) >= 0.3:
 				var body := StaticBody3D.new()
 				body.name = "PrototypeCollision"
-				body.collision_layer = 3 if str(child.name) in WALL_NAMES else 1
+				body.collision_layer = 3 if str(child.name) in WALL_NAMES or child.get_meta("structural", false) else 1
 				body.collision_mask = 4
 				var shape := CollisionShape3D.new()
 				var box := BoxShape3D.new()
@@ -326,7 +326,7 @@ func _add_station_targets() -> void:
 	_add_interaction_area("FP_Bench", Vector3(3.25, 1.35, 0.78), Vector3(0.3, 0.8, 2.25), "station_workbench")
 	_add_interaction_area("FP_Storage", Vector3(-3.95, 1.3, -0.30 if storage_level >= 4 else -0.06), Vector3(0.3, 1.8, 2.4), "station_storage")
 	_add_interaction_area("FP_Door", Vector3(0, 1.4, 5.84), Vector3(1.85, 2.6, 0.6), "station_door")
-	_add_interaction_area("FP_House", Vector3(35, 1.4, 3.2), Vector3(1.8, 2.6, 0.4), "inspect_house")
+	_add_interaction_area("FP_House", Vector3(40, 1.4, 8.3), Vector3(1.8, 2.6, 0.4), "inspect_house")
 	_add_interaction_area("FP_System", Vector3(4.45, 1.8, -6.65), Vector3(0.25, 1.0, 1.2), "station_system", "grow")
 	_add_interaction_area("FP_Supply", Vector3(-4.05, 1.25, -6.45), Vector3(0.25, 1.8, 1.3), "station_supply", "grow")
 
@@ -362,7 +362,7 @@ func _update_target() -> void:
 			label_text = "Pot %d · %s" % [i + 1, str(slot.get("strain", "")) if int(slot.get("stage", -1)) >= 0 else "Plant a seed"]
 		else:
 			var id := str(fp_target.get_meta("interaction_id"))
-			label_text = {"station_locker": "Dealer Storage", "station_workbench": "Packaging bench", "station_storage": "Product storage", "storage_vault": "Storage vault", "station_door": ("Close front door" if neighborhood.door_open else "Open front door") + ("   [ R ] Answer visitor" if customer_waiting else "   [ R ] Peephole"), "inspect_house": "Inspect house", "station_system": "Grow-room controls", "station_supply": "Seeds & fertilizer", "main_light_switch": "Main lights", "floor_lamp": "Floor lamp", "grow_room_light_switch": "Grow-room light"}.get(id, id.replace("_", " ").capitalize())
+			label_text = {"station_locker": "Dealer Storage", "station_workbench": "Packaging bench", "station_storage": "Product storage", "storage_vault": "Storage vault", "station_door": ("Close front door" if neighborhood.door_open else "Open front door") + ("   [ R ] Answer visitor" if customer_waiting else "   [ R ] Peephole"), "interior_door": "Open / close door", "inspect_house": "Inspect house", "station_system": "Grow-room controls", "station_supply": "Seeds & fertilizer", "main_light_switch": "Main lights", "floor_lamp": "Floor lamp", "grow_room_light_switch": "Grow-room light"}.get(id, id.replace("_", " ").capitalize())
 		fp_prompt.text = "[ E ]   " + label_text
 	fp_crosshair.modulate = Color("b6f38a") if fp_target != null else Color(1, 1, 1, 0.7)
 
@@ -382,6 +382,7 @@ func _use_target() -> void:
 			"station_system": _open_system_control_panel()
 			"station_door": neighborhood.toggle_door()
 			"inspect_house": neighborhood._interact()
+			"interior_door": fp_target.get_meta("door_controller").toggle(fp_player.position)
 			_: _activate_room_interaction(id)
 	if _any_modal_open():
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

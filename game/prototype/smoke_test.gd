@@ -307,7 +307,7 @@ func check_neighborhood() -> void:
 			var path_rect := Rect2(Vector2(path_bounds.position.x,path_bounds.position.z),Vector2(path_bounds.size.x,path_bounds.size.z))
 			for road in outside.ROAD_RECTS: paths_clear = paths_clear and not path_rect.intersects(road)
 	check(paths_clear, "entrance paths end at sidewalks without entering roads")
-	check(outside.get_node("House").mesh.size.is_equal_approx(Vector3(20,3.5,17)), "larger house reserves intended interior footprint")
+	check(outside.get_node("HouseFloor").mesh.size.is_equal_approx(Vector3(20,0.15,17)), "larger house reserves intended interior footprint")
 	for lawn in outside.grass_bounds:
 		check(lawn.position.y >= 3.29 and lawn.end.y <= 8.11, "grass stays in fenced house yard")
 	check(outside.swing_blocked(Vector3(0,0,5)) and not outside.swing_blocked(Vector3(0,0,7)), "inward sweep blocks interior arc but permits exterior operation")
@@ -362,7 +362,7 @@ func check_neighborhood() -> void:
 	check(boundary_hit != null and game.fp_player.position.z < 39.1, "far fence contains player")
 	game.fp_player.position = Vector3(-31, 0.08, 16)
 	check(game.fp_player.move_and_collide(Vector3(-3, 0, 0)) != null, "side barrier contains player")
-	aim(Vector3(35, 0.08, 5.5), Vector3(35, 1.4, 3.2))
+	aim(Vector3(40, 0.08, 10.2), Vector3(40, 1.4, 8.3))
 	await frames()
 	game.property_offer_unlocked = false
 	game._use_target()
@@ -370,6 +370,45 @@ func check_neighborhood() -> void:
 	game.property_offer_unlocked = true
 	game._use_target()
 	check("offer is ready" in game.status_label.text, "house preview reflects unlocked property offer")
+	game.property_offer_unlocked = false
+	# Real player capsule tests through both entries, every room, and shop aisles.
+	for spec in [["ShopEntrance",Vector3(20.55,0.08,7.8),Vector3(0,0,-3.2)], ["HouseEntrance",Vector3(35,0.08,4.8),Vector3(0,0,-3.2)]]:
+		var door = outside.get_node(spec[0])
+		game.fp_player.position = spec[1]
+		check(game.fp_player.move_and_collide(spec[2]) != null, spec[0]+" closed leaf blocks entry")
+		door.toggle(door.to_global(Vector3(0.7,0,-0.6)))
+		await create_timer(0.5).timeout
+		check(not door.opened, spec[0]+" refuses blocked swing without delayed opening")
+		aim(spec[1],spec[1]+spec[2]+Vector3.UP*1.4)
+		await frames()
+		game._use_target()
+		await create_timer(0.5).timeout
+		check(door.opened, spec[0]+" opens with E")
+		game.fp_player.position = spec[1]
+		check(game.fp_player.move_and_collide(spec[2]) == null, spec[0]+" open aperture permits walking in")
+		check(game.fp_player.move_and_collide(-spec[2]) == null, spec[0]+" open aperture permits walking out")
+		door.toggle(spec[1])
+		await create_timer(0.5).timeout
+		check(not door.opened, spec[0]+" closes again")
+	for door_name in ["BathroomDoor","BedroomDoor","StockroomDoor"]:
+		outside.get_node(door_name).toggle(Vector3(0,0,20))
+		await create_timer(0.45).timeout
+	for route in [
+		[Vector3(35,0.08,1),Vector3(35,0.08,-6)],
+		[Vector3(35,0.08,0),Vector3(32,0.08,0)],
+		[Vector3(35,0.08,0),Vector3(38,0.08,0)],
+		[Vector3(28.75,0.08,-6),Vector3(28.75,0.08,-7.8)],
+		[Vector3(32.65,0.08,-6),Vector3(32.65,0.08,-8.4)],
+		[Vector3(36.5,0.08,-6),Vector3(36.5,0.08,-8.5)],
+		[Vector3(41.1,0.08,-6),Vector3(41.1,0.08,-10.5)],
+		[Vector3(20.5,0.08,4.8),Vector3(20.5,0.08,0.3)],
+		[Vector3(17.7,0.08,4.5),Vector3(17.7,0.08,0.3)],
+		[Vector3(14.3,0.08,2.0),Vector3(14.3,0.08,0.0)]]:
+		game.fp_player.position = route[0]
+		check(game.fp_player.move_and_collide(route[1]-route[0]) == null,"room circulation clear: "+str(route[1]))
+	for route in [[Vector3(17,0.08,7),Vector3(0,0,-2)],[Vector3(29.2,0.08,4),Vector3(0,0,-2)]]:
+		game.fp_player.position = route[0]
+		check(game.fp_player.move_and_collide(route[1]) != null,"transparent display glazing blocks walking through")
 	game.property_offer_unlocked = false
 	aim(Vector3(0, 0.08, 3.5), Vector3(0, 1.5, 5.84))
 	await frames()

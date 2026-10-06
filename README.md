@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9.3 preview** (cloud-test .64 integration branch).
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9.4 preview** (cloud-test .64 integration branch).
 
 ## Play the Windows build
 
@@ -170,3 +170,12 @@ Sidewalks continue along both sides of the extended side roads and wrap into fro
 Verified in Godot runtime captures and the existing collision, road, door, game and account fixture suites. Prototype integration branch only.
 
 The house footprint is enlarged from 16 × 11 m to 20 × 17 m (340 m² gross), about twice the starter apartment footprint. Its roof, lawn and side boundaries follow the larger shell. The rear alley, sidewalk, background row and north fence move back four metres to maintain clearance. This reserves space for a later house interior; ownership and the interior are not added here. The eastward road remains reserved for the supplied future expansion concept.
+
+
+## Prototype 0.9.4 — walkable house and corner-market interiors
+
+Both buildings now contain furnished interiors in the same continuous neighborhood. Press E on an entrance door to open or close it, then walk through. Windows have real apertures and transparent, collidable glass. Door swings refuse while the player stands in their swept path.
+
+The house has living, kitchen/dining, bathroom, bedroom, packing and grow rooms connected by halls. The corner market has a right-side entrance, checkout, two stocked aisles, coolers, coffee counter and enclosed stockroom with a working door. The house sale sign retains the story-gated offer text; preview tours are available without purchasing.
+
+These are **walkthrough interiors**: house ownership, shop sales and operating the new house equipment are not implemented. Existing apartment gameplay continues normally. See `docs/INTERIOR_REVIEW.md` for scope and verification.
