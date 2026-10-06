@@ -44,6 +44,7 @@ func run() -> void:
 	check(game.fp_collisions.size() > 30, "physical room and furniture colliders exist")
 	game._resume_gameplay()
 	await frames()
+	await check_neighborhood()
 	# Wall collision uses the real capsule and physics engine.
 	game.fp_player.position = Vector3(4.2, 0.08, -2)
 	var wall_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(2, 0, 0))
@@ -253,15 +254,88 @@ func run() -> void:
 	game._toggle_phone()
 	game._go_to_view("main_workbench")
 	check(game.fp_player.position.distance_to(position_before) < 0.1, "closing menus does not teleport player")
+	game._charge_water_use(3)
+	game._finalize_daily_water_bill(false)
+	var water_due: int = game.water_bill_due
+	check(water_due >= 6, "water usage posts a separate utility bill")
+	game.property_offer_unlocked = true
 	game._save_game()
 	var saved: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(save_path))
 	check(saved.get("runtime", {}).has("prototype_player"), "save includes first-person position")
 	var cash_before: int = game.cash
 	game.cash = 1
 	game._load_game()
+	check(game.water_bill_due == water_due and game.property_offer_unlocked, "water balance and property offer survive save reload")
 	check(game.cash == cash_before, "local save reload restores gameplay")
+	game._pay_water_bill()
+	check(game.water_bill_due == 0 and game.cash == cash_before - water_due, "paying water bill deducts its exact balance")
+
 	print("PROTOTYPE_TEST_RESULT: ", "PASS" if failures.is_empty() else str(failures))
 	game.queue_free()
 	await process_frame
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
 	quit(0 if failures.is_empty() else 1)
+
+func check_neighborhood() -> void:
+	var outside = game.neighborhood
+	check(outside.visible and outside.position.is_equal_approx(Vector3(16, 0, 11.5)), "neighborhood adjoins real apartment")
+	game.fp_player.position = Vector3(0, 0.08, 4.5)
+	var closed_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, 2.4))
+	check(closed_hit != null and game.fp_player.position.z < 5.84, "closed front door blocks player")
+	aim(Vector3(0, 0.08, 3.5), Vector3(0, 1.5, 5.84))
+	await frames()
+	game._use_target()
+	await create_timer(0.5).timeout
+	check(outside.door_open, "E opens hinged front door from inside")
+	game.fp_player.position = Vector3(0, 0.08, 4.5)
+	var passage_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, 3.8))
+	check(passage_hit == null and game.fp_player.position.z > 8.0, "open doorway permits continuous walk outside")
+	await frames()
+	check(game.current_room == "neighborhood" and game.camera.environment == outside.outdoor_environment, "walking outside sets exterior state without camera teleport")
+	aim(Vector3(0, 0.08, 8.3), Vector3(0, 1.5, 5.84))
+	await frames()
+	game._use_target()
+	await create_timer(0.5).timeout
+	check(not outside.door_open, "E closes front door from outside")
+	game.fp_player.position = Vector3(0, 0.08, 7.0)
+	var return_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, -2.0))
+	check(return_hit != null and game.fp_player.position.z > 5.84, "closed door also blocks return")
+	aim(Vector3(0, 0.08, 8.3), Vector3(0, 1.5, 5.84))
+	await frames()
+	game._use_target()
+	await create_timer(0.5).timeout
+	game.fp_player.position = Vector3(0, 0.08, 7)
+	var entry_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, -3.5))
+	check(entry_hit == null and game.fp_player.position.z < 4, "open front door permits walking back inside")
+	game.fp_player.position = Vector3(0, 0.08, 6)
+	outside.toggle_door()
+	check(outside.door_open and not outside.transitioning, "door refuses to sweep through player")
+	game.fp_player.position = Vector3(0, 0.08, 3.5)
+	outside.toggle_door()
+	await create_timer(0.5).timeout
+	# Cross both curbs using the actual capsule, rather than a camera-only walk.
+	game.fp_player.position = Vector3(0, 0.08, 9)
+	var street_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, 14))
+	check(street_hit == null and game.fp_player.position.z > 22, "sidewalk and street are continuously walkable")
+	var boundary_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, 5))
+	check(boundary_hit != null and game.fp_player.position.z < 25.8, "far fence contains player")
+	game.fp_player.position = Vector3(-11, 0.08, 16)
+	check(game.fp_player.move_and_collide(Vector3(-3, 0, 0)) != null, "side barrier contains player")
+	aim(Vector3(30, 0.08, 8), Vector3(30, 1.4, 5.8))
+	await frames()
+	game.property_offer_unlocked = false
+	game._use_target()
+	check("not available" in game.status_label.text, "house preview respects locked story state")
+	game.property_offer_unlocked = true
+	game._use_target()
+	check("offer is ready" in game.status_label.text, "house preview reflects unlocked property offer")
+	game.property_offer_unlocked = false
+	aim(Vector3(0, 0.08, 3.5), Vector3(0, 1.5, 5.84))
+	await frames()
+	var inspect := InputEventKey.new()
+	inspect.keycode = KEY_R
+	inspect.pressed = true
+	game._input(inspect)
+	check(game._any_modal_open(), "R preserves front-door visitor interaction")
+	game._close_active_panel()
+	await frames()

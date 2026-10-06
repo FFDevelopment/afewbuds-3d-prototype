@@ -62,4 +62,24 @@ func run() -> void:
 	await create_timer(0.4).timeout
 	aim(Vector3(2.0, 0.08, -1.8), Vector3(4.4, 1.5, -2.2))
 	await capture("07-premium-locker.png")
+
+	game.customer_waiting = false
+	game._refresh_door_alert()
+	aim(Vector3(0, 0.08, 3.5), Vector3(0, 1.7, 8))
+	await capture("08-door-closed.png")
+	game.neighborhood.toggle_door()
+	await create_timer(0.5).timeout
+	await capture("09-door-open.png")
+	aim(Vector3(0, 0.08, 9), Vector3(0, 1.8, 5.84))
+	await capture("10-outside-return.png")
+	game.neighborhood.toggle_door()
+	await create_timer(0.5).timeout
+	await capture("11-outside-closed.png")
+	aim(Vector3(4, 0.08, 14), Vector3(29, 1.8, 6))
+	await capture("12-neighborhood.png")
+	game._toggle_phone()
+	game._open_phone_app("advancements")
+	await capture("13-advancements.png")
+	game._open_phone_app("bills")
+	await capture("14-water-bill.png")
 	quit()

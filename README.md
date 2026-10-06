@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.8.1**.
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9 preview** (cloud-test .64 integration branch).
 
 ## Play the Windows build
 
@@ -124,3 +124,18 @@ Desktop UI proportions: portrait phone (up to 460 × 680), smaller header typogr
 ## Prototype 0.8.1
 
 Rewards/Advancements no longer expands the portrait desktop phone. Long labels and buttons wrap inside the fixed phone width, horizontal scrolling stays disabled, and a smoke test verifies the phone width remains unchanged when Rewards opens.
+
+
+## Prototype 0.9 preview — cloud-test .64 integration
+
+This branch ports the complete .64 Godot gameplay runtime: 95 milestone rewards with progression lanes, water utilities/billing, Chapter 4 story and persistent property-offer unlock, softer door knock and text notification audio. Bench III, premium Dealer Storage, moved furniture, native accounts/cloud saves and the 0.8.1 portrait Rewards fix remain in place.
+
+The existing neighborhood is positioned directly outside the apartment. **E opens/closes the front door; WASD walks through; R at the door checks the peephole/answers visitors.** Open/close works from either side. Stand clear of the swing before operating the door. The same character capsule handles indoor and outdoor collisions; no fade, teleport or second movement controller is used. Eye height remains 1.90.
+
+The house exterior reflects Rod's property-offer state. House tours, buying/renting and a house interior are not implemented in cloud-test .64 and are not invented by this integration. Neighborhood props retain the early cloud-test art style.
+
+Source: `FFDevelopment/afewbuds-cloud-test@9a9c8015df45b4b527fe20238a59bd6cebee5d6e`. Its .64 delta was reconstructed and SHA-256 verified before extracting scripts/audio. The source `scripts/neighborhood.gd` is preserved behind a prototype subclass; only export-safe audio resource loading is adjusted. Main's local save path, recovered PNG paths and neighborhood class selection remain prototype-specific. Other source scripts were compared; existing export-safe room textures were retained.
+
+The main prototype branch, cloud-test, beta and database are unchanged. CI on this branch has read-only repository permissions. This preview awaits desktop playtesting before any merge into main. Save and close one version before switching careers; the existing backend still has no atomic compare-and-swap conflict protection.
+
+Validation: Godot import, real-capsule door/street/boundary tests, visitor control, house story gating, water billing/save reload, all existing workstation and portrait-phone regressions, mocked cloud conflicts/account isolation and local HTTP login fixtures. No live account or database writes were made for QA.
