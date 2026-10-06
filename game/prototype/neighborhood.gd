@@ -3,6 +3,8 @@ extends "res://scripts/neighborhood.gd"
 const BLOCK_OFFSET := Vector3.ZERO
 const HOUSE_ENTRY := Vector3(35, 1.4, 3.2)
 const APARTMENT_BOUNDS := AABB(Vector3(-5.1, 0, -10.3), Vector3(10.2, 4.4, 16.4))
+const Swing = preload("res://prototype/door_swing.gd")
+var door_open_angle := PI/2.0
 var door_open := false
 var door_tween: Tween
 const MAP_RECT := Rect2(-32, -36, 105, 75)
@@ -406,24 +408,22 @@ func leave_apartment() -> void:
 
 func swing_blocked(pos: Vector3) -> bool:
 	if pos.y >= 3.0: return false
-	# Test the capsule against samples of the actual inward quarter-circle sweep.
-	var point := Vector2(pos.x + 1.04, pos.z - 6.0)
-	for i in range(49):
-		var angle := float(i)/48.0*PI/2.0
-		var direction := Vector2(cos(angle),-sin(angle))
-		var nearest := direction*clampf(point.dot(direction),0.0,2.08)
-		if point.distance_to(nearest) < 0.36: return true
-	return false
+	var point := Vector2(pos.x+1.04,pos.z-6.0)
+	var angle := door_open_angle if door_open else Swing.away_angle(point)
+	return Swing.blocked(point,2.08,angle,0.36)
 
 func toggle_door() -> void:
 	if transitioning: return
 	if swing_blocked(host.fp_player.position):
-		host.status_label.text = "Door blocked — step back from the inward swing and press E again."
+		host.status_label.text = "Door blocked — step clear of the doorway and press E again."
 		return # No queued operation, state change or tween after a refusal.
 	transitioning = true
 	var opening := not door_open
+	if opening:
+		var point := Vector2(host.fp_player.position.x+1.04,host.fp_player.position.z-6.0)
+		door_open_angle=Swing.away_angle(point)
 	door_tween = create_tween().set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
-	door_tween.tween_property(door_pivot,"rotation:y",PI/2.0 if opening else 0.0,0.4)
+	door_tween.tween_property(door_pivot,"rotation:y",door_open_angle if opening else 0.0,0.4)
 	door_tween.tween_callback(func():
 		door_open = opening
 		transitioning = false

@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9.7 preview** (cloud-test .83 property inspection and corrected tree bark; native movement retained).
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9.8 preview** (doors open away from the player; cloud-test .83 features retained).
 
 ## Play the Windows build
 
@@ -211,3 +211,17 @@ and spend two active seconds in each to save inspection progress. Press T while
 touring to review the property, or Escape to close details/end the tour.
 Purchasing, payments, relocation and single-session enforcement remain deferred.
 See [the .83 synchronization notes](docs/CLOUDTEST_83_SYNC.md).
+
+
+## Prototype 0.9.8 — doors open away from you
+
+Apartment, house, market, stockroom, bathroom and bedroom doors choose their
+opening direction from the side of the closed doorway where you stand. Closing
+uses that same hinge path, even if you have walked to the other side. A player
+standing directly in the closing sweep still blocks it; step clear and press E.
+Repeated input during a swing never queues a second movement.
+
+The shared hinge calculation works in each door's local frame. Regression checks
+cover both opening sides, a rotated hinge, closing clearance, repeat input,
+original door alignment and the existing capsule routes through the entrances.
+No changes to cloud-test, beta, database, account/session behavior or house gates.

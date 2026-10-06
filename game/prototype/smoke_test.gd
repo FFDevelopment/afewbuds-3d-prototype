@@ -310,12 +310,12 @@ func check_neighborhood() -> void:
 	check(outside.get_node("HouseFloor").mesh.size.is_equal_approx(Vector3(20,0.15,17)), "larger house reserves intended interior footprint")
 	for lawn in outside.grass_bounds:
 		check(lawn.position.y >= 3.29 and lawn.end.y <= 8.11, "grass stays in fenced house yard")
-	check(outside.swing_blocked(Vector3(0,0,5)) and not outside.swing_blocked(Vector3(0,0,7)), "inward sweep blocks interior arc but permits exterior operation")
+	check(not outside.swing_blocked(Vector3(0,0,5)) and not outside.swing_blocked(Vector3(0,0,7)) and outside.swing_blocked(Vector3(0,0,6)), "away swing permits both approaches and protects doorway")
 	check(outside.visible and outside.position.is_equal_approx(Vector3.ZERO), "neighborhood adjoins real apartment")
 	game.fp_player.position = Vector3(0, 0.08, 4.5)
 	var closed_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, 2.4))
 	check(closed_hit != null and game.fp_player.position.z < 5.84, "closed front door blocks player")
-	game.fp_player.position = Vector3(0,0.08,5)
+	game.fp_player.position = Vector3(0,0.08,6)
 	outside.toggle_door()
 	await create_timer(0.6).timeout
 	check(not outside.door_open and is_zero_approx(outside.door_pivot.rotation.y), "blocked opening remains closed after waiting")
@@ -378,7 +378,7 @@ func check_neighborhood() -> void:
 	gated_door.toggle(Vector3(35,0.08,0))
 	await create_timer(0.5).timeout
 	check(gated_door.opened, "older save inside locked house can still exit")
-	gated_door.toggle(Vector3(35,0.08,4.8))
+	gated_door.toggle(Vector3(35,0.08,0))
 	await create_timer(0.5).timeout
 	game.property_offer_unlocked = true
 	outside.property_opportunity.touring = true
@@ -387,7 +387,7 @@ func check_neighborhood() -> void:
 		var door = outside.get_node(spec[0])
 		game.fp_player.position = spec[1]
 		check(game.fp_player.move_and_collide(spec[2]) != null, spec[0]+" closed leaf blocks entry")
-		door.toggle(door.to_global(Vector3(0.7,0,-0.6)))
+		door.toggle(door.to_global(Vector3(0.7,0,0)))
 		await create_timer(0.5).timeout
 		check(not door.opened, spec[0]+" refuses blocked swing without delayed opening")
 		aim(spec[1],spec[1]+spec[2]+Vector3.UP*1.4)
