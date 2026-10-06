@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9.5 preview** (cloud-test .72 compatibility pass; prototype map and interiors retained).
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9.6 preview** (cloud-test .82 visuals, saved room controls and client appointments; native movement retained).
 
 ## Play the Windows build
 
@@ -186,3 +186,17 @@ These are **walkthrough interiors**: house ownership, shop sales and operating t
 Added **Forgot password?** on native sign-in. Request a recovery email using your username or full saved email (up to 254 characters). Shared recovery emails require the username. The existing Brevo-backed service sends the link; complete it in your browser and return to desktop sign-in. Delivery failures are shown clearly, and short-window account screens scroll.
 
 The cloud-test .64–.72 comparison found presentation/control changes and recovery fixes, with no additional economy/progression updates. The prototype keeps its newer interiors/map, native movement and desktop phone. Full disposition and tests: `docs/CLOUDTEST_72_SYNC.md`. No backend deployment or database change is included.
+
+
+## Prototype 0.9.6 — cloud-test .82
+
+Cloud-test updates through `b0664c1` are adapted to desktop: exterior materials,
+real apartment window, sealed door headers, recessed tree beds, Central Market,
+room and market lights, operable saved blinds, and animated day/night sky.
+Aim at a nearby switch or window covering and press **E**. The house entrance
+requires Rod’s Chapter 4 property offer. House grow equipment starts empty.
+Away customers text instead of knocking; reply to schedule their return.
+The existing account/login and shared career connection are unchanged.
+Single-session enforcement is deferred.
+
+See [the synchronization notes](docs/CLOUDTEST_82_SYNC.md) for source scope and tests.

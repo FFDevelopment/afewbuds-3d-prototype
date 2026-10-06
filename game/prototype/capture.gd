@@ -6,6 +6,9 @@ func _initialize() -> void:
 
 func capture(filename: String) -> void:
 	for i in range(8):
+		if is_instance_valid(game) and filename != "00-instructions.png":
+			game.session_paused=false
+			game.pause_overlay.hide()
 		await process_frame
 	await RenderingServer.frame_post_draw
 	var args := OS.get_cmdline_user_args()
@@ -146,6 +149,7 @@ func run() -> void:
 	plan.position = Vector3(35,45,-5.5)
 	await capture("33-house-plan.png")
 	game.neighborhood.get_node("ShopCeiling").hide()
+	game.neighborhood.get_node("CornerShopRoof").hide()
 	plan.size = 12
 	plan.position = Vector3(17,35,2)
 	await capture("34-shop-plan.png")

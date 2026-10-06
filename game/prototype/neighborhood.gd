@@ -9,21 +9,34 @@ const MAP_RECT := Rect2(-32, -36, 105, 75)
 const ROAD_RECTS := [Rect2(-32,12,105,10), Rect2(-32,-21,105,4), Rect2(-15,-36,6,75), Rect2(48,-36,6,75)]
 var building_bounds: Array[AABB] = []
 var grass_bounds: Array[Rect2] = []
+var tile_textures: Array[Texture2D] = []
+var exterior_shader: Shader
+var surface_materials: Dictionary = {}
 var surface_shader: Shader
+var house_controls: RefCounted
+var client_visits: RefCounted
+var weather: RefCounted
+var map_doors: Array = []
+var lamps: Array = []
 
 func setup(owner_node: Node3D) -> void:
 	super.setup(owner_node)
 	position = BLOCK_OFFSET
+	weather = load("res://prototype/weather.gd").new()
+	weather.setup(self)
+	weather.moon.light_cull_mask = 2
 	visible = true
 	controls.hide()
 	for child in get_children():
 		if child is MeshInstance3D:
-			child.layers = 2
+			child.layers = child.layers | 2
 		elif child is Label3D:
 			child.set_draw_flag(Label3D.FLAG_DOUBLE_SIDED, false)
 	outdoor_sun.light_cull_mask = 2
 
 func _surface(kind: int, color: String) -> ShaderMaterial:
+	var key := str(kind)+color
+	if surface_materials.has(key): return surface_materials[key]
 	if surface_shader == null:
 		surface_shader = Shader.new()
 		surface_shader.code = """shader_type spatial;
@@ -47,12 +60,69 @@ void fragment(){
 	mat.shader = surface_shader
 	mat.set_shader_parameter("tint", Color(color))
 	mat.set_shader_parameter("kind", kind)
+	surface_materials[key]=mat
 	return mat
 
 func piece(label_text: String, pos: Vector3, size: Vector3, color: String, surface: int = 0) -> MeshInstance3D:
+	# Paving is cut around recessed tree soil, so two materials never share a face.
+	if surface == 2 and pos.y < 0 and label_text in ["FrontSidewalk","HouseSidewalk","FarSidewalk","AlleySidewalk","InnerAlleySidewalk","SidewalkReturn","ApartmentSideWalkR","RearCourtyard"]:
+		var slabs: Array[Rect2] = [Rect2(Vector2(pos.x-size.x/2,pos.z-size.z/2),Vector2(size.x,size.z))]
+		for x in [-7.0,9.0,24.5,45.5]:
+			var hole := Rect2(Vector2(x-0.75,9.75),Vector2(1.5,1.5))
+			var remaining: Array[Rect2] = []
+			for slab in slabs:
+				if not slab.intersects(hole):
+					remaining.append(slab)
+					continue
+				var cut := slab.intersection(hole)
+				for part in [Rect2(slab.position,Vector2(cut.position.x-slab.position.x,slab.size.y)),Rect2(Vector2(cut.end.x,slab.position.y),Vector2(slab.end.x-cut.end.x,slab.size.y)),Rect2(Vector2(cut.position.x,slab.position.y),Vector2(cut.size.x,cut.position.y-slab.position.y)),Rect2(Vector2(cut.position.x,cut.end.y),Vector2(cut.size.x,slab.end.y-cut.end.y))]:
+					if part.size.x > 0.001 and part.size.y > 0.001: remaining.append(part)
+			slabs=remaining
+		var first: MeshInstance3D
+		for slab in slabs:
+			var part := _raw_piece(label_text,Vector3(slab.get_center().x,pos.y,slab.get_center().y),Vector3(slab.size.x,size.y,slab.size.y),color,surface)
+			if first == null: first = part
+		return first
+	return _raw_piece(label_text,pos,size,color,surface)
+
+func _raw_piece(label_text: String, pos: Vector3, size: Vector3, color: String, surface: int = 0) -> MeshInstance3D:
 	var mesh := _box(pos, size, color)
 	mesh.name = label_text
-	mesh.material_override = _surface(surface, color)
+	var tile: int=-1
+	var tint: String=color
+	if surface == 1:
+		tile=0
+		tint="f0e4d3"
+	elif surface == 2:
+		tile=2
+		tint="e1dfd5"
+	elif surface == 4:
+		tile=3
+		tint="e4e7e5"
+	elif surface == 3:
+		tile=5
+		tint="c3c3b9"
+		if label_text in ["Street","RearAlley","SideStreet","ShopParking"]:
+			tile=1
+			tint="d7d5cb"
+		elif label_text == "HouseLawn":
+			tile=4
+			tint="dde3ca"
+		elif label_text == "HouseDoor":
+			tile=6
+			tint="b39772"
+		elif label_text == "ShopAwning":
+			tile=-1
+			tint="315e4c"
+	if label_text == "EntrancePath":
+		tile=2
+		tint="e1dfd5"
+	elif label_text == "ExteriorDoor":
+		tile=6
+		tint="b39772"
+	elif label_text in ["EntryTrim","EntryLintel","WindowFrame","WindowSill"]:
+		tile=7
+	mesh.material_override = _material(tint,tile)
 	return mesh
 
 func building(label_text: String, pos: Vector3, size: Vector3, color: String, windows: bool = true) -> void:
@@ -142,6 +212,19 @@ func tree(at: Vector3) -> void:
 		add_child(crown)
 
 func _build_block() -> void:
+	var atlas: Texture2D = load("res://assets/neighborhood/exterior_atlas.webp")
+	var image := atlas.get_image()
+	if image.is_compressed(): image.decompress()
+	for row in range(3):
+		for column in range(3):
+			var tile_image := image.get_region(Rect2i(column*418,row*418,418,418))
+			tile_image.generate_mipmaps()
+			tile_textures.append(ImageTexture.create_from_image(tile_image))
+	exterior_shader=load("res://prototype/exterior.gdshader")
+	house_controls = load("res://prototype/house_controls.gd").new()
+	house_controls.setup(self)
+	client_visits = load("res://prototype/client_visits.gd").new()
+	client_visits.setup(self)
 	# Continuous support under every lot, with the existing apartment cut out.
 	piece("BaseFront",Vector3(20.5,-0.18,22.55),Vector3(105,0.2,32.9),"62665b",3)
 	piece("BaseRear",Vector3(20.5,-0.18,-23.15),Vector3(105,0.2,25.7),"62665b",3)
@@ -155,7 +238,12 @@ func _build_block() -> void:
 			piece("SideStreet",Vector3(x,-0.18,(span.x+span.y)/2),Vector3(6,0.3,span.y-span.x),"505452",3)
 	# Sidewalks stop at side-road junctions instead of running across them.
 	for span in [Vector2(-32,-15),Vector2(-9,48),Vector2(54,73)]:
-		piece("FrontSidewalk",Vector3((span.x+span.y)/2,-0.10,9.1),Vector3(span.y-span.x,0.18,6),"a9a394",2)
+		if span.x < 25 and span.y > 45:
+			for segment in [Vector2(span.x,25),Vector2(45,span.y)]:
+				piece("FrontSidewalk",Vector3((segment.x+segment.y)/2,-0.10,9.1),Vector3(segment.y-segment.x,0.18,6),"a9a394",2)
+			piece("HouseSidewalk",Vector3(35,-0.10,10.15),Vector3(20,0.18,3.9),"a9a394",2)
+		else:
+			piece("FrontSidewalk",Vector3((span.x+span.y)/2,-0.10,9.1),Vector3(span.y-span.x,0.18,6),"a9a394",2)
 		piece("FarSidewalk",Vector3((span.x+span.y)/2,-0.10,24),Vector3(span.y-span.x,0.18,4),"a9a394",2)
 		piece("AlleySidewalk",Vector3((span.x+span.y)/2,-0.10,-22.5),Vector3(span.y-span.x,0.18,3),"a9a394",2)
 		piece("InnerAlleySidewalk",Vector3((span.x+span.y)/2,-0.10,-15.7),Vector3(span.y-span.x,0.18,2.6),"a9a394",2)
@@ -168,15 +256,29 @@ func _build_block() -> void:
 	piece("RearCourtyard",Vector3(8,-0.10,-12.35),Vector3(34,0.18,4.1),"a9a394",2)
 	# Keep the apartment roofline above the actual ceiling, not inside the rooms.
 	building("ApartmentUpper",Vector3(-5.1,4.4,-10.3),Vector3(10.2,5.4,16.4),"8e5743")
-	# Same world-scaled brick material on exterior faces only; interior stays intact.
-	var brick: Material = get_node("ApartmentUpper").material_override
+	# Thin brick exterior skins preserve the original room finishes and door opening.
 	for side in [-1.0,1.0]:
-		piece("ApartmentBrickSide",Vector3(side*5.115,2.2,-2.1),Vector3(0.01,4.4,16.4),"8e5743",1).material_override = brick
-		piece("ApartmentBrickFront",Vector3(side*3.075,2.2,6.115),Vector3(4.05,4.4,0.01),"8e5743",1).material_override = brick
-	piece("ApartmentBrickRear",Vector3(0,2.2,-10.315),Vector3(10.24,4.4,0.01),"8e5743",1).material_override = brick
-	piece("ApartmentBrickHeader",Vector3(0,3.715,6.115),Vector3(2.1,1.37,0.01),"8e5743",1).material_override = brick
-	piece("ApartmentOutsideWindowFrame",Vector3(-3.62,2.15,6.17),Vector3(2.1,1.55,0.08),"c7baa1")
-	piece("ApartmentOutsideWindow",Vector3(-3.62,2.15,6.22),Vector3(1.8,1.28,0.03),"46595c")
+		piece("ApartmentBrickSide",Vector3(side*5.115,2.2,-2.1),Vector3(0.01,4.4,16.4),"8e5743",1)
+		if side>0:
+			piece("ApartmentBrickFront",Vector3(side*3.075,2.2,6.115),Vector3(4.05,4.4,0.01),"8e5743",1)
+		else:
+			piece("ApartmentWindowBrickLeft",Vector3(-4.81,2.2,6.115),Vector3(0.58,4.4,0.01),"8e5743",1)
+			piece("ApartmentWindowBrickRight",Vector3(-1.885,2.2,6.115),Vector3(1.67,4.4,0.01),"8e5743",1)
+			piece("ApartmentWindowBrickBottom",Vector3(-3.62,0.755,6.115),Vector3(1.8,1.51,0.01),"8e5743",1)
+			piece("ApartmentWindowBrickTop",Vector3(-3.62,3.595,6.115),Vector3(1.8,1.61,0.01),"8e5743",1)
+	# Exterior stone trim surrounds the real opening, leaving glazing and blinds clear.
+	for x in [-4.59,-2.65]:
+		facade_part("WindowFrame",Vector3(x,2.15,6.19),Vector3(0.14,1.42,0.18),Vector3.BACK,"c7baa1")
+	facade_part("WindowFrame",Vector3(-3.62,2.86,6.19),Vector3(2.08,0.14,0.18),Vector3.BACK,"c7baa1")
+	facade_part("WindowSill",Vector3(-3.62,1.44,6.25),Vector3(2.16,0.14,0.36),Vector3.BACK,"a69f90")
+	for x in [-1.08,1.08]:
+		facade_part("EntryTrim",Vector3(x,1.51,6.20),Vector3(0.14,3.02,0.2),Vector3.BACK,"c7baa1")
+	# Solid head reveal bridges the original interior frame to the exterior lintel.
+	facade_part("EntryLintel",Vector3(0,3.01,5.96),Vector3(2.1,0.20,0.58),Vector3.BACK,"c7baa1")
+	facade_part("EntryLintel",Vector3(0,3.09,6.20),Vector3(2.30,0.16,0.2),Vector3.BACK,"c7baa1")
+	facade_part("WindowSill",Vector3(0,-0.025,6.23),Vector3(2.1,0.07,0.32),Vector3.BACK,"a69f90")
+	piece("ApartmentBrickRear",Vector3(0,2.2,-10.315),Vector3(10.24,4.4,0.01),"8e5743",1)
+	piece("ApartmentBrickHeader",Vector3(0,3.715,6.115),Vector3(2.1,1.37,0.01),"8e5743",1)
 	load("res://prototype/interiors.gd").new().build(self)
 	# A true sloped hip roof, instead of overlapping stacked slabs.
 	var vertices := PackedVector3Array([Vector3(24.6,3.6,-14.4),Vector3(45.4,3.6,-14.4),Vector3(45.4,3.6,3.4),Vector3(24.6,3.6,3.4),Vector3(31,6.8,-5.5),Vector3(39,6.8,-5.5)])
@@ -188,8 +290,11 @@ func _build_block() -> void:
 	var roof := MeshInstance3D.new()
 	roof.name = "HouseHipRoof"
 	roof.mesh = st.commit()
-	roof.material_override = _surface(4,"383e42")
+	roof.material_override = _material("e4e7e5",3)
 	add_child(roof)
+	piece("CornerShopRoof",Vector3(17,3.7,2),Vector3(10.3,0.2,8.3),"454647",3)
+	_hip_roof(Vector3(35,3.4,4.1),5.2,3.6,0.7)
+	for x in [32.9,37.1]: piece("PorchPost",Vector3(x,1.77,5.4),Vector3(0.18,3.1,0.18),"d6cab3")
 	piece("HousePath",Vector3(35,-0.08,5.6),Vector3(2.4,0.14,5),"a9a394",2)
 	for x in [29.25,40.75]:
 		var lawn := Rect2(Vector2(x-4.25,3.3),Vector2(8.5,4.8))
@@ -214,11 +319,18 @@ func _build_block() -> void:
 			if (z >= -22 and z <= -16) or (z >= 11 and z <= 23): continue
 			piece("SideRoadStripe",Vector3(x,-0.012,z),Vector3(0.1,0.012,2.0),"c3a04c")
 	for x in [-7.0,9.0,24.5,45.5]:
-		piece("TreeBed",Vector3(x,-0.035,10.5),Vector3(1.5,0.05,1.5),"4c4737",3)
+		piece("TreeBed",Vector3(x,-0.055,10.5),Vector3(1.5,0.05,1.5),"4c4737",3)
 		tree(Vector3(x,0,10.5))
 	for x in [-4.0,18.0,41.0]:
 		piece("LampPost",Vector3(x,2.0,23),Vector3(0.13,4,0.13),"303a36")
 		piece("LampHead",Vector3(x,4,23),Vector3(0.45,0.25,0.45),"cfbd91")
+		var lamp := OmniLight3D.new()
+		lamp.position=Vector3(x,3.8,23)
+		lamp.omni_range=8.0
+		lamp.light_color=Color("ffdda5")
+		lamp.light_cull_mask=2
+		add_child(lamp)
+		lamps.append(lamp)
 	for x in range(-30,72,4):
 		if (-17 < x and x < -7) or (46 < x and x < 56): continue
 		for z in [16.7,17.0]:
@@ -234,11 +346,16 @@ func _build_block() -> void:
 	fence(Vector3(-32,0,-36),Vector3(-32,0,39))
 	fence(Vector3(73,0,-36),Vector3(73,0,39))
 	_label("APARTMENTS",Vector3(0,3.45,6.16),0.006)
+	_car(18,-6.5,"7d8686",true)
+	_car(-1,20.7,"415b50")
+	_car(32,13.2,"8d4540")
 	var sun := DirectionalLight3D.new()
 	outdoor_sun = sun
 	sun.rotation_degrees = Vector3(-48,-30,0)
 	sun.light_color = Color("f4e4c9")
 	sun.light_energy = 0.65
+	sun.shadow_enabled = true
+	sun.directional_shadow_max_distance = 38.0
 	add_child(sun)
 
 func _build_door_hinge() -> void:
@@ -265,14 +382,14 @@ func _build_door_hinge() -> void:
 func indoors(pos: Vector3) -> bool:
 	return pos.x > -5.1 and pos.x < 5.1 and pos.z > -10.3 and pos.z < 6.1
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if not is_instance_valid(host) or not host.fp_ready: return
 	active = not indoors(host.fp_player.position)
 	controls.hide()
-	var night: bool = host.day_phase == "NIGHT"
-	outdoor_sun.light_energy = 0.08 if night else 0.65
-	outdoor_environment.background_color = Color("202c41") if night else Color("b5c7d0")
-	host.camera.environment = outdoor_environment if active else null
+	client_visits.update(delta)
+	weather.update(delta)
+	# Keep the animated sky visible through the apartment's real window.
+	host.camera.environment = outdoor_environment
 
 func leave_apartment() -> void:
 	toggle_door()
@@ -311,6 +428,92 @@ func _interact() -> void:
 	host.status_label.text = "Rod's property offer is ready. Walk inside for a preview tour. Ownership is coming later." if host.property_offer_unlocked else "This house is not available yet. Keep building your operation and watch for Rod's text."
 
 func location_label(pos: Vector3) -> String:
-	if Rect2(12,-2,10,8).has_point(Vector2(pos.x,pos.z)): return "CORNER MARKET"
+	if Rect2(12,-2,10,8).has_point(Vector2(pos.x,pos.z)): return "CENTRAL MARKET"
 	if Rect2(25,-14,20,17).has_point(Vector2(pos.x,pos.z)): return "HOUSE TOUR"
 	return "NEIGHBORHOOD"
+
+func _interior_piece(id: String, at: Vector3, size: Vector3, color: String, kind: int = 0) -> MeshInstance3D:
+	var mesh := _box(at,size,color)
+	mesh.name=id
+	mesh.material_override = _material("f0e4d3",0) if kind==1 else (_material(color,6) if kind==3 else (_material(color,2) if kind==2 else _material(color)))
+	return mesh
+
+func _material(color: String, tile: int = -1, glow: float = 0.0) -> Material:
+	var key := "%s:%d:%f" % [color, tile, glow]
+	if materials.has(key): return materials[key]
+	var material: Material
+	if tile >= 0:
+		var textured := ShaderMaterial.new()
+		textured.shader = exterior_shader
+		textured.set_shader_parameter("surface_texture", tile_textures[tile])
+		textured.set_shader_parameter("tint", Color(color))
+		textured.set_shader_parameter("tile_meters", Vector3(2.4, 1.2, 2.4) if tile == 0 else Vector3(2.0, 2.0, 2.0))
+		material = textured
+	else:
+		var plain := StandardMaterial3D.new()
+		plain.albedo_color = Color(color)
+		plain.roughness = 0.70
+		if glow > 0.0:
+			plain.emission_enabled = true
+			plain.emission = Color(color)
+			plain.emission_energy_multiplier = glow
+		material = plain
+	materials[key] = material
+	return material
+
+func _indoors(point: Vector3) -> bool:
+	return indoors(point)
+
+func _door_line_clear(at: Vector3) -> bool:
+	var origin: Vector3 = host.camera.global_position
+	var query := PhysicsRayQueryParameters3D.create(origin,at,2)
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	return hit.is_empty() or origin.distance_to(hit.position)>=origin.distance_to(at)-0.12
+
+func _hip_roof(center: Vector3, width: float, depth: float, rise: float) -> void:
+	var w:=width/2.0
+	var d:=depth/2.0
+	var r:=maxf(0.0,w-d*0.55)
+	var nw:=center+Vector3(-w,0,-d)
+	var ne:=center+Vector3(w,0,-d)
+	var sw:=center+Vector3(-w,0,d)
+	var se:=center+Vector3(w,0,d)
+	var rw:=center+Vector3(-r,rise,0)
+	var re:=center+Vector3(r,rise,0)
+	var triangles: Array[Vector3]=[nw,ne,re,nw,re,rw,se,sw,rw,se,rw,re,sw,nw,rw,ne,se,re]
+	var surface:=SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for vertex in triangles: surface.add_vertex(vertex)
+	surface.generate_normals()
+	var roof:=MeshInstance3D.new()
+	roof.mesh=surface.commit()
+	roof.material_override=_material("e4e7e5",3)
+	roof.name="HousePorchRoof"
+	add_child(roof)
+
+func _car(x: float, z: float, color: String, pickup: bool = false) -> void:
+	_car_box(Vector3(x,0.63,z),Vector3(4.5,0.64,1.8),color)
+	_car_box(Vector3(x-0.2,1.18,z),Vector3(2.25 if not pickup else 1.6,0.7,1.65),color)
+	_car_box(Vector3(x-0.2,1.21,z+0.84),Vector3(1.75 if not pickup else 1.20,0.44,0.03),"43606a")
+	_car_box(Vector3(x-0.2,1.21,z-0.84),Vector3(1.75 if not pickup else 1.20,0.44,0.03),"43606a")
+	_car_box(Vector3(x+0.94,1.21,z),Vector3(0.04,0.44,1.45),"43606a")
+	_car_box(Vector3(x+2.26,0.57,z),Vector3(0.05,0.15,1.45),"b1b2a5")
+	for side in [-1.0,1.0]:
+		for axle in [-1.45,1.45]: _car_wheel(Vector3(x+axle,0.4,z+side*0.89),0.37,0.22,"252826",Vector3(PI/2,0,0))
+		_car_box(Vector3(x+2.28,0.76,z+side*0.58),Vector3(0.04,0.22,0.35),"eee3ad",-1,0.15)
+
+func _car_box(at: Vector3, size: Vector3, color: String, _tile: int = -1, glow: float = 0.0) -> void:
+	var part := _box(at,size,color)
+	part.name="ParkedCar"
+	part.material_override=_material(color,-1,glow)
+func _car_wheel(at: Vector3, radius: float, height: float, color: String, angles: Vector3) -> void:
+	var wheel := MeshInstance3D.new()
+	var mesh := CylinderMesh.new()
+	mesh.top_radius=radius
+	mesh.bottom_radius=radius
+	mesh.height=height
+	wheel.mesh=mesh
+	wheel.material_override=_material(color)
+	wheel.position=at
+	wheel.rotation=angles
+	add_child(wheel)

@@ -197,7 +197,7 @@ func run() -> void:
 	check(batches > 1 and not game.bag_minigame_panel.visible and game.bagged_inventory["Purple Dream"] == bags_before + 17, "continuous bagging finishes and conserves all product")
 	game._close_bagging_panel()
 	check(not game.has_node("WindowBuildingA") and not game.has_node("WindowBuildingB") and not game.has_node("WindowBuildingC"), "window placeholder squares removed")
-	check(game.has_node("WindowGlass") and game.has_node("WindowFrame") and game.has_node("WindowSun"), "window glass frame and sun preserved")
+	check(game.neighborhood.has_node("ApartmentWindow") and game.window_sun_disc == null, "real glazed window replaces fake sky and sun")
 	# Latest furniture must line up with its first-person targets.
 	check(is_equal_approx(game.get_node("BenchTop").position.z, 0.78), "bench moved toward front door")
 	check(is_equal_approx(game.get_node("StorageBack").position.z, -0.06), "shelves moved toward front door")
@@ -282,7 +282,7 @@ func check_neighborhood() -> void:
 		check(not bounds.intersects(outside.APARTMENT_BOUNDS), "exterior building stays outside apartment and grow-room volume")
 	var mesh_overlap := false
 	for child in outside.get_children():
-		if child is MeshInstance3D:
+		if child is MeshInstance3D and not str(child.name).begins_with("ApartmentWindow") and not str(child.name).begins_with("WindowFrame") and not str(child.name).begins_with("WindowSill") and not str(child.name).begins_with("Entry"):
 			var actual_bounds: AABB = child.global_transform * child.get_aabb()
 			mesh_overlap = mesh_overlap or actual_bounds.intersects(outside.APARTMENT_BOUNDS)
 	check(not mesh_overlap, "actual exterior mesh bounds cannot enter apartment volume")
@@ -354,7 +354,7 @@ func check_neighborhood() -> void:
 	outside.toggle_door()
 	await create_timer(0.5).timeout
 	# Cross both curbs using the actual capsule, rather than a camera-only walk.
-	game.fp_player.position = Vector3(0, 0.08, 9)
+	game.fp_player.position = Vector3(5, 0.08, 9)
 	var street_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, 14))
 	check(street_hit == null and game.fp_player.position.z > 22, "sidewalk and street are continuously walkable")
 	game.fp_player.position = Vector3(51,0.08,37)
@@ -371,6 +371,10 @@ func check_neighborhood() -> void:
 	game._use_target()
 	check("offer is ready" in game.status_label.text, "house preview reflects unlocked property offer")
 	game.property_offer_unlocked = false
+	var gated_door = outside.get_node("HouseEntrance")
+	gated_door.toggle(Vector3(35,0.08,4.8))
+	check(not gated_door.busy and not gated_door.opened, "house entry retains Chapter 4 gate")
+	game.property_offer_unlocked = true
 	# Real player capsule tests through both entries, every room, and shop aisles.
 	for spec in [["ShopEntrance",Vector3(20.55,0.08,7.8),Vector3(0,0,-3.2)], ["HouseEntrance",Vector3(35,0.08,4.8),Vector3(0,0,-3.2)]]:
 		var door = outside.get_node(spec[0])

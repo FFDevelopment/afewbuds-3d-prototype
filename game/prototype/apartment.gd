@@ -2,10 +2,11 @@ extends "res://scripts/main.gd"
 ## Adapter over the pinned AFewBuds simulation. Uses the shared simulation with native account integration.
 const FirstPersonPlayer = preload("res://prototype/player.gd")
 const REACH := 2.6
-const WALL_NAMES := ["FrontWall", "FrontWallL", "FrontWallR", "FrontWallHeader", "RearWall", "LeftWall", "RightWall", "PartitionLeft", "PartitionRight", "PartitionHeader"]
+const WALL_NAMES := ["FrontWindowLeft", "FrontWindowRight", "FrontWindowBottom", "FrontWindowTop", "FrontWall", "FrontWallL", "FrontWallR", "FrontWallHeader", "RearWall", "LeftWall", "RightWall", "PartitionLeft", "PartitionRight", "PartitionHeader"]
 var account_overlay: CanvasLayer
 var fp_player: CharacterBody3D
 var fp_ready := false
+var fp_control := ""
 var fp_target: Area3D
 var fp_crosshair: Label
 var fp_prompt: Label
@@ -86,7 +87,7 @@ func _process(delta: float) -> void:
 	fp_prompt.visible = not modal
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
-	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.9.5 PREVIEW\n%s   ·   %s   ·   $%d" % [neighborhood.location_label(fp_player.position) if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
+	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.9.6 PREVIEW\n%s   ·   %s   ·   $%d" % [neighborhood.location_label(fp_player.position) if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
 	fp_hint.text = "WASD  Walk     E  Interact     P  Phone     Esc  Pause     F5  Save"
 	_hide_old_navigation()
 
@@ -354,6 +355,9 @@ func _target_from_ray(origin: Vector3, direction: Vector3) -> Area3D:
 func _update_target() -> void:
 	fp_target = _target_from_ray(camera.global_position, -camera.global_basis.z)
 	fp_prompt.text = ""
+	fp_control = neighborhood.house_controls.nearby() if fp_target == null else ""
+	if not fp_control.is_empty():
+		fp_prompt.text = "[ E ]   " + neighborhood.house_controls.title(fp_control)
 	if fp_target != null:
 		var label_text := ""
 		if fp_target.has_meta("plant_slot"):
@@ -364,10 +368,13 @@ func _update_target() -> void:
 			var id := str(fp_target.get_meta("interaction_id"))
 			label_text = {"station_locker": "Dealer Storage", "station_workbench": "Packaging bench", "station_storage": "Product storage", "storage_vault": "Storage vault", "station_door": ("Close front door" if neighborhood.door_open else "Open front door") + ("   [ R ] Answer visitor" if customer_waiting else "   [ R ] Peephole"), "interior_door": "Open / close door", "inspect_house": "Inspect house", "station_system": "Grow-room controls", "station_supply": "Seeds & fertilizer", "main_light_switch": "Main lights", "floor_lamp": "Floor lamp", "grow_room_light_switch": "Grow-room light"}.get(id, id.replace("_", " ").capitalize())
 		fp_prompt.text = "[ E ]   " + label_text
-	fp_crosshair.modulate = Color("b6f38a") if fp_target != null else Color(1, 1, 1, 0.7)
+	fp_crosshair.modulate = Color("b6f38a") if fp_target != null or not fp_control.is_empty() else Color(1, 1, 1, 0.7)
 
 func _use_target() -> void:
 	_update_target() # Revalidate reach and line of sight at the actual key press.
+	if not fp_control.is_empty():
+		neighborhood.house_controls.use(fp_control)
+		return
 	if fp_target == null:
 		return
 	if fp_target.has_meta("plant_slot"):

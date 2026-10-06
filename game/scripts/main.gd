@@ -1,6 +1,7 @@
 extends Node3D
 
 var neighborhood: Node3D
+var house_control_state: Dictionary = {}
 
 
 const PlantGrowth = preload("res://scripts/plant_growth.gd")
@@ -1783,7 +1784,10 @@ func _build_world() -> void:
 	_add_box("MainFloor", Vector3(0, -0.10, 1.0), Vector3(10.2, 0.18, 10.0), Color("514030"), 0.90)
 	RoomSurfaces.add_main_floor(self)
 	_add_box("GrowRoomFloor", Vector3(0, -0.095, -7.10), Vector3(10.2, 0.19, 6.20), Color("353c3e"), 0.90, false, "res://assets/textures/matte_plastic.png", Vector3(4.0, 1.0, 3.0))
-	_add_box("FrontWallL", Vector3(-3.075, 2.15, 6.0), Vector3(4.05, 4.3, 0.18), Color("c2beb5"), 0.94, false, "res://assets/textures/painted_wall.png")
+	_add_box("FrontWindowLeft", Vector3(-4.81, 2.15, 6.0), Vector3(0.58, 4.3, 0.18), Color("c2beb5"), 0.94, false, "res://assets/textures/painted_wall.png")
+	_add_box("FrontWindowRight", Vector3(-1.885, 2.15, 6.0), Vector3(1.67, 4.3, 0.18), Color("c2beb5"), 0.94, false, "res://assets/textures/painted_wall.png")
+	_add_box("FrontWindowBottom", Vector3(-3.62, 0.755, 6.0), Vector3(1.8, 1.51, 0.18), Color("c2beb5"), 0.94, false, "res://assets/textures/painted_wall.png")
+	_add_box("FrontWindowTop", Vector3(-3.62, 3.545, 6.0), Vector3(1.8, 1.51, 0.18), Color("c2beb5"), 0.94, false, "res://assets/textures/painted_wall.png")
 	_add_box("FrontWallR", Vector3(3.075, 2.15, 6.0), Vector3(4.05, 4.3, 0.18), Color("c2beb5"), 0.94, false, "res://assets/textures/painted_wall.png")
 	_add_box("FrontWallHeader", Vector3(0, 3.665, 6.0), Vector3(2.1, 1.27, 0.18), Color("c2beb5"), 0.94)
 	_add_box("RearWall", Vector3(0, 2.15, -10.15), Vector3(10.2, 4.3, 0.18), Color("b8bbb7"), 0.94, false, "res://assets/textures/painted_wall.png", Vector3(3.0, 2.0, 1.0))
@@ -2389,9 +2393,6 @@ func _build_living_furniture() -> void:
 	_sync_dealer_locker_visual()
 
 func _build_apartment_details() -> void:
-	_add_box("WindowFrame", Vector3(-3.62, 2.15, 5.86), Vector3(2.10, 1.55, 0.08), Color("e5e0d8"), 0.58)
-	living_window_glass = _add_box("WindowGlass", Vector3(-3.62, 2.15, 5.80), Vector3(1.80, 1.28, 0.035), Color("7192a4"), 0.14, true)
-	window_sun_disc = _add_sphere("WindowSun", Vector3(-4.05, 2.48, 5.70), Vector3(0.12, 0.12, 0.035), Color("ffd58a"), 0.22)
 	_add_box("CurtainL", Vector3(-4.68, 2.08, 5.68), Vector3(0.32, 1.88, 0.10), Color("9f917e"), 0.94, false, "res://assets/textures/fabric_bluegray.png")
 	_add_box("CurtainR", Vector3(-2.56, 2.08, 5.68), Vector3(0.32, 1.88, 0.10), Color("9f917e"), 0.94, false, "res://assets/textures/fabric_bluegray.png")
 
@@ -7833,6 +7834,8 @@ func _build_texts_app() -> void:
 			message.text = str(msg.get("body", ""))
 			message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			box.add_child(message)
+			if neighborhood != null:
+				neighborhood.client_visits.append_replies(box,msg,index)
 	for i: int in range(phone_text_messages.size()):
 		phone_text_messages[i]["read"] = true
 	phone_text_unread = 0
@@ -9447,6 +9450,7 @@ func _save_game() -> void:
 		"away_message": away_message,
 		"paused_listing_snapshot": paused_listing_snapshot,
 		"last_customer_broadcast": last_customer_broadcast,
+		"house_control_state": house_control_state,
 		"phone_text_messages": phone_text_messages,
 		"phone_text_unread": phone_text_unread,
 		"critical_staff_event_active": critical_staff_event_active,
@@ -9625,6 +9629,8 @@ func _load_game() -> void:
 	if loaded_paused_listings is Dictionary:
 		paused_listing_snapshot = loaded_paused_listings as Dictionary
 	last_customer_broadcast = str(data.get("last_customer_broadcast", last_customer_broadcast))
+	var saved_house_controls: Variant = data.get("house_control_state", {})
+	if saved_house_controls is Dictionary: house_control_state = saved_house_controls.duplicate(true)
 	var loaded_text_messages: Variant = data.get("phone_text_messages", [])
 	if loaded_text_messages is Array:
 		phone_text_messages.clear()
@@ -9861,6 +9867,10 @@ func _maybe_start_reeves_visit() -> void:
 
 func _start_reeves_door_visit(reason: String) -> void:
 	if _simulation_blocked():
+		return
+	if neighborhood != null and not neighborhood.client_visits.is_home():
+		reeves_visit_pending = true
+		reeves_visit_reason = reason
 		return
 	reeves_visit_pending = false
 	reeves_visit_reason = reason
@@ -10181,6 +10191,8 @@ func _build_audio_players() -> void:
 	add_child(knock_player)
 
 func _play_door_knock() -> void:
+	if neighborhood != null and not neighborhood.client_visits.is_home():
+		return
 	if _simulation_blocked():
 		return
 	if knock_player == null or knock_player.stream == null:
@@ -10301,6 +10313,8 @@ func _customer_arrives() -> void:
 		return
 	if customer_waiting:
 		return
+	if neighborhood != null and neighborhood.client_visits.reserve_slot():
+		return
 	if not business_open:
 		_schedule_next_customer(true)
 		return
@@ -10351,6 +10365,8 @@ func _customer_arrives() -> void:
 	var max_qty: int = int(current_customer.get("max_qty", 1))
 	var qty: int = rng.randi_range(min_qty, max_qty)
 	active_request = {"product": requested, "qty": qty}
+	if neighborhood != null and neighborhood.client_visits.route_arrival():
+		return
 	customer_waiting = true
 	knock_banner.visible = true
 	_play_door_knock()
@@ -11759,12 +11775,14 @@ func _build_door_alert() -> void:
 	door_alert_button.add_theme_font_size_override("font_size", 21)
 	door_alert_button.pressed.connect(_go_to_waiting_customer)
 	row.add_child(door_alert_button)
+	door_alert_button.hide()
 
 func _refresh_door_alert() -> void:
 	if knock_banner == null or door_alert_button == null:
 		return
 	var show: bool = customer_waiting and not customer_answered and not session_paused and not daily_report_pending and not tutorial_active and not reset_confirmation_open and not reset_in_progress
 	show = show and not (sale_panel != null and sale_panel.visible) and not (peephole_panel != null and peephole_panel.visible)
+	show = show and (neighborhood == null or neighborhood.client_visits.is_home())
 	knock_banner.visible = show
 	if not show:
 		_cancel_door_alert_pointer()
@@ -11780,7 +11798,7 @@ func _refresh_door_alert() -> void:
 		return
 	var remaining: int = int(ceil(customer_patience_timer.time_left)) if customer_patience_timer != null else 0
 	knock_text.text = "KNOCK  |  VISITOR WAITING"
-	door_alert_detail.text = "Check the front door  |  %ds left" % remaining
+	door_alert_detail.text = "Walk to the front door  |  %ds left" % remaining
 	if remaining <= 7:
 		door_alert_detail.text = "Leaving soon!  |  %ds left" % remaining
 		door_alert_dot.modulate = Color("efb27e")
@@ -11793,7 +11811,7 @@ func _cancel_door_alert_pointer() -> void:
 	door_alert_is_tap = false
 
 func _handle_door_alert_pointer(event: InputEvent) -> bool:
-	if door_alert_button == null:
+	if door_alert_button == null or not door_alert_button.is_visible_in_tree():
 		return false
 	var now: int = Time.get_ticks_msec()
 	if event.device == -1 and (event is InputEventMouseButton or event is InputEventMouseMotion):

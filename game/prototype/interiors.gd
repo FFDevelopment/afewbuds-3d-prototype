@@ -6,7 +6,7 @@ var world: Node3D
 var openings: Array[Dictionary] = []
 
 func box(id: String, at: Vector3, size: Vector3, color: String, kind: int = 0, structural: bool = false) -> MeshInstance3D:
-	var m: MeshInstance3D = world.piece(id,at,size,color,kind)
+	var m: MeshInstance3D = world._interior_piece(id,at,size,color,kind)
 	m.layers = 2
 	m.set_meta("structural",structural)
 	if id in ["SofaBase","SofaBack","SofaArm","SofaCushion","Mattress","Pillow","ToiletBase","ToiletTank","Basin"]:
@@ -45,11 +45,15 @@ func wall(id: String, start: Vector3, length: float, height: float, axis: Vector
 			if kind == 1:
 				var inward := Vector3.FORWARD if id.ends_with("Front") else Vector3.BACK
 				if id == "HouseSide": inward = Vector3.RIGHT if start.x < 35 else Vector3.LEFT
+				if id == "ShopWest": inward = Vector3.RIGHT
+				if id == "ShopEast": inward = Vector3.LEFT
 				var lining := box(id+"Plaster",start+axis*mid.x+Vector3.UP*mid.y+inward*0.115,Vector3(w,h,0.015) if axis.x != 0 else Vector3(0.015,h,w),"c9c0a8")
 				lining.set_meta("no_collision",true)
 
-func glass(id: String, at: Vector3, width: float, height: float, axis: Vector3) -> void:
-	var size := Vector3(width,height,0.04) if axis.x != 0 else Vector3(0.04,height,width)
+func glass(id: String, at: Vector3, width: float, height: float, axis: Vector3, fitted: bool = false) -> void:
+	var pane_width := width-0.14 if fitted else width
+	var pane_height := height-0.14 if fitted else height
+	var size := Vector3(pane_width,pane_height,0.04) if axis.x != 0 else Vector3(0.04,pane_height,pane_width)
 	var pane := box(id,at,size,"c2dedc",0,true)
 	var mat := StandardMaterial3D.new()
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -57,9 +61,47 @@ func glass(id: String, at: Vector3, width: float, height: float, axis: Vector3) 
 	mat.roughness = 0.18
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	pane.material_override = mat
+	if id=="ApartmentWindow": pane.layers=1
+	var jamb_height := height-0.14 if fitted else height+0.1
+	var rail_width := width if fitted else width+0.1
+	var jamb_offset := (width-0.07)/2 if fitted else width/2
+	var rail_offset := (height-0.07)/2 if fitted else height/2
 	for side in [-1.0,1.0]:
-		box(id+"Jamb",at+axis*side*width/2,Vector3(0.07,height+0.1,0.24) if axis.x != 0 else Vector3(0.24,height+0.1,0.07),"3c493e")
-		box(id+"Rail",at+Vector3.UP*side*height/2,Vector3(width+0.1,0.07,0.24) if axis.x != 0 else Vector3(0.24,0.07,width+0.1),"3c493e")
+		var jamb := box(id+"Jamb",at+axis*side*jamb_offset,Vector3(0.07,jamb_height,0.24) if axis.x != 0 else Vector3(0.24,jamb_height,0.07),"3c493e")
+		var rail := box(id+"Rail",at+Vector3.UP*side*rail_offset,Vector3(rail_width,0.07,0.24) if axis.x != 0 else Vector3(0.24,0.07,rail_width),"3c493e")
+		if id=="ApartmentWindow":
+			jamb.layers=1
+			rail.layers=1
+			jamb.material_override=world._material("e5e0d8")
+			rail.material_override=world._material("e5e0d8")
+
+func covering_box(id: String, at: Vector3, width: float, height: float, depth: float, axis: Vector3, color: String) -> void:
+	var size := Vector3(width,height,depth) if axis.x != 0 else Vector3(depth,height,width)
+	box(id,at,size,color).set_meta("no_collision",true)
+
+func closed_covering(id: String, at: Vector3, width: float, height: float, axis: Vector3, inward: Vector3, blackout: bool = false) -> void:
+	var before := world.get_children()
+	var center := at+inward*0.18
+	# Opaque backing closes every gap; glass still supplies the window collision.
+	covering_box(id+"Backing",center,width,height,0.018,axis,"535b4b" if blackout else "807969")
+	covering_box(id+"Header",center+Vector3.UP*(height/2-0.04)+inward*0.025,width,0.08,0.07,axis,"c1b79e")
+	if blackout:
+		covering_box(id+"Hem",center-Vector3.UP*(height/2-0.025)+inward*0.012,width,0.05,0.035,axis,"78816a")
+	else:
+		var rows := ceili(height/0.095)
+		var pitch := height/rows
+		for row in range(rows):
+			covering_box(id+"Slat",center+Vector3.UP*(-height/2+(row+0.5)*pitch),width,pitch*0.96,0.025,axis,"b2a88e" if row%2==0 else "aaa087")
+	var panels := maxi(1,ceili(width/2))
+	for panel in range(panels):
+		var offset := -width/2+(panel+1)*width/panels-0.09
+		covering_box(id+"Cord",center+axis*offset+inward*0.055,0.018,height-0.12,0.018,axis,"d3c8af")
+	var group := Node3D.new()
+	group.name=id
+	world.add_child(group)
+	for child in world.get_children():
+		if child not in before and child!=group: child.reparent(group,false)
+	world.house_controls.register_shade(id,group,center,height)
 
 func door(id: String, center: Vector3, width: float, angle: float = 0.0, glazed: bool = false) -> void:
 	var pivot: Node3D = load("res://prototype/interior_door.gd").new()
@@ -67,6 +109,7 @@ func door(id: String, center: Vector3, width: float, angle: float = 0.0, glazed:
 	pivot.width = width
 	pivot.host = world.host
 	world.add_child(pivot)
+	world.map_doors.append(pivot)
 	pivot.position = center - Basis(Vector3.UP,angle)*Vector3(width/2,0,0)
 	pivot.rotation.y = angle
 	var leaf := Node3D.new()
@@ -82,6 +125,9 @@ func door(id: String, center: Vector3, width: float, angle: float = 0.0, glazed:
 	for child in world.get_children():
 		if child not in before: child.reparent(leaf,false)
 	var area := Area3D.new()
+	# Fixed header fills the construction clearance above every 2.6 m door leaf.
+	var head := box(id+"FixedHeader",center+Vector3.UP*2.625,Vector3(width+0.08,0.09,0.30),"d0c4ac")
+	head.rotation.y=angle
 	area.collision_layer = 8
 	area.collision_mask = 0
 	area.set_meta("interaction_id","interior_door")
@@ -94,8 +140,8 @@ func door(id: String, center: Vector3, width: float, angle: float = 0.0, glazed:
 	area.position = Vector3(width/2,1.3,0)
 	leaf.add_child(area)
 
-func light(at: Vector3) -> void:
-	box("CeilingLight",at,Vector3(1.2,0.07,0.35),"e7dfc1")
+func light(at: Vector3, room: String = "", switch_at: Vector3 = Vector3.ZERO, axis: Vector3 = Vector3.RIGHT, inward: Vector3 = Vector3.BACK) -> void:
+	var fixture := box("CeilingLight",at,Vector3(1.2,0.07,0.35),"e7dfc1")
 	var lamp := OmniLight3D.new()
 	world.add_child(lamp)
 	lamp.position = at-Vector3.UP*0.16
@@ -103,7 +149,10 @@ func light(at: Vector3) -> void:
 	lamp.light_energy = 0.85
 	lamp.omni_range = 7.0
 	lamp.light_cull_mask = 2
-	lamp.shadow_enabled = false
+	lamp.shadow_enabled = not room.is_empty()
+	if not room.is_empty():
+		lamp.omni_range=5.5 if room in ["bathroom","bedroom","cross_hall"] else 6.0
+		world.house_controls.register_light(room,lamp,fixture,switch_at,axis,inward)
 
 func table(at: Vector3, size: Vector2, color: String = "87613e", height: float = 0.94) -> void:
 	box("TableTop",at+Vector3.UP*(height-0.06),Vector3(size.x,0.12,size.y),color,3)
@@ -153,6 +202,8 @@ func cylinder(id: String, at: Vector3, radius: float, height: float, color: Stri
 
 func build(owner_node: Node3D) -> void:
 	world = owner_node
+	glass("ApartmentWindow",Vector3(-3.62,2.15,6.0),1.8,1.28,Vector3.RIGHT)
+	closed_covering("ApartmentBlind",Vector3(-3.62,2.15,6.0),1.8,1.28,Vector3.RIGHT,Vector3.FORWARD)
 	shop()
 	house()
 	world.set_meta("interior_openings",openings)
@@ -162,15 +213,15 @@ func shop() -> void:
 	world.building_bounds.append(AABB(Vector3(12,0,-2),Vector3(10,3.6,8)))
 	box("ShopFloor",Vector3(17,-0.075,2),Vector3(10,0.15,8),"b1a58c",2,true)
 	box("ShopCeiling",Vector3(17,3.55,2),Vector3(10.2,0.2,8.2),"d0c6ae",0,true)
-	wall("ShopWest",Vector3(12,0,-2),8,3.5,Vector3.BACK,[])
-	wall("ShopEast",Vector3(22,0,-2),8,3.5,Vector3.BACK,[])
-	wall("ShopRear",Vector3(12,0,-2),10,3.5,Vector3.RIGHT,[])
+	wall("ShopWest",Vector3(12,0,-2),8,3.5,Vector3.BACK,[],"925c42",1)
+	wall("ShopEast",Vector3(22,0,-2),8,3.5,Vector3.BACK,[],"925c42",1)
+	wall("ShopRear",Vector3(12,0,-2),10,3.5,Vector3.RIGHT,[],"925c42",1)
 	wall("ShopFront",Vector3(12,0,6),10,3.5,Vector3.RIGHT,[Rect2(0.35,0.45,6.7,2.3),Rect2(7.7,0,1.7,2.65)],"925c42",1)
 	glass("ShopDisplay",Vector3(15.7,1.6,6),6.7,2.3,Vector3.RIGHT)
 	for x in [14.0,16.0,18.0]: box("DisplayMullion",Vector3(x,1.6,6),Vector3(0.07,2.3,0.25),"3c493e")
 	door("ShopEntrance",Vector3(20.55,0,6),1.7,0,true)
 	box("ShopAwning",Vector3(17,2.95,6.6),Vector3(10.3,0.18,1.2),"315e4c",3)
-	world._label("CORNER MARKET",Vector3(17,3.3,6.18),0.008)
+	world._label("CENTRAL MARKET",Vector3(17,3.3,6.18),0.008)
 	# Stockroom is fully enclosed, entered behind checkout through its own door.
 	wall("StockroomEast",Vector3(15.25,0,-2),3.1,3.5,Vector3.BACK,[])
 	wall("StockroomFront",Vector3(12,0,1.1),3.25,3.5,Vector3.RIGHT,[Rect2(1.6,0,1.35,2.65)])
@@ -191,7 +242,9 @@ func shop() -> void:
 	box("CoffeeMachine",Vector3(21.3,1.25,1.8),Vector3(0.55,0.62,0.5),"353e36")
 	for z in [2.35,2.6]: cylinder("CupStack",Vector3(21.3,1.08,z),0.065,0.28,"d6c9ab")
 	box("WelcomeMat",Vector3(20.5,0.008,4.9),Vector3(1.6,0.015,0.8),"536047")
-	for at in [Vector3(13.6,3.4,-0.5),Vector3(17.2,3.4,1.6),Vector3(19.7,3.4,4.1)]: light(at)
+	light(Vector3(13.6,3.4,-0.5),"market_stock",Vector3(15.1,1.4,0.25),Vector3.BACK,Vector3.LEFT)
+	light(Vector3(17.2,3.4,1.6),"market_front",Vector3(15.1,1.4,-0.25),Vector3.BACK,Vector3.LEFT)
+	light(Vector3(19.7,3.4,4.1),"market_front",Vector3(15.1,1.4,-0.25),Vector3.BACK,Vector3.LEFT)
 
 func house() -> void:
 	world.building_bounds.append(AABB(Vector3(25,0,-14),Vector3(20,3.5,17)))
@@ -204,7 +257,18 @@ func house() -> void:
 		wall("HouseSide",Vector3(x,0,-14),17,3.5,Vector3.BACK,[Rect2(2,0.9,2.6,1.8),Rect2(11.5,0.9,2.6,1.8)],"986848",1)
 		for z in [-10.7,-1.2]: glass("HouseSideWindow",Vector3(x,1.8,z),2.6,1.8,Vector3.BACK)
 	wall("HouseRear",Vector3(25,0,-14),20,3.5,Vector3.RIGHT,[Rect2(1.7,0.9,2.5,1.8),Rect2(7,1.5,1.1,1.0),Rect2(10,0.9,2.3,1.8),Rect2(15,0.9,2.5,1.8)],"986848",1)
-	for a in [Vector3(27.95,1.8,2.5),Vector3(32.55,2,1.1),Vector3(36.15,1.8,2.3),Vector3(41.25,1.8,2.5)]: glass("HouseRearWindow",Vector3(a.x,a.y,-14),a.z,1.0 if a.x == 32.55 else 1.8,Vector3.RIGHT)
+	for a in [Vector3(27.95,1.8,2.5),Vector3(36.15,1.8,2.3),Vector3(41.25,1.8,2.5)]: glass("HouseRearWindow",Vector3(a.x,a.y,-14),a.z,1.8,Vector3.RIGHT)
+	glass("BathroomWindow",Vector3(32.55,2,-14),1.1,1.0,Vector3.RIGHT,true)
+	closed_covering("PackingFrontBlind",Vector3(40.8,1.8,3),5.8,1.9,Vector3.RIGHT,Vector3.FORWARD)
+	closed_covering("PackingSideBlind",Vector3(45,1.8,-1.2),2.6,1.8,Vector3.BACK,Vector3.LEFT)
+	closed_covering("GrowSideShade",Vector3(45,1.8,-10.7),2.6,1.8,Vector3.BACK,Vector3.LEFT,true)
+	closed_covering("GrowRearShade",Vector3(41.25,1.8,-14),2.5,1.8,Vector3.RIGHT,Vector3.BACK,true)
+	closed_covering("LivingFrontShade",Vector3(29.2,1.8,3),5.8,1.9,Vector3.RIGHT,Vector3.FORWARD)
+	closed_covering("LivingSideShade",Vector3(25,1.8,-1.2),2.6,1.8,Vector3.BACK,Vector3.RIGHT)
+	closed_covering("KitchenSideShade",Vector3(25,1.8,-10.7),2.6,1.8,Vector3.BACK,Vector3.RIGHT)
+	closed_covering("KitchenRearShade",Vector3(27.95,1.8,-14),2.5,1.8,Vector3.RIGHT,Vector3.BACK)
+	closed_covering("BathroomShade",Vector3(32.55,2,-14),1.1,1.0,Vector3.RIGHT,Vector3.BACK)
+	closed_covering("BedroomShade",Vector3(36.15,1.8,-14),2.3,1.8,Vector3.RIGHT,Vector3.BACK)
 	# Central hall x33.5..36.5, front to transverse hall z-5..-7.
 	for x in [33.5,36.5]: wall("HallSide",Vector3(x,0,-5),8,3.5,Vector3.BACK,[Rect2(4.2,0,1.5,2.65)])
 	wall("FrontRoomDividerL",Vector3(25,0,-5),8.5,3.5,Vector3.RIGHT,[])
@@ -233,7 +297,7 @@ func house() -> void:
 	box("Cooktop",Vector3(29.8,1.03,-13.3),Vector3(0.8,0.04,0.6),"292f29")
 	for x in [29.6,30.0]:
 		for z in [-13.5,-13.1]: box("Burner",Vector3(x,1.06,z),Vector3(0.19,0.02,0.19),"747c71")
-	box("Fridge",Vector3(25.8,1.05,-12),Vector3(1.05,2.1,1),"9b9f8d")
+	box("Fridge",Vector3(29.6,1.05,-7.7),Vector3(1.05,2.1,1),"9b9f8d")
 	table(Vector3(28.3,0,-9.4),Vector2(2,1.2))
 	for x in [27.7,28.9]:
 		for z in [-10.5,-8.3]:
@@ -242,8 +306,8 @@ func house() -> void:
 	for x in [26.5,27.3,28.1,28.9,29.7,30.5]:
 		box("CabinetDoor",Vector3(x,0.48,-12.91),Vector3(0.72,0.77,0.04),"6f765c",3)
 		box("CabinetHandle",Vector3(x+0.22,0.62,-12.86),Vector3(0.045,0.2,0.045),"bec2a8")
-	box("FridgeSeam",Vector3(25.8,1.45,-11.49),Vector3(1.0,0.04,0.015),"596556")
-	box("FridgeHandle",Vector3(26.15,1.0,-11.43),Vector3(0.06,0.5,0.07),"d3d1ba")
+	box("FridgeSeam",Vector3(29.6,1.45,-7.19),Vector3(1.0,0.04,0.015),"596556")
+	box("FridgeHandle",Vector3(29.95,1.0,-7.13),Vector3(0.06,0.5,0.07),"d3d1ba")
 	# Bathroom, separated by full-height walls.
 	box("BathroomTile",Vector3(32.75,0.014,-10.5),Vector3(2.65,0.025,6.8),"7f9087",2)
 	box("ShowerTray",Vector3(32.7,0.1,-12.9),Vector3(2.3,0.2,1.7),"c4c9b8")
@@ -263,21 +327,47 @@ func house() -> void:
 	box("Pillow",Vector3(36.5,0.87,-12.55),Vector3(1.5,0.18,0.55),"ece0c6")
 	box("Wardrobe",Vector3(34.85,1,-8.6),Vector3(0.85,2,1.2),"675b43",3)
 	# Grow room preview equipment: no duplicate simulation plants or free inventory.
+	var grow_before := world.get_children()
+	var grow_fixtures: Array = []
+	var grow_lamps: Array = []
 	box("GrowTile",Vector3(41.8,0.012,-10.5),Vector3(6.2,0.02,6.8),"6c7468",2)
-	for x in [40.0,42.0,44.0]:
+	var installed_tents := clampi(int(world.host.house_control_state.get("house_grow_tent_count",0)),0,3)
+	for tent_index in range(installed_tents):
+		var x := 40.0+tent_index*2.0
 		box("GrowTentBack",Vector3(x,1.35,-13.4),Vector3(1.7,2.7,0.14),"293330")
 		for dx in [-0.8,0.8]: box("GrowTentSide",Vector3(x+dx,1.35,-12.6),Vector3(0.1,2.7,1.6),"333d36")
 		box("GrowTentTop",Vector3(x,2.67,-12.6),Vector3(1.7,0.12,1.7),"28312b")
 		box("GrowTray",Vector3(x,0.08,-12.6),Vector3(1.7,0.16,1.7),"333f35")
-		box("GrowLight",Vector3(x,2.45,-12.6),Vector3(1.2,0.08,0.8),"e5dba8")
+		grow_fixtures.append(box("GrowLight",Vector3(x,2.45,-12.6),Vector3(1.2,0.08,0.8),"e5dba8"))
+		var grow_lamp := OmniLight3D.new()
+		world.add_child(grow_lamp)
+		grow_lamp.position=Vector3(x,2.25,-12.6)
+		grow_lamp.light_color=Color("fff2cf")
+		grow_lamp.light_energy=0.65
+		grow_lamp.omni_range=2.4
+		grow_lamp.light_cull_mask=16
+		grow_lamps.append(grow_lamp)
 		for dx in [-0.4,0.4]: cylinder("EmptyPlanter",Vector3(x+dx,0.36,-12.6),0.275,0.4,"756047")
 	shelf(Vector3(44.25,0,-9.1),0.7,1.6,false)
+	for child in world.get_children():
+		if child not in grow_before and child is MeshInstance3D: child.layers=18
+	world.house_controls.register_grow(grow_lamps,grow_fixtures)
 	# Packing room: bench, scale, jars, cabinets and storage shelves.
 	box("PackingTile",Vector3(40.8,0.012,-1),Vector3(8.1,0.02,7.7),"77796a",2)
 	table(Vector3(41.2,0,-4.2),Vector2(4.5,1.1))
 	box("PackingScale",Vector3(40.5,1.04,-4.2),Vector3(0.65,0.2,0.5),"b1b8a0")
 	box("ScaleDisplay",Vector3(40.5,1.15,-3.94),Vector3(0.28,0.09,0.02),"75a87c")
 	for x in [41.3,41.8,42.3]: cylinder("PackingJar",Vector3(x,1.15,-4.2),0.14,0.42,"839878")
-	shelf(Vector3(44.35,0,-1.2),0.8,2.5,false)
+	shelf(Vector3(44.35,0,-3.2),0.8,2.5,false)
 	box("PackingCabinet",Vector3(38,1,-4.25),Vector3(1.15,2,0.9),"444f43")
-	for at in [Vector3(29.2,3.32,-1),Vector3(35,3.32,0),Vector3(41,3.32,-1),Vector3(28,3.32,-10.5),Vector3(32.7,3.32,-10.5),Vector3(36.5,3.32,-10.5),Vector3(41.8,3.32,-10.5),Vector3(35,3.32,-6)]: light(at)
+	light(Vector3(29.2,3.32,-1),"living",Vector3(33.36,1.4,-1.7),Vector3.BACK,Vector3.LEFT)
+	light(Vector3(35,3.32,0),"entry_hall",Vector3(33.85,1.4,2.84),Vector3.RIGHT,Vector3.FORWARD)
+	light(Vector3(41,3.32,-1),"packing",Vector3(36.64,1.4,-1.7),Vector3.BACK,Vector3.RIGHT)
+	light(Vector3(28,3.32,-10.5),"kitchen",Vector3(26.0,1.4,-7.14),Vector3.RIGHT,Vector3.FORWARD)
+	light(Vector3(32.7,3.32,-10.5),"bathroom",Vector3(33.65,1.4,-7.14),Vector3.RIGHT,Vector3.FORWARD)
+	light(Vector3(36.5,3.32,-10.5),"bedroom",Vector3(37.6,1.4,-7.14),Vector3.RIGHT,Vector3.FORWARD)
+	light(Vector3(41.8,3.32,-10.5),"grow",Vector3(42.25,1.4,-7.14),Vector3.RIGHT,Vector3.FORWARD)
+	light(Vector3(35,3.32,-6),"cross_hall",Vector3(31.9,1.4,-5.14),Vector3.RIGHT,Vector3.FORWARD)
+	light(Vector3(28,3.32,-6),"cross_hall",Vector3(31.9,1.4,-5.14),Vector3.RIGHT,Vector3.FORWARD)
+	light(Vector3(42,3.32,-6),"cross_hall",Vector3(31.9,1.4,-5.14),Vector3.RIGHT,Vector3.FORWARD)
+

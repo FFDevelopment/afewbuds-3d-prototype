@@ -6,6 +6,9 @@ var host: Node3D
 
 func toggle(player: Vector3) -> void:
 	if busy: return
+	if name == "HouseEntrance" and not opened and not host.property_offer_unlocked:
+		host.status_label.text = "This house is not available yet. Watch for Rod’s property offer."
+		return
 	var p := to_local(player)
 	# Same full swept capsule clearance on opening and closing; never queue a refusal.
 	for i in range(49):
