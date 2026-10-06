@@ -40,7 +40,7 @@ jobs:
           chmod +x build/linux/AFewBuds-3D-Prototype.x86_64
           build/linux/AFewBuds-3D-Prototype.x86_64 --headless --quit-after 120 2>&1 | tee build/runtime.log
           if grep -E 'SCRIPT ERROR|^ERROR:' build/runtime.log; then exit 1; fi
-          XDG_DATA_HOME="$(mktemp -d)" build/linux/AFewBuds-3D-Prototype.x86_64 --headless --script res://prototype/export_smoke.gd 2>&1 | tee build/exported-world.log
+          XDG_DATA_HOME="$(mktemp -d)" timeout 60s build/linux/AFewBuds-3D-Prototype.x86_64 --headless -- --export-smoke 2>&1 | tee build/exported-world.log
           if grep -E 'SCRIPT ERROR|^ERROR:' build/exported-world.log; then exit 1; fi
           grep -q 'EXPORTED_WORLD_RESULT: PASS' build/exported-world.log
           cp README.md build/windows/README.md

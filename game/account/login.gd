@@ -22,6 +22,10 @@ var center: CenterContainer
 var scroll: ScrollContainer
 
 func _ready() -> void:
+	# Release templates disable --script; CI enters an isolated guest smoke test here.
+	if DisplayServer.get_name() == "headless" and OS.get_cmdline_user_args().has("--export-smoke"):
+		add_child(load("res://prototype/export_smoke.gd").new())
+		return
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var bg := ColorRect.new()
