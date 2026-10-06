@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.10.0 preview** (doors open away from the player; cloud-test .83 features retained).
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.11.0 preview** (cloud-test .96-east.2 gameplay with desktop controls and a portrait phone).
 
 ## Play the Windows build
 
@@ -24,6 +24,14 @@ GitHub requires you to be signed in to download artifacts from this repository. 
 | F5 | Save local progress |
 
 Sign in with your existing AFewBuds account, or choose **CONTINUE LOCAL CAREER** to play as a guest. Then click **RESUME GAME**. Look for the green crosshair and `[ E ]` prompt. Walk through the open doorway into the grow room; no camera transition is required. Menus release the cursor and stop player movement.
+
+## Desktop settings
+
+Press **Escape → Controls & Display Settings** for key rebinding, mouse/controller look sensitivity, inverted vertical look, window resolutions (960×600 through 3840×2160), and fullscreen at your display resolution. Escape remains available if you change a binding. Preferences stay on this computer, outside your shared career save.
+
+Controller: left stick walks, right stick looks, A/Cross interacts, Y/Triangle opens the phone, X/Square checks visitors, L3 sprints, and Start pauses. In menus, left stick moves the pointer, A/Cross clicks or holds to drag, right stick scrolls, and B/Circle returns. Keyboard input is still needed for account credentials and key rebinding. Hardware/controller mapping needs a Windows playtest.
+
+The phone uses a roughly 1:2 portrait shell, with wrapping app content and a compact dock. Leaderboards show the signed-in username and select your exact account-ID row from the server. Report failures are visible instead of silently ignored. A live signed-in check is still required for the reported zero-stat issue; public server totals were nonzero during investigation.
 
 ## First test route
 

@@ -16,6 +16,7 @@ var busy := false
 var blocked := false
 var launched := false
 var generation := 0
+var leaderboard_error := ""
 var last_status := "Local guest save"
 var remember := false
 
@@ -216,10 +217,14 @@ func flush() -> void:
 		remote_signature = fingerprint(outgoing)
 		write_json(cache_path(), {"save": baseline, "remote_signature": remote_signature, "dirty": not pending.is_empty()})
 		set_status("Cloud saved — " + str(session.username))
-		await request_rpc("afb_leaderboard_report", {"p_session_token": session.session_token})
+		var report := await request_rpc("afb_leaderboard_report", {"p_session_token": session.session_token})
+		if epoch != generation: break
+		leaderboard_error = str(report.get("error", ""))
+		if not leaderboard_error.is_empty():set_status("Career saved. Leaderboard report failed — retry saving.")
 	busy = false
 
 func sign_out() -> void:
+	leaderboard_error = ""
 	generation += 1
 	launched = false
 	session.clear()

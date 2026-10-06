@@ -161,12 +161,13 @@ func refresh_rankings() -> void:
 	if result.has("error"):
 		notice.text=str(result.error)
 		return
-	var me: Variant=result.get("me")
+	var me: Variant=own_ranking(result,AFBCloud.session)
 	notice.text=("THIS WEEK" if selected_period=="weekly" else "LIFETIME")+" · "+selected_metric.replace("_"," ").capitalize()
 	if me is Dictionary:
-		notice.text+="\nYour rank: #%s — %s" % [me.get("rank","—"),ranking_value(me,selected_metric)]
+		notice.text+="\n"+str(AFBCloud.session.get("username","Your account"))+" — your rank: #%s — %s" % [me.get("rank","—"),ranking_value(me,selected_metric)]
 	elif AFBCloud.session.is_empty():notice.text+="\nSign in to see your own rank."
 	else:notice.text+="\nYour account is not ranked for this period yet."
+	if not AFBCloud.leaderboard_error.is_empty():notice.text+="\nCareer saved, but leaderboard reporting failed: "+AFBCloud.leaderboard_error
 	if AFBCloud.blocked or not AFBCloud.pending.is_empty():notice.text+="\nDesktop progress is not synced yet. "+AFBCloud.last_status
 	for row in result.get("top",[]):
 		var label:=Label.new()
@@ -175,3 +176,15 @@ func refresh_rankings() -> void:
 			label.text+="  (You)";label.modulate=Color("b6f38a")
 		label.custom_minimum_size.y=34
 		listing.add_child(label)
+
+func own_ranking(result: Dictionary, session: Dictionary) -> Variant:
+	# The public row and personal summary must identify the same account.
+	# Prefer the exact account-id row when the response includes it; never use
+	# a local career counter or another player's value as a fallback.
+	var account_id:=str(session.get("account_id",""))
+	if account_id.is_empty():return null
+	for row in result.get("top",[]):
+		if row is Dictionary and str(row.get("account_id",""))==account_id:return row
+	var me: Variant=result.get("me")
+	if me is Dictionary and str(me.get("account_id",""))==account_id:return me
+	return null

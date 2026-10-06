@@ -22,22 +22,25 @@ func _ready() -> void:
 	add_child(shape)
 
 func look(relative: Vector2) -> void:
-	yaw = wrapf(yaw - relative.x * LOOK_SENSITIVITY, -PI, PI)
-	pitch = clampf(pitch - relative.y * LOOK_SENSITIVITY, -1.35, 1.35)
+	yaw = wrapf(yaw - relative.x * LOOK_SENSITIVITY * DesktopInput.mouse_sensitivity, -PI, PI)
+	pitch = clampf(pitch - relative.y * LOOK_SENSITIVITY * DesktopInput.mouse_sensitivity * (-1.0 if DesktopInput.invert_y else 1.0), -1.35, 1.35)
 	sync_camera()
 
 func _physics_process(delta: float) -> void:
 	if get_parent().neighborhood.couch_seated:
-		if enabled and (Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_D)):
+		if enabled and Input.get_vector("fp_left","fp_right","fp_forward","fp_backward").length() > 0.05:
 			get_parent().neighborhood._toggle_couch()
 		else:
 			sync_camera()
 			return
 	var direction := Vector3.ZERO
 	if enabled:
-		var axis := Vector2(float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A)), float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W))).limit_length()
+		var axis := Input.get_vector("fp_left","fp_right","fp_forward","fp_backward")
+		var aim: Vector2 = DesktopInput.stick(true) * DesktopInput.controller_sensitivity * delta * 2.2
+		yaw = wrapf(yaw - aim.x, -PI, PI)
+		pitch = clampf(pitch - aim.y * (-1.0 if DesktopInput.invert_y else 1.0), -1.35, 1.35)
 		direction = Basis(Vector3.UP, yaw) * Vector3(axis.x, 0, axis.y)
-	var speed := RUN_SPEED if Input.is_physical_key_pressed(KEY_SHIFT) else WALK_SPEED
+	var speed := RUN_SPEED if Input.is_action_pressed("fp_sprint") else WALK_SPEED
 	velocity.x = direction.x * speed
 	velocity.z = direction.z * speed
 	velocity.y = -0.5 if is_on_floor() else velocity.y - 18.0 * delta

@@ -58,6 +58,8 @@ func run() -> void:
 	board.period="weekly";await board.refresh_rankings()
 	check("$1250" in board.notice.text,"Weekly own value uses weekly server response")
 	check(board.ranking_value({},"revenue")=="Unavailable","Missing stats never become fabricated zeros")
+	check(board.own_ranking({"top":[{"account_id":"fixture-id","value":36068,"rank":4}],"me":{"account_id":"fixture-id","value":0}},autoload.session).value==36068,"Own summary uses matching authoritative public row instead of inconsistent zero")
+	check(board.own_ranking({"top":[],"me":{"account_id":"other-id","value":999999}},autoload.session)==null,"A different account cannot supply own stats")
 	board.queue_free();autoload.sign_out()
 	login.queue_free()
 	await process_frame

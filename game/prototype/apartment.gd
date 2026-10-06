@@ -87,15 +87,15 @@ func _process(delta: float) -> void:
 	fp_prompt.visible = not modal
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
-	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.10.0 PREVIEW\n%s   ·   %s   ·   $%d" % [neighborhood.location_label(fp_player.position) if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
-	fp_hint.text = "WASD  Walk     E  Interact     P  Phone     Esc  Pause     F5  Save"
+	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.11.0 PREVIEW\n%s   ·   %s   ·   $%d" % [neighborhood.location_label(fp_player.position) if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
+	fp_hint.text = "Left stick: walk · Right stick: look · A: interact · Y: phone · Start: pause" if DesktopInput.controller_active else "%s/%s/%s/%s Walk · %s Interact · %s Phone · Esc Pause · %s Save" % [DesktopInput.label("forward"),DesktopInput.label("left"),DesktopInput.label("backward"),DesktopInput.label("right"),DesktopInput.label("interact"),DesktopInput.label("phone"),DesktopInput.label("save")]
 	_hide_old_navigation()
 
 func _input(event: InputEvent) -> void:
-	if not fp_ready:
+	if not fp_ready or is_instance_valid(DesktopInput.settings) or not DesktopInput.rebinding.is_empty():
 		return
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_ESCAPE:
+	if event.is_pressed() and not event.is_echo():
+		if DesktopInput.is_back(event):
 			if not _close_active_panel():
 				if session_paused:
 					_resume_gameplay()
@@ -103,19 +103,21 @@ func _input(event: InputEvent) -> void:
 					_pause_gameplay()
 			get_viewport().set_input_as_handled()
 			return
-		if event.keycode == KEY_F5:
+		if get_viewport().gui_get_focus_owner() is LineEdit or get_viewport().gui_get_focus_owner() is TextEdit:
+			return
+		if DesktopInput.pressed(event,"save"):
 			_phone_manual_save()
 			get_viewport().set_input_as_handled()
 			return
-		if event.keycode == KEY_T and neighborhood.property_opportunity.touring and not _any_modal_open():
+		if DesktopInput.pressed(event,"tour") and neighborhood.property_opportunity.touring and not _any_modal_open():
 			neighborhood.property_opportunity.show_details()
 			get_viewport().set_input_as_handled()
 			return
-		if event.keycode == KEY_P and (phone_open or not _any_modal_open()):
+		if DesktopInput.pressed(event,"phone") and (phone_open or not _any_modal_open()):
 			_toggle_phone()
 			get_viewport().set_input_as_handled()
 			return
-		if event.keycode == KEY_R and not _any_modal_open() and not daily_report_pending:
+		if DesktopInput.pressed(event,"visitor") and not _any_modal_open() and not daily_report_pending:
 			_update_target()
 			if fp_target != null and str(fp_target.get_meta("interaction_id", "")) == "station_door":
 				if customer_waiting and peephole_checked:
@@ -124,7 +126,7 @@ func _input(event: InputEvent) -> void:
 					_open_peephole()
 			get_viewport().set_input_as_handled()
 			return
-		if event.keycode == KEY_E and not _any_modal_open() and not daily_report_pending:
+		if DesktopInput.pressed(event,"interact") and not _any_modal_open() and not daily_report_pending:
 			_use_target()
 			get_viewport().set_input_as_handled()
 			return
@@ -373,7 +375,7 @@ func _update_target() -> void:
 	fp_prompt.text = ""
 	fp_control = neighborhood.house_controls.nearby() if fp_target == null else ""
 	if not fp_control.is_empty():
-		fp_prompt.text = "[ E ]   " + neighborhood.house_controls.title(fp_control)
+		fp_prompt.text = "[ " + DesktopInput.label("interact") + " ]   " + neighborhood.house_controls.title(fp_control)
 	if fp_target != null:
 		var label_text := ""
 		if fp_target.has_meta("plant_slot"):
@@ -382,10 +384,10 @@ func _update_target() -> void:
 			label_text = "Pot %d · %s" % [i + 1, str(slot.get("strain", "")) if int(slot.get("stage", -1)) >= 0 else "Plant a seed"]
 		else:
 			var id := str(fp_target.get_meta("interaction_id"))
-			label_text = {"station_locker": "Dealer Storage", "station_workbench": "Packaging bench", "station_storage": "Product storage", "storage_vault": "Storage vault", "station_door": ("Close front door" if neighborhood.door_open else "Open front door") + ("   [ R ] Answer visitor" if customer_waiting else "   [ R ] Peephole"), "interior_door": "Open / close door", "inspect_house": "Inspect house", "station_system": "Grow-room controls", "station_supply": "Seeds & fertilizer", "main_light_switch": "Main lights", "floor_lamp": "Floor lamp", "grow_room_light_switch": "Grow-room light"}.get(id, id.replace("_", " ").capitalize())
+			label_text = {"station_locker": "Dealer Storage", "station_workbench": "Packaging bench", "station_storage": "Product storage", "storage_vault": "Storage vault", "station_door": ("Close front door" if neighborhood.door_open else "Open front door") + ("   [ " + DesktopInput.label("visitor") + " ] Answer visitor" if customer_waiting else "   [ " + DesktopInput.label("visitor") + " ] Peephole"), "interior_door": "Open / close door", "inspect_house": "Inspect house", "station_system": "Grow-room controls", "station_supply": "Seeds & fertilizer", "main_light_switch": "Main lights", "floor_lamp": "Floor lamp", "grow_room_light_switch": "Grow-room light"}.get(id, id.replace("_", " ").capitalize())
 			if id == "interior_door" and fp_target.get_meta("door_controller").name == "HouseEntrance" and not neighborhood.get_node("HouseEntrance").opened and not neighborhood.property_opportunity.touring and neighborhood.get_node("HouseEntrance").to_local(fp_player.position).z >= 0.0:
 				label_text = "View house details" if property_offer_unlocked else "House not available yet"
-		fp_prompt.text = "[ E ]   " + label_text
+		fp_prompt.text = "[ " + DesktopInput.label("interact") + " ]   " + label_text
 	fp_crosshair.modulate = Color("b6f38a") if fp_target != null or not fp_control.is_empty() else Color(1, 1, 1, 0.7)
 
 func _use_target() -> void:
@@ -426,13 +428,13 @@ func _setup_desktop_panels() -> void:
 		panel.offset_bottom = 330
 	# Phone gets a portrait shell; workstation panels keep their wider layout.
 	var screen: Vector2 = get_viewport().get_visible_rect().size
-	var phone_height: float = minf(680.0, screen.y - 116.0)
-	var phone_width: float = minf(460.0, phone_height * 0.68)
+	var phone_height: float = minf(740.0, screen.y - 112.0)
+	var phone_width: float = phone_height * 0.49
 	phone_panel.set_anchors_preset(Control.PRESET_CENTER)
 	phone_panel.offset_left = -phone_width / 2.0
 	phone_panel.offset_right = phone_width / 2.0
-	phone_panel.offset_top = -phone_height / 2.0 + 38.0
-	phone_panel.offset_bottom = phone_height / 2.0 + 38.0
+	phone_panel.offset_top = -phone_height / 2.0 + 40.0
+	phone_panel.offset_bottom = phone_height / 2.0 + 40.0
 	phone_title.add_theme_font_size_override("font_size", 24)
 	phone_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	phone_title.clip_text = true
@@ -468,9 +470,11 @@ func _constrain_portrait_phone_content(node: Node) -> void:
 				var label := control as Label
 				label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 				label.clip_text = false
+				label.add_theme_font_size_override("font_size",mini(18,label.get_theme_font_size("font_size")))
 			elif control is Button:
 				var button := control as Button
 				button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				if button.has_meta("phone_app"):button.add_theme_font_size_override("font_size",14)
 		_constrain_portrait_phone_content(child)
 
 func _build_fp_hud() -> void:
@@ -607,3 +611,34 @@ func _refresh_door_alert() -> void:
 		# Base mobile layout otherwise moves the alert down to Y=194 while walking.
 		knock_banner.offset_top = 12
 		knock_banner.offset_bottom = 80
+
+func _build_pause_overlay() -> void:
+	super._build_pause_overlay()
+	var box: VBoxContainer = pause_overlay.get_child(0).get_child(0)
+	box.add_theme_constant_override("separation",10)
+	var settings_button:=Button.new()
+	settings_button.text="CONTROLS & DISPLAY SETTINGS"
+	settings_button.custom_minimum_size.y=48
+	settings_button.pressed.connect(DesktopInput.show_settings)
+	box.add_child(settings_button)
+
+func _refresh_phone() -> void:
+	super._refresh_phone()
+	if phone_list!=null:
+		_constrain_portrait_phone_content(phone_list)
+		call_deferred("_setup_desktop_panels")
+
+func _build_phone_panel() -> void:
+	super._build_phone_panel()
+	var root: VBoxContainer=phone_panel.get_child(0)
+	root.add_theme_constant_override("separation",6)
+	var dock: HBoxContainer=root.get_child(root.get_child_count()-1)
+	dock.add_theme_constant_override("separation",3)
+	for child in dock.get_children():
+		if child is Button:
+			child.add_theme_font_size_override("font_size",11)
+			child.text=child.text.replace("BUSINESSES","SHOP")
+	phone_back_button.custom_minimum_size.x=32
+	var header: HBoxContainer=phone_title.get_parent()
+	header.get_child(header.get_child_count()-1).custom_minimum_size.x=32
+	phone_status_label.add_theme_font_size_override("font_size",11)
