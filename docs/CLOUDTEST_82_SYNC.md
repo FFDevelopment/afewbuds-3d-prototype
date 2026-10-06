@@ -31,7 +31,8 @@ Previous prototype 0.9.5 already included .72 password recovery compatibility.
 First-person capsule, 1.90 m eye height, 76 degree FOV, existing map/fence footprint,
 portrait desktop phone, compact alert, packaging/locker upgrades and account flow
 remain. Physical controls use E with close aiming, room checks and wall occlusion.
-Doors retain swept-capsule clearance for both opening and closing. Mobile joystick,
+Doors retain swept-capsule clearance for both opening and closing. A career saved
+inside the previous unrestricted house tour can still exit before Chapter 4. Mobile joystick,
 double-tap input and web pack loader are not copied. A parked car now occupies the
 upstream curbside location; the road crossing regression test uses a clear lane.
 

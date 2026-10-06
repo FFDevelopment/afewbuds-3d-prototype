@@ -374,6 +374,11 @@ func check_neighborhood() -> void:
 	var gated_door = outside.get_node("HouseEntrance")
 	gated_door.toggle(Vector3(35,0.08,4.8))
 	check(not gated_door.busy and not gated_door.opened, "house entry retains Chapter 4 gate")
+	gated_door.toggle(Vector3(35,0.08,0))
+	await create_timer(0.5).timeout
+	check(gated_door.opened, "older save inside locked house can still exit")
+	gated_door.toggle(Vector3(35,0.08,4.8))
+	await create_timer(0.5).timeout
 	game.property_offer_unlocked = true
 	# Real player capsule tests through both entries, every room, and shop aisles.
 	for spec in [["ShopEntrance",Vector3(20.55,0.08,7.8),Vector3(0,0,-3.2)], ["HouseEntrance",Vector3(35,0.08,4.8),Vector3(0,0,-3.2)]]:
