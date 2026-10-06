@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9.4 preview** (cloud-test .64 integration branch).
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9.5 preview** (cloud-test .72 compatibility pass; prototype map and interiors retained).
 
 ## Play the Windows build
 
@@ -179,3 +179,10 @@ Both buildings now contain furnished interiors in the same continuous neighborho
 The house has living, kitchen/dining, bathroom, bedroom, packing and grow rooms connected by halls. The corner market has a right-side entrance, checkout, two stocked aisles, coolers, coffee counter and enclosed stockroom with a working door. The house sale sign retains the story-gated offer text; preview tours are available without purchasing.
 
 These are **walkthrough interiors**: house ownership, shop sales and operating the new house equipment are not implemented. Existing apartment gameplay continues normally. See `docs/INTERIOR_REVIEW.md` for scope and verification.
+
+
+## Prototype 0.9.5 — cloud-test .72 account compatibility
+
+Added **Forgot password?** on native sign-in. Request a recovery email using your username or full saved email (up to 254 characters). Shared recovery emails require the username. The existing Brevo-backed service sends the link; complete it in your browser and return to desktop sign-in. Delivery failures are shown clearly, and short-window account screens scroll.
+
+The cloud-test .64–.72 comparison found presentation/control changes and recovery fixes, with no additional economy/progression updates. The prototype keeps its newer interiors/map, native movement and desktop phone. Full disposition and tests: `docs/CLOUDTEST_72_SYNC.md`. No backend deployment or database change is included.

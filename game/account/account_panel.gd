@@ -64,7 +64,10 @@ func show_account() -> void:
 	else:
 		text("Signed in as " + str(AFBCloud.session.username))
 		var user := field(str(AFBCloud.session.username), "Username")
+		user.max_length = 20
 		var email := field(str(AFBCloud.session.get("email", "")) if AFBCloud.session.get("email") != null else "", "Recovery email")
+		email.max_length = 254
+		text("Save a recovery email so you can reset a forgotten password. Update emails are optional.")
 		var updates := CheckBox.new()
 		updates.text = "Email me game updates"
 		updates.button_pressed = AFBCloud.session.get("updates_opt_in", false)

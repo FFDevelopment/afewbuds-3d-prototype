@@ -36,11 +36,33 @@ func normalize(value: Variant) -> Dictionary:
 	if value is Dictionary and value.get("value") is Dictionary: value = value.value
 	return value if value is Dictionary else {}
 
+const RECOVERY_RETURN_URL := "https://ffdevelopment.github.io/afewbuds-cloud-test/"
+const RECOVERY_MESSAGE := "If that AFewBuds account has a recovery email, a reset link has been sent."
+
+func request_password_reset(identifier: String) -> Dictionary:
+	var value := identifier.strip_edges()
+	if value.is_empty(): return {"error": "Enter your username or saved recovery email."}
+	if value.length() > 254: return {"error": "Enter an email address of 254 characters or fewer."}
+	var result := await request_json("/functions/v1/afb-password-reset", {"username": value, "return_url": RECOVERY_RETURN_URL})
+	if result.has("error"):
+		match str(result.error):
+			"recovery_email_not_configured": return {"error": "Password recovery email is not configured yet."}
+			"recovery_email_send_failed": return {"error": "The reset email could not be sent right now. Try again later."}
+			"recovery_service_unavailable": return {"error": "Password recovery is temporarily unavailable."}
+		return result
+	if result.get("ok") != true:
+		return {"error": "Unexpected recovery response. Please try again later."}
+	# Never infer or expose whether this identifier matches an account.
+	return {"ok": true, "message": RECOVERY_MESSAGE}
+
 func request_rpc(method: String, payload: Dictionary) -> Dictionary:
+	return await request_json("/rest/v1/rpc/" + method, payload)
+
+func request_json(path: String, payload: Dictionary) -> Dictionary:
 	var request := HTTPRequest.new()
 	request.timeout = 20.0
 	add_child(request)
-	var error := request.request(service_url + "/rest/v1/rpc/" + method, PackedStringArray(["Content-Type: application/json", "apikey: " + API_KEY]), HTTPClient.METHOD_POST, JSON.stringify(payload, "", true, true))
+	var error := request.request(service_url + path, PackedStringArray(["Content-Type: application/json", "apikey: " + API_KEY]), HTTPClient.METHOD_POST, JSON.stringify(payload, "", true, true))
 	if error != OK:
 		request.queue_free()
 		return {"error": "Could not connect. Please retry."}
@@ -53,7 +75,7 @@ func request_rpc(method: String, payload: Dictionary) -> Dictionary:
 		return {"error": "Unexpected account service response. Please retry."}
 	var data := normalize(decoded)
 	if int(response[1]) < 200 or int(response[1]) >= 300:
-		return {"error": str(data.get("message", "Account service unavailable."))}
+		return {"error": str(data.get("error", data.get("message", "Account service unavailable.")))}
 	return data
 
 func fingerprint(save: Dictionary) -> String:

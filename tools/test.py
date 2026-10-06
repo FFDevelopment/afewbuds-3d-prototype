@@ -11,7 +11,21 @@ class FixtureAPI(BaseHTTPRequestHandler):
         payload = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
         valid_key = self.headers.get('apikey', '').startswith('sb_publishable_')
         status = 200
-        if self.path == '/rest/v1/rpc/afb_login' and valid_key and payload.get('p_password') == 'fixture-password':
+        if self.path == '/functions/v1/afb-password-reset':
+            identifier = payload.get('username', '')
+            if not valid_key or payload.get('return_url') != 'https://ffdevelopment.github.io/afewbuds-cloud-test/' or identifier != identifier.strip():
+                status, data = 400, {'error': 'fixture_contract_mismatch'}
+            elif identifier in ('send-failed', 'not-configured', 'unavailable'):
+                status, data = 503, {'error': {'send-failed': 'recovery_email_send_failed', 'not-configured': 'recovery_email_not_configured', 'unavailable': 'recovery_service_unavailable'}[identifier]}
+            elif identifier == 'malformed':
+                data = {}
+            elif identifier == 'false-success':
+                data = {'ok': False}
+            elif identifier == 'long-email' or len(identifier) > 254:
+                status, data = 400, {'error': 'fixture_identifier_invalid'}
+            else:
+                data = {'ok': True, 'message': 'If that AFewBuds account has a recovery email, a reset link has been sent.'}
+        elif self.path == '/rest/v1/rpc/afb_login' and valid_key and payload.get('p_password') == 'fixture-password':
             data = [{'value': {'account_id': 'fixture-id', 'username': 'fixture', 'session_token': 'fixture-session'}}]
         elif self.path == '/rest/v1/rpc/afb_validate_session' and payload.get('p_session_token') == 'fixture-session':
             data = {'account_id': 'fixture-id', 'username': 'fixture'}

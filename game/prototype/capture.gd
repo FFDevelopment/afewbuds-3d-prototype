@@ -27,6 +27,9 @@ func run() -> void:
 	await capture("00-account-entry.png")
 	login.toggle_mode()
 	await capture("00-registration.png")
+	login.set_recovery_mode(true)
+	login.recovery_identifier.text = "full.recovery.address.longer.than.twenty@example.com"
+	await capture("00-password-recovery.png")
 	login.queue_free()
 	await process_frame
 	await root.get_node("AFBCloud").prepare(true)
