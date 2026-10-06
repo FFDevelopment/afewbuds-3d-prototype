@@ -85,11 +85,13 @@ func run() -> void:
 	game._toggle_phone()
 	aim(Vector3(35,0.08,10),Vector3(35,2.4,2))
 	await capture("16-house-yard.png")
+	aim(Vector3(3,0.08,15),Vector3(0,4.0,6))
+	await capture("17-apartment-brick.png")
 	var plan := Camera3D.new()
 	game.add_child(plan)
 	plan.projection = Camera3D.PROJECTION_ORTHOGONAL
-	plan.size = 76
-	plan.position = Vector3(19,70,3)
+	plan.size = 118
+	plan.position = Vector3(20.5,85,3.5)
 	plan.rotation_degrees = Vector3(-90,0,0)
 	plan.environment = game.neighborhood.outdoor_environment
 	plan.make_current()

@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9.1 preview** (cloud-test .64 integration branch).
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9.2 preview** (cloud-test .64 integration branch).
 
 ## Play the Windows build
 
@@ -150,3 +150,12 @@ The exterior layout now follows the supplied top-down reference: starter apartme
 Brick, concrete, asphalt, lawn and roof surfaces use prototype procedural materials, without treating the supplied materials collage as tileable texture maps. A hip roof replaces the stacked-slab house roof. This is still a prototype art pass, not a reproduction of the reference image's finished detail.
 
 QA includes delayed-blocked-door checks, both-direction traversal, actual exterior mesh bounds against the entire apartment, lawn bounds, existing gameplay/account fixture tests, and runtime captures of closed/open door, grow room, street, house yard and top-down layout. Changes are limited to the prototype integration branch.
+
+
+## Prototype 0.9.2 — grounded outer block and future road corridors
+
+Extends continuous ground and the fence perimeter around all outer building lots. Rear and opposite buildings are set back from the alley/street and avoid both side-road corridors. Side roads now join the front street and rear alley and extend unobstructed to the border for future expansion. Sidewalks stop at junctions; asphalt pieces meet without coplanar overlap. Foundation skirts connect outer buildings to the ground.
+
+The apartment lower exterior uses the exact same world-scaled brick material as its upper floors, with separate exterior surfaces preserving interior finishes, the doorway and its existing interaction. A matching exterior window face sits opposite the original interior window.
+
+Checks cover building footprints inside the fence, clear roadway reservations, actual capsule traversal through intersections, physical ground at outer lots/road ends, matching facade material, and previous door/gameplay/account regressions. Only the prototype integration branch is changed.

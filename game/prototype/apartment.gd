@@ -39,7 +39,7 @@ func _ready() -> void:
 	camera.fov = 76.0
 	var saved: Dictionary = AFBCloud.read_json(AFBCloud.settings_path()) if AFBCloud.launched else restored_runtime.get("prototype_player", {})
 	if not saved.is_empty():
-		fp_player.position = Vector3(clampf(float(saved.get("x", 0)), -17.5, 56.5), 0.12, clampf(float(saved.get("z", 1.2)), -17.5, 25.5))
+		fp_player.position = Vector3(clampf(float(saved.get("x", 0)), -31.5, 72.5), 0.12, clampf(float(saved.get("z", 1.2)), -31.5, 38.5))
 		fp_player.yaw = float(saved.get("yaw", 0))
 		fp_player.pitch = clampf(float(saved.get("pitch", 0)), -1.35, 1.35)
 	# Reject invalid/interior-wall positions from stale desktop settings.
@@ -86,7 +86,7 @@ func _process(delta: float) -> void:
 	fp_prompt.visible = not modal
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
-	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.9.1 PREVIEW\n%s   ·   %s   ·   $%d" % ["NEIGHBORHOOD" if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
+	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.9.2 PREVIEW\n%s   ·   %s   ·   $%d" % ["NEIGHBORHOOD" if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
 	fp_hint.text = "WASD  Walk     E  Interact     P  Phone     Esc  Pause     F5  Save"
 	_hide_old_navigation()
 

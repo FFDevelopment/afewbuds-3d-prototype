@@ -286,6 +286,20 @@ func check_neighborhood() -> void:
 			var actual_bounds: AABB = child.global_transform * child.get_aabb()
 			mesh_overlap = mesh_overlap or actual_bounds.intersects(outside.APARTMENT_BOUNDS)
 	check(not mesh_overlap, "actual exterior mesh bounds cannot enter apartment volume")
+	for bounds in outside.building_bounds:
+		var footprint := Rect2(Vector2(bounds.position.x,bounds.position.z),Vector2(bounds.size.x,bounds.size.z))
+		check(outside.MAP_RECT.encloses(footprint), "all buildings remain inside fence footprint")
+		for road in outside.ROAD_RECTS:
+			check(not footprint.intersects(road), "building leaves future road corridor clear")
+	check(outside.get_node("ApartmentBrickFront").material_override == outside.get_node("ApartmentUpper").material_override, "lower exterior shares upper-floor brick material")
+	# Both side roads must connect through front/rear junctions to the border.
+	for x in [-12.0,51.0]:
+		game.fp_player.position = Vector3(x,0.08,-30)
+		check(game.fp_player.move_and_collide(Vector3(0,0,67)) == null, "side-road corridor stays clear through intersections")
+	# Ground support at outer building lots and all four expansion approaches.
+	for point in [Vector3(-24,0.05,-8),Vector3(65,0.05,28),Vector3(0,0.05,-28),Vector3(20,0.05,35),Vector3(-30,0.05,17),Vector3(70,0.05,17)]:
+		var floor_query := PhysicsRayQueryParameters3D.create(point,point-Vector3.UP,1)
+		check(not game.get_world_3d().direct_space_state.intersect_ray(floor_query).is_empty(), "outer lots and road ends have physical ground")
 	for lawn in outside.grass_bounds:
 		check(lawn.position.y >= 3.29 and lawn.end.y <= 8.11, "grass stays in fenced house yard")
 	check(outside.swing_blocked(Vector3(0,0,5)) and not outside.swing_blocked(Vector3(0,0,7)), "inward sweep blocks interior arc but permits exterior operation")
@@ -335,9 +349,10 @@ func check_neighborhood() -> void:
 	game.fp_player.position = Vector3(0, 0.08, 9)
 	var street_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, 14))
 	check(street_hit == null and game.fp_player.position.z > 22, "sidewalk and street are continuously walkable")
+	game.fp_player.position = Vector3(51,0.08,37)
 	var boundary_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, 5))
-	check(boundary_hit != null and game.fp_player.position.z < 26.1, "far fence contains player")
-	game.fp_player.position = Vector3(-17, 0.08, 16)
+	check(boundary_hit != null and game.fp_player.position.z < 39.1, "far fence contains player")
+	game.fp_player.position = Vector3(-31, 0.08, 16)
 	check(game.fp_player.move_and_collide(Vector3(-3, 0, 0)) != null, "side barrier contains player")
 	aim(Vector3(35, 0.08, 5.5), Vector3(35, 1.4, 3.2))
 	await frames()
