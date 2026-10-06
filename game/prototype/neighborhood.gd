@@ -16,6 +16,8 @@ var surface_shader: Shader
 var house_controls: RefCounted
 var client_visits: RefCounted
 var weather: RefCounted
+var property_opportunity: RefCounted
+var bark_material: ShaderMaterial
 var map_doors: Array = []
 var lamps: Array = []
 
@@ -33,6 +35,8 @@ func setup(owner_node: Node3D) -> void:
 		elif child is Label3D:
 			child.set_draw_flag(Label3D.FLAG_DOUBLE_SIDED, false)
 	outdoor_sun.light_cull_mask = 2
+	property_opportunity=load("res://prototype/property_opportunity.gd").new()
+	property_opportunity.setup(self)
 
 func _surface(kind: int, color: String) -> ShaderMaterial:
 	var key := str(kind)+color
@@ -123,6 +127,11 @@ func _raw_piece(label_text: String, pos: Vector3, size: Vector3, color: String, 
 	elif label_text in ["EntryTrim","EntryLintel","WindowFrame","WindowSill"]:
 		tile=7
 	mesh.material_override = _material(tint,tile)
+	if label_text == "TreeTrunk":
+		if bark_material == null:
+			bark_material=ShaderMaterial.new()
+			bark_material.shader=load("res://prototype/bark.gdshader")
+		mesh.material_override=bark_material
 	return mesh
 
 func building(label_text: String, pos: Vector3, size: Vector3, color: String, windows: bool = true) -> void:
@@ -386,6 +395,7 @@ func _process(delta: float) -> void:
 	if not is_instance_valid(host) or not host.fp_ready: return
 	active = not indoors(host.fp_player.position)
 	controls.hide()
+	property_opportunity.update(delta)
 	client_visits.update(delta)
 	weather.update(delta)
 	# Keep the animated sky visible through the apartment's real window.
@@ -425,7 +435,7 @@ func refresh_controls() -> void:
 	controls.hide()
 
 func _interact() -> void:
-	host.status_label.text = "Rod's property offer is ready. Walk inside for a preview tour. Ownership is coming later." if host.property_offer_unlocked else "This house is not available yet. Keep building your operation and watch for Rod's text."
+	property_opportunity.show_details()
 
 func location_label(pos: Vector3) -> String:
 	if Rect2(12,-2,10,8).has_point(Vector2(pos.x,pos.z)): return "CENTRAL MARKET"
@@ -517,3 +527,9 @@ func _car_wheel(at: Vector3, radius: float, height: float, color: String, angles
 	wheel.position=at
 	wheel.rotation=angles
 	add_child(wheel)
+
+func use_interior_door(door: Node3D) -> void:
+	if door.name == "HouseEntrance" and not door.opened and not property_opportunity.touring and door.to_local(host.fp_player.position).z >= 0.0:
+		property_opportunity.show_details()
+		return
+	door.toggle(host.fp_player.position)

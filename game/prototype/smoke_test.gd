@@ -369,7 +369,8 @@ func check_neighborhood() -> void:
 	check("not available" in game.status_label.text, "house preview respects locked story state")
 	game.property_offer_unlocked = true
 	game._use_target()
-	check("offer is ready" in game.status_label.text, "house preview reflects unlocked property offer")
+	check(outside.property_opportunity.is_open(), "house preview opens unlocked property details")
+	outside.property_opportunity.end_tour()
 	game.property_offer_unlocked = false
 	var gated_door = outside.get_node("HouseEntrance")
 	gated_door.toggle(Vector3(35,0.08,4.8))
@@ -380,6 +381,7 @@ func check_neighborhood() -> void:
 	gated_door.toggle(Vector3(35,0.08,4.8))
 	await create_timer(0.5).timeout
 	game.property_offer_unlocked = true
+	outside.property_opportunity.touring = true
 	# Real player capsule tests through both entries, every room, and shop aisles.
 	for spec in [["ShopEntrance",Vector3(20.55,0.08,7.8),Vector3(0,0,-3.2)], ["HouseEntrance",Vector3(35,0.08,4.8),Vector3(0,0,-3.2)]]:
 		var door = outside.get_node(spec[0])

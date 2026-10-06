@@ -87,7 +87,7 @@ func _process(delta: float) -> void:
 	fp_prompt.visible = not modal
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
-	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.9.6 PREVIEW\n%s   ·   %s   ·   $%d" % [neighborhood.location_label(fp_player.position) if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
+	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.9.7 PREVIEW\n%s   ·   %s   ·   $%d" % [neighborhood.location_label(fp_player.position) if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
 	fp_hint.text = "WASD  Walk     E  Interact     P  Phone     Esc  Pause     F5  Save"
 	_hide_old_navigation()
 
@@ -105,6 +105,10 @@ func _input(event: InputEvent) -> void:
 			return
 		if event.keycode == KEY_F5:
 			_phone_manual_save()
+			get_viewport().set_input_as_handled()
+			return
+		if event.keycode == KEY_T and neighborhood.property_opportunity.touring and not _any_modal_open():
+			neighborhood.property_opportunity.show_details()
 			get_viewport().set_input_as_handled()
 			return
 		if event.keycode == KEY_P and (phone_open or not _any_modal_open()):
@@ -213,6 +217,7 @@ func _phone_safe_quit() -> void:
 	_show_save_notification("SAVE & SLEEP", AFBCloud.last_status)
 
 func _any_modal_open() -> bool:
+	if neighborhood != null and neighborhood.property_opportunity != null and neighborhood.property_opportunity.is_open(): return true
 	return fp_station_opening or is_instance_valid(account_overlay) or super._any_modal_open()
 
 func _open_web_account_settings() -> void:
@@ -235,6 +240,9 @@ func _on_cloud_status(message: String) -> void:
 	if AFBCloud.blocked and not session_paused: _pause_gameplay()
 
 func _close_active_panel() -> bool:
+	if neighborhood.property_opportunity.is_open():
+		neighborhood.property_opportunity.end_tour()
+		return true
 	if is_instance_valid(account_overlay):
 		account_overlay.close()
 		return true
@@ -367,6 +375,8 @@ func _update_target() -> void:
 		else:
 			var id := str(fp_target.get_meta("interaction_id"))
 			label_text = {"station_locker": "Dealer Storage", "station_workbench": "Packaging bench", "station_storage": "Product storage", "storage_vault": "Storage vault", "station_door": ("Close front door" if neighborhood.door_open else "Open front door") + ("   [ R ] Answer visitor" if customer_waiting else "   [ R ] Peephole"), "interior_door": "Open / close door", "inspect_house": "Inspect house", "station_system": "Grow-room controls", "station_supply": "Seeds & fertilizer", "main_light_switch": "Main lights", "floor_lamp": "Floor lamp", "grow_room_light_switch": "Grow-room light"}.get(id, id.replace("_", " ").capitalize())
+			if id == "interior_door" and fp_target.get_meta("door_controller").name == "HouseEntrance" and not neighborhood.get_node("HouseEntrance").opened and not neighborhood.property_opportunity.touring and neighborhood.get_node("HouseEntrance").to_local(fp_player.position).z >= 0.0:
+				label_text = "View house details" if property_offer_unlocked else "House not available yet"
 		fp_prompt.text = "[ E ]   " + label_text
 	fp_crosshair.modulate = Color("b6f38a") if fp_target != null or not fp_control.is_empty() else Color(1, 1, 1, 0.7)
 
@@ -389,7 +399,7 @@ func _use_target() -> void:
 			"station_system": _open_system_control_panel()
 			"station_door": neighborhood.toggle_door()
 			"inspect_house": neighborhood._interact()
-			"interior_door": fp_target.get_meta("door_controller").toggle(fp_player.position)
+			"interior_door": neighborhood.use_interior_door(fp_target.get_meta("door_controller"))
 			_: _activate_room_interaction(id)
 	if _any_modal_open():
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

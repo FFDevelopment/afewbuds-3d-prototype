@@ -427,6 +427,7 @@ var phone_text_messages: Array[Dictionary] = []
 var phone_text_unread: int = 0
 var chapter_four_story_stage: int = 0
 var property_offer_unlocked: bool = false
+var property_opportunity_state: Dictionary = {}
 var critical_staff_event_active: bool = false
 var dealer_arrested: bool = false
 var dealer_bail_due: int = 0
@@ -9503,7 +9504,8 @@ func _save_game() -> void:
 		"advancement_stats": advancement_stats,
 		"advancement_claimed": advancement_claimed,
 		"chapter_four_story_stage": chapter_four_story_stage,
-		"property_offer_unlocked": property_offer_unlocked
+		"property_offer_unlocked": property_offer_unlocked,
+		"property_opportunity_state": property_opportunity_state
 	}
 	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -9769,6 +9771,8 @@ func _load_game() -> void:
 		advancement_claimed = loaded_advancement_claimed as Dictionary
 	chapter_four_story_stage = clampi(int(data.get("chapter_four_story_stage", chapter_four_story_stage)), 0, 6)
 	property_offer_unlocked = bool(data.get("property_offer_unlocked", property_offer_unlocked))
+	var saved_property: Variant = data.get("property_opportunity_state", {})
+	if saved_property is Dictionary: property_opportunity_state = saved_property.duplicate(true)
 	if not had_advancement_stats:
 		_bootstrap_advancement_stats_from_state()
 

@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9.6 preview** (cloud-test .82 visuals, saved room controls and client appointments; native movement retained).
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9.7 preview** (cloud-test .83 property inspection and corrected tree bark; native movement retained).
 
 ## Play the Windows build
 
@@ -200,3 +200,14 @@ The existing account/login and shared career connection are unchanged.
 Single-session enforcement is deferred.
 
 See [the synchronization notes](docs/CLOUDTEST_82_SYNC.md) for source scope and tests.
+
+
+## Prototype 0.9.7 — cloud-test .83 and tree bark
+
+Tree trunks now use a separate brown bark shader instead of the ground gravel tile.
+Rod’s existing property offer unlocks a desktop property-details panel: press E at
+the sale sign or closed house entrance, then Tour House. Walk through the six rooms
+and spend two active seconds in each to save inspection progress. Press T while
+touring to review the property, or Escape to close details/end the tour.
+Purchasing, payments, relocation and single-session enforcement remain deferred.
+See [the .83 synchronization notes](docs/CLOUDTEST_83_SYNC.md).
