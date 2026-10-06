@@ -300,6 +300,14 @@ func check_neighborhood() -> void:
 	for point in [Vector3(-24,0.05,-8),Vector3(65,0.05,28),Vector3(0,0.05,-28),Vector3(20,0.05,35),Vector3(-30,0.05,17),Vector3(70,0.05,17)]:
 		var floor_query := PhysicsRayQueryParameters3D.create(point,point-Vector3.UP,1)
 		check(not game.get_world_3d().direct_space_state.intersect_ray(floor_query).is_empty(), "outer lots and road ends have physical ground")
+	var paths_clear := true
+	for child in outside.get_children():
+		if child is MeshInstance3D and str(child.name).begins_with("EntrancePath"):
+			var path_bounds: AABB = child.global_transform * child.get_aabb()
+			var path_rect := Rect2(Vector2(path_bounds.position.x,path_bounds.position.z),Vector2(path_bounds.size.x,path_bounds.size.z))
+			for road in outside.ROAD_RECTS: paths_clear = paths_clear and not path_rect.intersects(road)
+	check(paths_clear, "entrance paths end at sidewalks without entering roads")
+	check(outside.get_node("House").mesh.size.is_equal_approx(Vector3(20,3.5,17)), "larger house reserves intended interior footprint")
 	for lawn in outside.grass_bounds:
 		check(lawn.position.y >= 3.29 and lawn.end.y <= 8.11, "grass stays in fenced house yard")
 	check(outside.swing_blocked(Vector3(0,0,5)) and not outside.swing_blocked(Vector3(0,0,7)), "inward sweep blocks interior arc but permits exterior operation")

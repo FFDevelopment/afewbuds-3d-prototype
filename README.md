@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9.2 preview** (cloud-test .64 integration branch).
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9.3 preview** (cloud-test .64 integration branch).
 
 ## Play the Windows build
 
@@ -159,3 +159,14 @@ Extends continuous ground and the fence perimeter around all outer building lots
 The apartment lower exterior uses the exact same world-scaled brick material as its upper floors, with separate exterior surfaces preserving interior finishes, the doorway and its existing interaction. A matching exterior window face sits opposite the original interior window.
 
 Checks cover building footprints inside the fence, clear roadway reservations, actual capsule traversal through intersections, physical ground at outer lots/road ends, matching facade material, and previous door/gameplay/account regressions. Only the prototype integration branch is changed.
+
+
+## Prototype 0.9.3 — windows, entrances and sidewalk continuity
+
+Background buildings now have windows and sills on all exposed elevations. Street-facing entrances include door frames, glass panels, handles, canopies and short paths joining sidewalks. Opposite-row entrances face the main street; outer-house entrances face their side roads. Corner-shop and house entrance detailing uses their existing facade positions. These are closed exterior buildings; this update does not unlock additional interiors.
+
+Sidewalks continue along both sides of the extended side roads and wrap into front/rear cross streets. The rear alley keeps a clear four-metre roadway while gaining an inner sidewalk; parking and rear-yard pavement stop at that sidewalk. Road corridors remain unobstructed.
+
+Verified in Godot runtime captures and the existing collision, road, door, game and account fixture suites. Prototype integration branch only.
+
+The house footprint is enlarged from 16 × 11 m to 20 × 17 m (340 m² gross), about twice the starter apartment footprint. Its roof, lawn and side boundaries follow the larger shell. The rear alley, sidewalk, background row and north fence move back four metres to maintain clearance. This reserves space for a later house interior; ownership and the interior are not added here. The eastward road remains reserved for the supplied future expansion concept.

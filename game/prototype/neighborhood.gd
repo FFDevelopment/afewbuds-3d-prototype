@@ -5,8 +5,8 @@ const HOUSE_ENTRY := Vector3(35, 1.4, 3.2)
 const APARTMENT_BOUNDS := AABB(Vector3(-5.1, 0, -10.3), Vector3(10.2, 4.4, 16.4))
 var door_open := false
 var door_tween: Tween
-const MAP_RECT := Rect2(-32, -32, 105, 71)
-const ROAD_RECTS := [Rect2(-32,12,105,10), Rect2(-32,-17,105,6), Rect2(-15,-32,6,71), Rect2(48,-32,6,71)]
+const MAP_RECT := Rect2(-32, -36, 105, 75)
+const ROAD_RECTS := [Rect2(-32,12,105,10), Rect2(-32,-21,105,4), Rect2(-15,-36,6,75), Rect2(48,-36,6,75)]
 var building_bounds: Array[AABB] = []
 var grass_bounds: Array[Rect2] = []
 var surface_shader: Shader
@@ -62,13 +62,52 @@ func building(label_text: String, pos: Vector3, size: Vector3, color: String, wi
 		piece(label_text+"Foundation",Vector3(pos.x+size.x/2,-0.08,pos.z+size.z/2),Vector3(size.x,0.16,size.z),"777567",2)
 	piece(label_text, pos + size / 2.0, size, color, 1)
 	piece(label_text + "Roof", pos + Vector3(size.x/2, size.y+0.1, size.z/2), Vector3(size.x+0.3, 0.2, size.z+0.3), "454647", 3)
+	var front := Vector3.FORWARD if label_text == "OppositeBuilding" else Vector3.BACK
+	if label_text == "OuterHouse": front = Vector3.RIGHT if pos.x < 0 else Vector3.LEFT
+	var center := pos + size/2.0
+	var door_center := Vector3(center.x,0,center.z) + front * (size.z/2 if front.z != 0 else size.x/2)
 	if windows:
-		for row in range(int(size.y / 2.7)):
-			for col in range(int(size.x / 2.4)):
-				var point := pos + Vector3(1.2 + col*2.4, 1.7+row*2.7, size.z+0.04)
-				piece("WindowFrame", point, Vector3(0.95,1.35,0.08), "c7baa1")
-				piece("WindowGlass", point+Vector3(0,0,0.05), Vector3(0.79,1.17,0.03), "46595c")
-				piece("WindowMullion", point+Vector3(0,0,0.075), Vector3(0.04,1.17,0.02), "c7baa1")
+		for normal in [Vector3.BACK,Vector3.FORWARD,Vector3.LEFT,Vector3.RIGHT]:
+			var tangent := Vector3.RIGHT if normal.z != 0 else Vector3.BACK
+			var width: float = size.x if normal.z != 0 else size.z
+			var depth: float = size.z if normal.z != 0 else size.x
+			var columns := maxi(2,int(width/2.4))
+			for row in range(int(size.y/2.7)):
+				for col in range(columns):
+					var offset := (float(col)+0.5)*width/columns-width/2
+					if is_zero_approx(pos.y) and normal == front and row == 0 and absf(offset) < 1.4: continue
+					var point: Vector3 = Vector3(center.x,pos.y+1.7+row*2.7,center.z)+normal*(depth/2+0.05)+tangent*offset
+					facade_window(point,normal)
+	if is_zero_approx(pos.y) and windows:
+		entrance(door_center,front)
+
+func facade_part(label_text: String, at: Vector3, size: Vector3, normal: Vector3, color: String) -> void:
+	piece(label_text,at,size if normal.z != 0 else Vector3(size.z,size.y,size.x),color)
+
+func facade_window(at: Vector3, normal: Vector3) -> void:
+	facade_part("WindowFrame",at,Vector3(0.95,1.35,0.1),normal,"c7baa1")
+	facade_part("WindowGlass",at+normal*0.065,Vector3(0.79,1.17,0.035),normal,"46595c")
+	facade_part("WindowMullion",at+normal*0.09,Vector3(0.04,1.17,0.025),normal,"c7baa1")
+	facade_part("WindowSill",at+Vector3(0,-0.72,0)+normal*0.07,Vector3(1.08,0.1,0.24),normal,"a69f90")
+
+func entrance(at: Vector3, normal: Vector3) -> void:
+	var tangent := Vector3.RIGHT if normal.z != 0 else Vector3.BACK
+	facade_part("EntryRecess",at+Vector3.UP*1.3+normal*0.025,Vector3(1.55,2.6,0.045),normal,"252a27")
+	facade_part("ExteriorDoor",at+Vector3.UP*1.22+normal*0.055,Vector3(1.18,2.44,0.065),normal,"4a493d")
+	for side in [-1.0,1.0]:
+		facade_part("EntryTrim",at+Vector3.UP*1.3+tangent*side*0.76+normal*0.13,Vector3(0.12,2.6,0.26),normal,"c7baa1")
+	facade_part("EntryLintel",at+Vector3.UP*2.65+normal*0.13,Vector3(1.65,0.16,0.26),normal,"c7baa1")
+	facade_part("DoorGlass",at+Vector3.UP*1.65+normal*0.10,Vector3(0.72,0.8,0.025),normal,"586e70")
+	facade_part("DoorHandle",at+Vector3.UP*1.05+tangent*0.42+normal*0.14,Vector3(0.055,0.22,0.09),normal,"b6a87e")
+	facade_part("EntryCanopy",at+Vector3.UP*2.95+normal*0.45,Vector3(2.0,0.12,1.0),normal,"414b44")
+	# Flush paths join the nearest sidewalk; these background doors stay closed.
+	var distance: float = 2.5
+	if normal.x > 0: distance = -18.0-at.x
+	elif normal.x < 0: distance = at.x-57.0
+	elif normal.z < 0: distance = at.z-26.0
+	elif at.z < 0: distance = -24.0-at.z
+	distance = maxf(0.6,distance)
+	facade_part("EntrancePath",at+normal*(distance/2)+Vector3(0,-0.052,0),Vector3(1.8,0.11,distance),normal,"a9a394")
 
 func fence(a: Vector3, b: Vector3) -> void:
 	var length := a.distance_to(b)
@@ -105,27 +144,28 @@ func tree(at: Vector3) -> void:
 func _build_block() -> void:
 	# Continuous support under every lot, with the existing apartment cut out.
 	piece("BaseFront",Vector3(20.5,-0.18,22.55),Vector3(105,0.2,32.9),"62665b",3)
-	piece("BaseRear",Vector3(20.5,-0.18,-21.15),Vector3(105,0.2,21.7),"62665b",3)
+	piece("BaseRear",Vector3(20.5,-0.18,-23.15),Vector3(105,0.2,25.7),"62665b",3)
 	piece("BaseLeft",Vector3(-18.55,-0.18,-2.1),Vector3(26.9,0.2,16.4),"62665b",3)
 	piece("BaseRight",Vector3(39.05,-0.18,-2.1),Vector3(67.9,0.2,16.4),"62665b",3)
 	piece("Street", Vector3(20.5,-0.18,17), Vector3(105,0.3,10), "505452",3)
-	piece("RearAlley", Vector3(20.5,-0.18,-14), Vector3(105,0.3,6), "555a57",3)
+	piece("RearAlley", Vector3(20.5,-0.18,-19), Vector3(105,0.3,4), "555a57",3)
 	# Split at intersections to avoid overlapping asphalt surfaces.
 	for x in [-12.0,51.0]:
-		for span in [Vector2(-32,-17),Vector2(-11,12),Vector2(22,39)]:
+		for span in [Vector2(-36,-21),Vector2(-17,12),Vector2(22,39)]:
 			piece("SideStreet",Vector3(x,-0.18,(span.x+span.y)/2),Vector3(6,0.3,span.y-span.x),"505452",3)
 	# Sidewalks stop at side-road junctions instead of running across them.
 	for span in [Vector2(-32,-15),Vector2(-9,48),Vector2(54,73)]:
 		piece("FrontSidewalk",Vector3((span.x+span.y)/2,-0.10,9.1),Vector3(span.y-span.x,0.18,6),"a9a394",2)
 		piece("FarSidewalk",Vector3((span.x+span.y)/2,-0.10,24),Vector3(span.y-span.x,0.18,4),"a9a394",2)
-		piece("AlleySidewalk",Vector3((span.x+span.y)/2,-0.10,-18.5),Vector3(span.y-span.x,0.18,3),"a9a394",2)
-	for x in [-16.5,55.5]:
-		piece("OuterSidewalk",Vector3(x,-0.10,-2.5),Vector3(3,0.18,19),"a9a394",2)
-	piece("ApartmentSideWalkL", Vector3(-7,-0.10,-2), Vector3(3.8,0.18,17), "a9a394",2)
-	piece("ApartmentSideWalkR", Vector3(8.5,-0.10,-2), Vector3(6.6,0.18,17), "a9a394",2)
-	piece("HouseSideWalk", Vector3(45.5,-0.10,-2), Vector3(4.8,0.18,20), "a9a394",2)
-	piece("ShopParking", Vector3(18,-0.10,-7), Vector3(12,0.18,10), "626560",3)
-	piece("HouseRearYard", Vector3(35,-0.10,-9.5), Vector3(16,0.18,3), "686b5c",3)
+		piece("AlleySidewalk",Vector3((span.x+span.y)/2,-0.10,-22.5),Vector3(span.y-span.x,0.18,3),"a9a394",2)
+		piece("InnerAlleySidewalk",Vector3((span.x+span.y)/2,-0.10,-15.7),Vector3(span.y-span.x,0.18,2.6),"a9a394",2)
+	for x in [-16.5,-7.5,46.5,55.5]:
+		for span in [Vector2(-36,-24),Vector2(-14.4,6.1),Vector2(26,39)]:
+			piece("SidewalkReturn",Vector3(x,-0.10,(span.x+span.y)/2),Vector3(3,0.18,span.y-span.x),"a9a394",2)
+	piece("ApartmentSideWalkR", Vector3(8.5,-0.10,-2.15), Vector3(6.6,0.18,16.3), "a9a394",2)
+	piece("ShopParking", Vector3(18,-0.10,-6.15), Vector3(12,0.18,8.3), "626560",3)
+	piece("HouseRearYard", Vector3(35,-0.10,-14.2), Vector3(20,0.18,0.4), "686b5c",3)
+	piece("RearCourtyard",Vector3(8,-0.10,-12.35),Vector3(34,0.18,4.1),"a9a394",2)
 	# Keep the apartment roofline above the actual ceiling, not inside the rooms.
 	building("ApartmentUpper",Vector3(-5.1,4.4,-10.3),Vector3(10.2,5.4,16.4),"8e5743")
 	# Same world-scaled brick material on exterior faces only; interior stays intact.
@@ -142,10 +182,11 @@ func _build_block() -> void:
 	piece("ShopAwning",Vector3(17,2.9,6.6),Vector3(10.3,0.25,1.2),"315e4c",3)
 	for x in [13.0,16.0,19.0,21.0]:
 		piece("ShopFrame",Vector3(x,1.55,6.2),Vector3(0.08,2.5,0.08),"c0b292")
+	entrance(Vector3(17.5,0,6.22),Vector3.BACK)
 	_label("CORNER MARKET",Vector3(17,3.3,6.18),0.008)
-	building("House",Vector3(27,0,-8),Vector3(16,3.5,11),"986848",false)
+	building("House",Vector3(25,0,-14),Vector3(20,3.5,17),"986848",false)
 	# A true sloped hip roof, instead of overlapping stacked slabs.
-	var vertices := PackedVector3Array([Vector3(26.6,3.6,-8.4),Vector3(43.4,3.6,-8.4),Vector3(43.4,3.6,3.4),Vector3(26.6,3.6,3.4),Vector3(32,6,-2.5),Vector3(38,6,-2.5)])
+	var vertices := PackedVector3Array([Vector3(24.6,3.6,-14.4),Vector3(45.4,3.6,-14.4),Vector3(45.4,3.6,3.4),Vector3(24.6,3.6,3.4),Vector3(31,6.8,-5.5),Vector3(39,6.8,-5.5)])
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for index in [0,5,4,0,1,5,1,2,5,2,4,5,2,3,4,3,0,4]:
@@ -156,23 +197,29 @@ func _build_block() -> void:
 	roof.mesh = st.commit()
 	roof.material_override = _surface(4,"383e42")
 	add_child(roof)
-	for x in [29.5,32.0,38.0,40.5]:
+	for x in [27.5,31.0,39.0,42.5]:
 		piece("HouseWindowFrame",Vector3(x,1.8,3.08),Vector3(1.4,1.8,0.14),"d1c3a4")
 		piece("HouseWindow",Vector3(x,1.8,3.17),Vector3(1.2,1.6,0.05),"495f61")
+	for z in [-10.0,-5.0,0.0]:
+		facade_window(Vector3(24.95,1.8,z),Vector3.LEFT)
+		facade_window(Vector3(45.05,1.8,z),Vector3.RIGHT)
+	for x in [28.0,32.0,38.0,42.0]:
+		facade_window(Vector3(x,1.8,-14.05),Vector3.FORWARD)
 	piece("HouseDoor",Vector3(35,1.4,3.13),Vector3(1.7,2.8,0.16),"554630",3)
+	entrance(Vector3(35,0,3.23),Vector3.BACK)
 	piece("HousePath",Vector3(35,-0.08,5.6),Vector3(2.4,0.14,5),"a9a394",2)
-	for x in [30.25,39.75]:
-		var lawn := Rect2(Vector2(x-3.25,3.3),Vector2(6.5,4.8))
+	for x in [29.25,40.75]:
+		var lawn := Rect2(Vector2(x-4.25,3.3),Vector2(8.5,4.8))
 		grass_bounds.append(lawn)
-		piece("HouseLawn",Vector3(x,-0.045,5.7),Vector3(6.5,0.06,4.8),"586d3e",3)
-		fence(Vector3(x-3.25,0,8.2),Vector3(x+3.25,0,8.2))
-	fence(Vector3(27,0,3.2),Vector3(27,0,8.2))
-	fence(Vector3(43,0,3.2),Vector3(43,0,8.2))
+		piece("HouseLawn",Vector3(x,-0.045,5.7),Vector3(8.5,0.06,4.8),"586d3e",3)
+		fence(Vector3(x-4.25,0,8.2),Vector3(x+4.25,0,8.2))
+	fence(Vector3(25,0,3.2),Vector3(25,0,8.2))
+	fence(Vector3(45,0,3.2),Vector3(45,0,8.2))
 	_label("HOUSE FOR SALE",Vector3(40,1.45,8.3),0.005)
 	piece("SaleSignPost",Vector3(40,0.65,8.3),Vector3(0.08,1.3,0.08),"c7baa1")
 	# Rear buildings start beyond the alley, over nine metres behind the grow room.
 	for x in [-5.0,7.0,19.0,31.0]:
-		building("RearBuilding",Vector3(x,0,-27),Vector3(10,8,7),"806957")
+		building("RearBuilding",Vector3(x,0,-31),Vector3(10,8,7),"806957")
 		building("OppositeBuilding",Vector3(x,0,27),Vector3(10,7,7),"817363")
 	# Outer lots flank the side roads, fully inside the expanded border.
 	for x in [-28.0,61.0]:
@@ -180,8 +227,8 @@ func _build_block() -> void:
 			building("OuterHouse",Vector3(x,0,z),Vector3(7,6,7),"806957")
 	# Side-road extensions are deliberately clear to both fence ends.
 	for x in [-12.0,51.0]:
-		for z in range(-30,39,4):
-			if (z >= -18 and z <= -10) or (z >= 11 and z <= 23): continue
+		for z in range(-34,39,4):
+			if (z >= -22 and z <= -16) or (z >= 11 and z <= 23): continue
 			piece("SideRoadStripe",Vector3(x,-0.012,z),Vector3(0.1,0.012,2.0),"c3a04c")
 	for x in [-7.0,9.0,24.5,45.5]:
 		piece("TreeBed",Vector3(x,-0.035,10.5),Vector3(1.5,0.05,1.5),"4c4737",3)
@@ -199,10 +246,10 @@ func _build_block() -> void:
 	for x in [14.0,18.0,22.0]:
 		piece("ParkingLine",Vector3(x,0.004,-7),Vector3(0.06,0.014,4),"b9b9a9")
 	# Continuous visible containment outside the side streets and rear alley.
-	fence(Vector3(-32,0,-32),Vector3(73,0,-32))
+	fence(Vector3(-32,0,-36),Vector3(73,0,-36))
 	fence(Vector3(-32,0,39),Vector3(73,0,39))
-	fence(Vector3(-32,0,-32),Vector3(-32,0,39))
-	fence(Vector3(73,0,-32),Vector3(73,0,39))
+	fence(Vector3(-32,0,-36),Vector3(-32,0,39))
+	fence(Vector3(73,0,-36),Vector3(73,0,39))
 	_label("APARTMENTS",Vector3(0,3.45,6.16),0.006)
 	var sun := DirectionalLight3D.new()
 	outdoor_sun = sun

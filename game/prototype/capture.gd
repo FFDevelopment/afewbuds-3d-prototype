@@ -87,6 +87,10 @@ func run() -> void:
 	await capture("16-house-yard.png")
 	aim(Vector3(3,0.08,15),Vector3(0,4.0,6))
 	await capture("17-apartment-brick.png")
+	aim(Vector3(3,0.08,23),Vector3(0,1.8,27))
+	await capture("18-opposite-entrances.png")
+	aim(Vector3(-12,0.08,5),Vector3(-24,1.8,-5))
+	await capture("19-side-entrances.png")
 	var plan := Camera3D.new()
 	game.add_child(plan)
 	plan.projection = Camera3D.PROJECTION_ORTHOGONAL
