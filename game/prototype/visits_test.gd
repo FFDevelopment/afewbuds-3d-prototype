@@ -120,6 +120,11 @@ func run() -> void:
 	game.camera.position=Vector3(0,1.64,9)
 	visits.update(0.1)
 	check(not game.customer_waiting and not game.knock_player.playing,"Walking away from waiting client converts visit to text")
+	# Stop the final text/knock playbacks and let the audio mixer release them.
+	for player in game.find_children("*", "AudioStreamPlayer", true, false):
+		player.stop()
+		player.stream=null
+	await create_timer(0.15).timeout
 	# Let deferred phone-scroll restoration finish while its controls still exist.
 	await process_frame
 	await process_frame
