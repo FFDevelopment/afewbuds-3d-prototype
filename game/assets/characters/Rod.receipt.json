@@ -1,0 +1,189 @@
+{
+  "name": "AFB_Rod_v1_4",
+  "status": "Lower couch fitted to corrected-size characters; feet grounded and pelvis supported",
+  "character_size_unchanged": true,
+  "seat_top": 0.4682184907339378,
+  "couch_width_depth_preserved": true,
+  "results": {
+    "source/sit_validation.json": {
+      "failures": [],
+      "feet_grounded": true,
+      "foot_clearance": -5.58793544769287e-09,
+      "passed": true,
+      "pelvis_cushion_y": 0.468227803707123,
+      "sit_to_idle_reset": true
+    },
+    "source/godot_validation.json": {
+      "animation_clips": [
+        "bend_test",
+        "idle",
+        "sit",
+        "walk"
+      ],
+      "bone_count": 56,
+      "engine": "4.7.2-stable (official)",
+      "failures": [],
+      "mesh_instances": 1,
+      "passed": true,
+      "vertices": 26601
+    },
+    "source/unchanged_geometry.json": {
+      "passed": true,
+      "character_scale_unchanged": true,
+      "mesh_skin_bone_nodes_unchanged": true,
+      "original_binary_geometry_preserved": true,
+      "blender_source_unchanged": true,
+      "only_runtime_change": "Sitting root position lowered to match the rebuilt couch"
+    }
+  },
+  "files": {
+    "godot/assets/Rod.glb": {
+      "bytes": 2863368,
+      "sha256": "e64c6ec4400c1b1c3993eef31daa9f7304a9c6ae2f7663539ecc3d87f9c4b12c"
+    },
+    "godot/assets/Rod.tscn": {
+      "bytes": 303,
+      "sha256": "4c4c507f70760d42fb3904b6e06e7fccc2824bd3ba4e4a33721d7a613c95cd9c"
+    },
+    "godot/assets/Rod_0.png": {
+      "bytes": 899319,
+      "sha256": "52a2b0f0debc1834ad68fd2cd6ee001ed879825057e01a5e152cc1d98b309b1b"
+    },
+    "godot/assets/Rod_BaseColor.png": {
+      "bytes": 899319,
+      "sha256": "52a2b0f0debc1834ad68fd2cd6ee001ed879825057e01a5e152cc1d98b309b1b"
+    },
+    "godot/assets/rod_material.gd": {
+      "bytes": 659,
+      "sha256": "ff8d1293545a91e5e91a6ac3c89d1e34be9e71133f0ccbf0a3fb18fff82826ee"
+    },
+    "godot/check_rig.gd": {
+      "bytes": 3904,
+      "sha256": "e380b4e37fbd1ac0132e96304033accbeb0efdc650a4626b7e076c9eb2a4effc"
+    },
+    "godot/check_sit.gd": {
+      "bytes": 2151,
+      "sha256": "6d884a6dd95e28c7642c168c49c0ebd00f3f236924c1e135ceb06b2235133450"
+    },
+    "godot/project.godot": {
+      "bytes": 403,
+      "sha256": "76cfc780281f385c7fde9a052438444180b12aa2769f5a2f9857b04f6de88169"
+    },
+    "godot/review.gd": {
+      "bytes": 4165,
+      "sha256": "fb373e52db6aa992bef744176649062625ba7cdd10a422b6feec318ce8c5a01f"
+    },
+    "godot/review.tscn": {
+      "bytes": 164,
+      "sha256": "de16dac2d33602136863f64729203964ac01dc212009072b252374ff8ae9474e"
+    },
+    "preview/Malik_Rod_couch.png": {
+      "bytes": 164874,
+      "sha256": "b822229aa1594c22614791ed93bbebef1d6043bcefd93d30a981a91583ccfe5d"
+    },
+    "preview/Malik_Rod_couch_side.png": {
+      "bytes": 192928,
+      "sha256": "eb3c27de99ffb4e46d20c6224f81b555c4a2a0e069e538fb78b766f3a23d2155"
+    },
+    "preview/Rod_full.png": {
+      "bytes": 1265503,
+      "sha256": "01ed1fa19834508ad05fd6efebc11fcf12ec027fe8db69f28122bbded8e1655a"
+    },
+    "README.txt": {
+      "bytes": 660,
+      "sha256": "a8a5de6f730368b625eec03326e44b0db466af04cfb419dfda7527e8d22660c8"
+    },
+    "SIZE_CORRECTION.txt": {
+      "bytes": 660,
+      "sha256": "a8a5de6f730368b625eec03326e44b0db466af04cfb419dfda7527e8d22660c8"
+    },
+    "source/blender_knee_validation.json": {
+      "bytes": 317,
+      "sha256": "7ad0055a1a4fc6e9d7b7352530c2d301e9cbaadbb77dc39eb02860b06941bfc9"
+    },
+    "source/build_rod.py": {
+      "bytes": 34288,
+      "sha256": "76131a5debcb047dfe7ab1a0a621b31f24d0e23f13da21b963e7bae0f989a527"
+    },
+    "source/finalize_couch_glb.py": {
+      "bytes": 2711,
+      "sha256": "f1a2c462478170dc7241cee61d1ac82dd822b038f28b2fdc0d476a9494711b29"
+    },
+    "source/garment_validation.json": {
+      "bytes": 532,
+      "sha256": "3895b4c401a997c545433709106cdab4f15b35f2b3804e4f8d91c7300718bac8"
+    },
+    "source/godot_validation.json": {
+      "bytes": 204,
+      "sha256": "07e49b358059542364d14e7cc89d7b6dba2b4b8f805c4d9a8462ad5860a5f253"
+    },
+    "source/master_rig/AFB_MasterRig.tscn": {
+      "bytes": 15735,
+      "sha256": "c1781e190be9d98599b52d27765c92a491aa57844408fa2117a94e686e2eb379"
+    },
+    "source/master_rig/bone_contract.json": {
+      "bytes": 8061,
+      "sha256": "a2f822eb3bbc8025d90cd5275f3c40f70fea1076e671cfc77bd4d187490a7281"
+    },
+    "source/master_rig/build_rig.py": {
+      "bytes": 3049,
+      "sha256": "e1bbb2b4541d4ebb9c2a7f148d96a7b99e2ae44473a909d2474102f84edceab4"
+    },
+    "source/master_rig/README.md": {
+      "bytes": 2962,
+      "sha256": "0e90daa51f47f775d92c39e21419681087f709638f711a40db3280d79f721f4c"
+    },
+    "source/mesh_stats.json": {
+      "bytes": 213,
+      "sha256": "fb6652c04c639274a51d41be31c969bdbb1532ddf9900afb1a89236cf13f8335"
+    },
+    "source/package_rod.py": {
+      "bytes": 1754,
+      "sha256": "cd7996bb8b6d99420e7320bfaa89a1b7102d829dfe35f6afd8361fabf1cdc31e"
+    },
+    "source/provenance.json": {
+      "bytes": 817,
+      "sha256": "6de3dbbb130eba424a3c7bbf780cff9c168fde6d64b625333277a9c4022d3b72"
+    },
+    "source/record_provenance.py": {
+      "bytes": 901,
+      "sha256": "0902bc1e465a0a25ac25566d60a6f204671fbc0ee5f077464b1a820c1db0a90f"
+    },
+    "source/Rod.blend": {
+      "bytes": 5960160,
+      "sha256": "a8c8ca021e53ed57d24fd878c2d20575f92b971a4f23c9912e053078b3767a9f"
+    },
+    "source/rod_details.py": {
+      "bytes": 3942,
+      "sha256": "a839a2150606d9b72e884342d0b4acc09e5ebca794308b5c0fdebbe6a4888b4e"
+    },
+    "source/rod_print.py": {
+      "bytes": 4351,
+      "sha256": "7f0547f2b23da34bfb525b9aa5c14af506dd87295c9ec15068596d8ed9a5f4a6"
+    },
+    "source/Rod_ShirtGraphic.png": {
+      "bytes": 96726,
+      "sha256": "b626e0d3830ffb5fb3180a53a9736d79b06d28432daf353fb9c6f98d467cb6e6"
+    },
+    "source/sit_validation.json": {
+      "bytes": 175,
+      "sha256": "5728768d974a6c3b3f2f468afbd58d0f2f9797d5563791c944551296e7adf9e8"
+    },
+    "source/size_revision.json": {
+      "bytes": 471,
+      "sha256": "a7e44baef8f8351303ca4bd470f9f71632700b0431b488755f4c53dbcda36869"
+    },
+    "source/static_validation.json": {
+      "bytes": 577,
+      "sha256": "414c658bb61155e2a0885b5f92ba5390f577b677391bf7eb1b0d360c4b7d82e6"
+    },
+    "source/unchanged_geometry.json": {
+      "bytes": 273,
+      "sha256": "38ed3fd7373df167ce7fcbaa5e26d20b795a6fdb7f5bbdec0631ebee38926043"
+    },
+    "source/validate_glb.py": {
+      "bytes": 3213,
+      "sha256": "ccb01e6732a18c519e3c6e7beadf38bd6f19d37f14966130e7d97271f2b4b4ce"
+    }
+  }
+}

@@ -6,6 +6,11 @@ func run() -> void:
 	get_tree().root.add_child(game)
 	for i in range(6): await get_tree().physics_frame
 	var valid: bool = game.fp_ready and game.neighborhood.tile_textures.size()==9 and game.neighborhood.house_controls.shades.size()==11
+	for character in ["Malik","Rod"]:
+		var model:Node3D=game.neighborhood.location_ops.crew.character_instance(character)
+		valid=valid and model.find_children("*","Skeleton3D",true,false).size()==1
+		model.free()
+	valid=valid and game.neighborhood.has_meta("east_landmarks")
 	game.queue_free()
 	await get_tree().process_frame
 	print("EXPORTED_WORLD_RESULT: PASS" if valid else "EXPORTED_WORLD_RESULT: FAIL")

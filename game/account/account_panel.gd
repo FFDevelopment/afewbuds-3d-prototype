@@ -7,6 +7,8 @@ var metric := "revenue"
 var period := "lifetime"
 var listing: VBoxContainer
 var working := false
+var rankings_again:=false
+var ranking_metrics:=["revenue","sales","dealer_sales","harvests","hybrids","raids","days","career_score"]
 
 func _ready() -> void:
 	layer = 100
@@ -112,8 +114,8 @@ func leave() -> void:
 func show_leaderboard() -> void:
 	text("AFewBuds · Global Leaderboard")
 	var metrics := OptionButton.new()
-	for value in ["Revenue", "Sales", "Days"]: metrics.add_item(value)
-	metrics.item_selected.connect(func(i): metric = ["revenue", "sales", "days"][i]; refresh_rankings())
+	for value in ["Revenue", "Sales", "Dealer sales", "Harvests", "Hybrids", "Raids survived", "Days", "Career score"]: metrics.add_item(value)
+	metrics.item_selected.connect(func(i): metric = ranking_metrics[i]; refresh_rankings())
 	box.add_child(metrics)
 	var periods := OptionButton.new()
 	periods.add_item("Lifetime")
@@ -131,16 +133,45 @@ func show_leaderboard() -> void:
 	button("Close", close)
 	refresh_rankings()
 
+func ranking_value(row: Dictionary, selected_metric: String) -> String:
+	if not row.has("value") or row.value==null:return "Unavailable"
+	return ("$" if selected_metric=="revenue" else "")+str(int(row.value))
+
 func refresh_rankings() -> void:
-	if working: return
-	working = true
-	var result: Dictionary = await AFBCloud.request_rpc("afb_leaderboard_get", {"p_metric": metric, "p_range": period, "p_limit": 25, "p_session_token": AFBCloud.session.get("session_token")})
-	working = false
-	for child in listing.get_children(): child.queue_free()
-	notice.text = str(result.get("error", "Shared rankings across regular and 3D AFewBuds."))
-	if result.get("me") is Dictionary: notice.text += "  Your rank: #" + str(result.me.get("rank", "—"))
-	for row in result.get("top", []):
-		var l := Label.new()
-		l.text = "#%s   %s   —   %s%s" % [row.get("rank", ""), row.get("username", "Player"), "$" if metric == "revenue" else "", row.get("value", 0)]
-		l.custom_minimum_size.y = 34
-		listing.add_child(l)
+	if working:
+		rankings_again=true
+		return
+	working=true
+	var selected_metric:=metric
+	var selected_period:=period
+	notice.text="Refreshing shared rankings…"
+	# Finish the existing save/report path before reading this account's totals.
+	# Never replace server totals with local counters or fabricate a missing zero.
+	if not AFBCloud.session.is_empty() and not AFBCloud.blocked:
+		if game!=null:game._save_game()
+		await AFBCloud.flush()
+		while AFBCloud.busy:await get_tree().process_frame
+	var result: Dictionary=await AFBCloud.request_rpc("afb_leaderboard_get",{"p_metric":selected_metric,"p_range":selected_period,"p_limit":25,"p_session_token":AFBCloud.session.get("session_token")})
+	working=false
+	if selected_metric!=metric or selected_period!=period or rankings_again:
+		rankings_again=false
+		refresh_rankings()
+		return
+	for child in listing.get_children():listing.remove_child(child);child.queue_free()
+	if result.has("error"):
+		notice.text=str(result.error)
+		return
+	var me: Variant=result.get("me")
+	notice.text=("THIS WEEK" if selected_period=="weekly" else "LIFETIME")+" · "+selected_metric.replace("_"," ").capitalize()
+	if me is Dictionary:
+		notice.text+="\nYour rank: #%s — %s" % [me.get("rank","—"),ranking_value(me,selected_metric)]
+	elif AFBCloud.session.is_empty():notice.text+="\nSign in to see your own rank."
+	else:notice.text+="\nYour account is not ranked for this period yet."
+	if AFBCloud.blocked or not AFBCloud.pending.is_empty():notice.text+="\nDesktop progress is not synced yet. "+AFBCloud.last_status
+	for row in result.get("top",[]):
+		var label:=Label.new()
+		label.text="#%s   %s   —   %s" % [row.get("rank",""),row.get("username","Player"),ranking_value(row,selected_metric)]
+		if str(row.get("account_id",""))==str(AFBCloud.session.get("account_id","signed-out")) or str(row.get("username","")).to_lower()==str(AFBCloud.session.get("username","signed-out")).to_lower():
+			label.text+="  (You)";label.modulate=Color("b6f38a")
+		label.custom_minimum_size.y=34
+		listing.add_child(label)

@@ -1,4 +1,5 @@
 extends RefCounted
+const ScalePolicy=preload("res://scripts/scale_policy.gd")
 ## Native procedural interiors. Walls are tessellated around scheduled apertures.
 ## All coordinates share the existing neighborhood; no travel screen or interior teleport.
 var rounder = load("res://scripts/living_couch.gd").new()
@@ -7,6 +8,7 @@ var openings: Array[Dictionary] = []
 
 func box(id: String, at: Vector3, size: Vector3, color: String, kind: int = 0, structural: bool = false) -> MeshInstance3D:
 	var m: MeshInstance3D = world._interior_piece(id,at,size,color,kind)
+	m.set_meta("fit_part",id)
 	m.layers = 2
 	m.set_meta("structural",structural)
 	if id in ["SofaBase","SofaBack","SofaArm","SofaCushion","Mattress","Pillow","ToiletBase","ToiletTank","Basin"]:
@@ -117,16 +119,16 @@ func door(id: String, center: Vector3, width: float, angle: float = 0.0, glazed:
 	pivot.add_child(leaf)
 	var before := world.get_children()
 	if glazed:
-		glass(id+"Glass",Vector3(width/2,1.3,0),width-0.12,2.48,Vector3.RIGHT)
+		glass(id+"Glass",Vector3(width/2,ScalePolicy.DOOR_LEAF_HEIGHT/2,0),width-0.12,ScalePolicy.DOOR_LEAF_HEIGHT-.12,Vector3.RIGHT)
 	else:
-		box(id+"Panel",Vector3(width/2,1.3,0),Vector3(width-0.035,2.6,0.10),"4e5f47",3)
+		box(id+"Panel",Vector3(width/2,ScalePolicy.DOOR_LEAF_HEIGHT/2,0),Vector3(width-0.035,ScalePolicy.DOOR_LEAF_HEIGHT,0.10),"4e5f47",3)
 		box(id+"Inset",Vector3(width/2,1.5,0.065),Vector3(width-0.3,1.65,0.04),"627256",3)
-	box(id+"Handle",Vector3(width-0.18,1.05,0.13),Vector3(0.08,0.24,0.12),"c5b077")
+	box(id+"Handle",Vector3(width-0.18,1.30,0.13),Vector3(0.08,0.24,0.12),"c5b077")
 	for child in world.get_children():
 		if child not in before: child.reparent(leaf,false)
 	var area := Area3D.new()
-	# Fixed header fills the construction clearance above every 2.6 m door leaf.
-	var head := box(id+"FixedHeader",center+Vector3.UP*2.625,Vector3(width+0.08,0.09,0.30),"d0c4ac")
+	# Fixed header fills the construction clearance above the fitted door leaf.
+	var head := box(id+"FixedHeader",center+Vector3.UP*(ScalePolicy.DOOR_OPENING_HEIGHT-.025),Vector3(width+0.08,0.09,0.30),"d0c4ac")
 	head.rotation.y=angle
 	area.collision_layer = 8
 	area.collision_mask = 0
@@ -134,10 +136,10 @@ func door(id: String, center: Vector3, width: float, angle: float = 0.0, glazed:
 	area.set_meta("door_controller",pivot)
 	var collision := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
-	shape.size = Vector3(width,2.6,0.35)
+	shape.size = Vector3(width,ScalePolicy.DOOR_LEAF_HEIGHT,0.35)
 	collision.shape = shape
 	area.add_child(collision)
-	area.position = Vector3(width/2,1.3,0)
+	area.position = Vector3(width/2,ScalePolicy.DOOR_LEAF_HEIGHT/2,0)
 	leaf.add_child(area)
 
 func light(at: Vector3, room: String = "", switch_at: Vector3 = Vector3.ZERO, axis: Vector3 = Vector3.RIGHT, inward: Vector3 = Vector3.BACK) -> void:
@@ -216,7 +218,7 @@ func shop() -> void:
 	wall("ShopWest",Vector3(12,0,-2),8,3.5,Vector3.BACK,[],"925c42",1)
 	wall("ShopEast",Vector3(22,0,-2),8,3.5,Vector3.BACK,[],"925c42",1)
 	wall("ShopRear",Vector3(12,0,-2),10,3.5,Vector3.RIGHT,[],"925c42",1)
-	wall("ShopFront",Vector3(12,0,6),10,3.5,Vector3.RIGHT,[Rect2(0.35,0.45,6.7,2.3),Rect2(7.7,0,1.7,2.65)],"925c42",1)
+	wall("ShopFront",Vector3(12,0,6),10,3.5,Vector3.RIGHT,[Rect2(0.35,0.45,6.7,2.3),Rect2(7.7,0,1.7,ScalePolicy.DOOR_OPENING_HEIGHT)],"925c42",1)
 	glass("ShopDisplay",Vector3(15.7,1.6,6),6.7,2.3,Vector3.RIGHT)
 	for x in [14.0,16.0,18.0]: box("DisplayMullion",Vector3(x,1.6,6),Vector3(0.07,2.3,0.25),"3c493e")
 	door("ShopEntrance",Vector3(20.55,0,6),1.7,0,true)
@@ -224,23 +226,23 @@ func shop() -> void:
 	world._label("CENTRAL MARKET",Vector3(17,3.3,6.18),0.008)
 	# Stockroom is fully enclosed, entered behind checkout through its own door.
 	wall("StockroomEast",Vector3(15.25,0,-2),3.1,3.5,Vector3.BACK,[])
-	wall("StockroomFront",Vector3(12,0,1.1),3.25,3.5,Vector3.RIGHT,[Rect2(1.6,0,1.35,2.65)])
+	wall("StockroomFront",Vector3(12,0,1.1),3.25,3.5,Vector3.RIGHT,[Rect2(1.6,0,1.35,ScalePolicy.DOOR_OPENING_HEIGHT)])
 	door("StockroomDoor",Vector3(14.275,0,1.1),1.35)
 	shelf(Vector3(12.65,0,-0.4),0.75,2.0)
 	shelf(Vector3(14.2,0,-1.55),1.6,0.55)
-	box("Checkout",Vector3(14.0,0.5,3.0),Vector3(3.0,1,0.75),"765b41",3)
-	box("CounterTop",Vector3(14.0,1.04,3.0),Vector3(3.15,0.08,0.9),"3b423b")
-	box("Register",Vector3(14.6,1.21,3),Vector3(0.45,0.26,0.36),"252c29")
-	box("RegisterScreen",Vector3(14.6,1.48,2.97),Vector3(0.42,0.28,0.07),"73958a")
+	box("Checkout",Vector3(14.0,.54,3.0),Vector3(3.0,1.08,0.75),"765b41",3)
+	box("CounterTop",Vector3(14.0,1.12,3.0),Vector3(3.15,0.08,0.9),"3b423b")
+	box("Register",Vector3(14.6,1.29,3),Vector3(0.45,0.26,0.36),"252c29")
+	box("RegisterScreen",Vector3(14.6,1.56,2.97),Vector3(0.42,0.28,0.07),"73958a")
 	for x in [16.6,18.8]: shelf(Vector3(x,0,2.1),0.8,2.3)
 	for x in [17.0,18.6,20.2]:
 		box("CoolerBack",Vector3(x,1.15,-1.7),Vector3(1.5,2.3,0.25),"343e39")
 		shelf(Vector3(x,0,-1.1),1.4,0.8)
 		glass("CoolerGlass",Vector3(x,1.13,-0.63),1.42,2.15,Vector3.RIGHT)
 		box("CoolerHandle",Vector3(x+0.5,1.15,-0.54),Vector3(0.05,0.45,0.08),"bcc3b1")
-	table(Vector3(21.35,0,2.0),Vector2(0.85,1.6))
-	box("CoffeeMachine",Vector3(21.3,1.25,1.8),Vector3(0.55,0.62,0.5),"353e36")
-	for z in [2.35,2.6]: cylinder("CupStack",Vector3(21.3,1.08,z),0.065,0.28,"d6c9ab")
+	table(Vector3(21.35,0,2.0),Vector2(0.85,1.6),"87613e",ScalePolicy.WORKTOP_HEIGHT)
+	box("CoffeeMachine",Vector3(21.3,1.47,1.8),Vector3(0.55,0.62,0.5),"353e36")
+	for z in [2.35,2.6]: cylinder("CupStack",Vector3(21.3,1.30,z),0.065,0.28,"d6c9ab")
 	box("WelcomeMat",Vector3(20.5,0.008,4.9),Vector3(1.6,0.015,0.8),"536047")
 	light(Vector3(13.6,3.4,-0.5),"market_stock",Vector3(15.1,1.4,0.25),Vector3.BACK,Vector3.LEFT)
 	light(Vector3(17.2,3.4,1.6),"market_front",Vector3(15.1,1.4,-0.25),Vector3.BACK,Vector3.LEFT)
@@ -250,7 +252,7 @@ func house() -> void:
 	world.building_bounds.append(AABB(Vector3(25,0,-14),Vector3(20,3.5,17)))
 	box("HouseFloor",Vector3(35,-0.075,-5.5),Vector3(20,0.15,17),"957047",3,true)
 	box("HouseCeiling",Vector3(35,3.45,-5.5),Vector3(20.2,0.18,17.2),"d1c6ac",0,true)
-	wall("HouseFront",Vector3(25,0,3),20,3.5,Vector3.RIGHT,[Rect2(1.3,0.85,5.8,1.9),Rect2(9.1,0,1.8,2.65),Rect2(12.9,0.85,5.8,1.9)],"986848",1)
+	wall("HouseFront",Vector3(25,0,3),20,3.5,Vector3.RIGHT,[Rect2(1.3,0.85,5.8,1.9),Rect2(9.1,0,1.8,ScalePolicy.DOOR_OPENING_HEIGHT),Rect2(12.9,0.85,5.8,1.9)],"986848",1)
 	for x in [29.2,40.8]: glass("HouseFrontWindow",Vector3(x,1.8,3),5.8,1.9,Vector3.RIGHT)
 	door("HouseEntrance",Vector3(35,0,3),1.8)
 	for x in [25.0,45.0]:
@@ -270,62 +272,65 @@ func house() -> void:
 	closed_covering("BathroomShade",Vector3(32.55,2,-14),1.1,1.0,Vector3.RIGHT,Vector3.BACK)
 	closed_covering("BedroomShade",Vector3(36.15,1.8,-14),2.3,1.8,Vector3.RIGHT,Vector3.BACK)
 	# Central hall x33.5..36.5, front to transverse hall z-5..-7.
-	for x in [33.5,36.5]: wall("HallSide",Vector3(x,0,-5),8,3.5,Vector3.BACK,[Rect2(4.2,0,1.5,2.65)])
+	for x in [33.5,36.5]: wall("HallSide",Vector3(x,0,-5),8,3.5,Vector3.BACK,[Rect2(4.2,0,1.5,ScalePolicy.DOOR_OPENING_HEIGHT)])
 	wall("FrontRoomDividerL",Vector3(25,0,-5),8.5,3.5,Vector3.RIGHT,[])
 	wall("FrontRoomDividerR",Vector3(36.5,0,-5),8.5,3.5,Vector3.RIGHT,[])
 	# Rear rooms each open onto the cross hall, never into another room.
-	wall("RearHall",Vector3(25,0,-7),20,3.5,Vector3.RIGHT,[Rect2(3,0,1.5,2.65),Rect2(7,0,1.3,2.65),Rect2(10.8,0,1.4,2.65),Rect2(15.3,0,1.6,2.65)])
+	wall("RearHall",Vector3(25,0,-7),20,3.5,Vector3.RIGHT,[Rect2(3,0,1.5,ScalePolicy.DOOR_OPENING_HEIGHT),Rect2(7,0,1.3,ScalePolicy.DOOR_OPENING_HEIGHT),Rect2(10.8,0,1.4,ScalePolicy.DOOR_OPENING_HEIGHT),Rect2(15.3,0,1.6,ScalePolicy.DOOR_OPENING_HEIGHT)])
 	for x in [31.3,34.2,38.6]: wall("RearPartition",Vector3(x,0,-14),7,3.5,Vector3.BACK,[])
 	door("BathroomDoor",Vector3(32.65,0,-7),1.3)
 	door("BedroomDoor",Vector3(36.5,0,-7),1.4)
 	# Living room: seating faces the TV across a low coffee table.
 	box("LivingRug",Vector3(29.3,0.012,-0.7),Vector3(5.5,0.02,4),"9c9270")
-	box("SofaBase",Vector3(29.2,0.35,-3.6),Vector3(3.5,0.7,1),"616b49")
-	box("SofaBack",Vector3(29.2,0.9,-4),Vector3(3.5,0.8,0.25),"566344")
-	for x in [27.6,30.8]: box("SofaArm",Vector3(x,0.7,-3.55),Vector3(0.28,0.65,1.1),"566344")
-	for x in [28.3,29.2,30.1]: box("SofaCushion",Vector3(x,0.76,-3.5),Vector3(0.82,0.16,0.7),"76805b")
-	table(Vector3(29.2,0,-1.4),Vector2(2,0.9),"87613e",0.5)
+	var couch=load("res://scripts/living_couch.gd").new()
+	world.add_child(couch)
+	couch.name="HouseFittedCouch"
+	couch.position=Vector3(29.2,0,-3.6)
+	couch.rotation.y=PI
+	set_furniture_layers(couch)
+	table(Vector3(29.2,0,-1.8),Vector2(2,0.9),"87613e",.44)
 	box("TVConsole",Vector3(29.2,0.35,2.2),Vector3(2.8,0.7,0.5),"4b4938",3)
 	box("TV",Vector3(29.2,1.25,2.2),Vector3(2.1,1.05,0.12),"242e2a")
 	# Kitchen: rear counter, side cabinets, dining table with chairs.
 	box("KitchenTile",Vector3(28.15,0.012,-10.5),Vector3(6.1,0.02,6.8),"827f6b",2)
-	box("KitchenCabinets",Vector3(28.5,0.46,-13.35),Vector3(4.8,0.92,0.85),"5d6350",3)
-	box("KitchenWorktop",Vector3(28.5,0.97,-13.35),Vector3(4.9,0.1,0.92),"aaa58d")
-	box("SinkRim",Vector3(27.8,1.035,-13.3),Vector3(0.85,0.04,0.6),"9da99f")
-	box("SinkBasin",Vector3(27.8,1.06,-13.3),Vector3(0.65,0.025,0.43),"4a5954")
-	box("Faucet",Vector3(27.8,1.25,-13.55),Vector3(0.06,0.4,0.06),"aeb7a4")
-	box("Cooktop",Vector3(29.8,1.03,-13.3),Vector3(0.8,0.04,0.6),"292f29")
+	box("KitchenCabinets",Vector3(28.5,.53,-13.35),Vector3(4.8,1.06,0.85),"5d6350",3)
+	box("KitchenWorktop",Vector3(28.5,1.11,-13.35),Vector3(4.9,0.1,0.92),"aaa58d")
+	box("SinkRim",Vector3(27.8,1.175,-13.3),Vector3(0.85,0.04,0.6),"9da99f")
+	box("SinkBasin",Vector3(27.8,1.20,-13.3),Vector3(0.65,0.025,0.43),"4a5954")
+	box("Faucet",Vector3(27.8,1.39,-13.55),Vector3(0.06,0.4,0.06),"aeb7a4")
+	box("Cooktop",Vector3(29.8,1.17,-13.3),Vector3(0.8,0.04,0.6),"292f29")
 	for x in [29.6,30.0]:
-		for z in [-13.5,-13.1]: box("Burner",Vector3(x,1.06,z),Vector3(0.19,0.02,0.19),"747c71")
-	box("Fridge",Vector3(29.6,1.05,-7.7),Vector3(1.05,2.1,1),"9b9f8d")
-	table(Vector3(28.3,0,-9.4),Vector2(2,1.2))
+		for z in [-13.5,-13.1]: box("Burner",Vector3(x,1.20,z),Vector3(0.19,0.02,0.19),"747c71")
+	box("Fridge",Vector3(29.6,1.2,-7.7),Vector3(1.05,2.4,1),"9b9f8d")
+	table(Vector3(28.3,0,-9.4),Vector2(2,1.2),"87613e",.90)
 	for x in [27.7,28.9]:
 		for z in [-10.5,-8.3]:
-			box("ChairSeat",Vector3(x,0.47,z),Vector3(0.5,0.12,0.5),"687150")
-			box("ChairBase",Vector3(x,0.2,z),Vector3(0.32,0.4,0.32),"4a513c")
+			box("ChairSeat",Vector3(x,ScalePolicy.SEAT_HEIGHT-.06,z),Vector3(.64,.12,.60),"687150")
+			box("ChairBase",Vector3(x,(ScalePolicy.SEAT_HEIGHT-.12)/2,z),Vector3(.38,ScalePolicy.SEAT_HEIGHT-.12,.38),"4a513c")
+			box("ChairBack",Vector3(x,ScalePolicy.SEAT_HEIGHT+.39,z+(-.25 if z<-9.4 else .25)),Vector3(.64,.78,.10),"687150")
 	for x in [26.5,27.3,28.1,28.9,29.7,30.5]:
-		box("CabinetDoor",Vector3(x,0.48,-12.91),Vector3(0.72,0.77,0.04),"6f765c",3)
-		box("CabinetHandle",Vector3(x+0.22,0.62,-12.86),Vector3(0.045,0.2,0.045),"bec2a8")
-	box("FridgeSeam",Vector3(29.6,1.45,-7.19),Vector3(1.0,0.04,0.015),"596556")
-	box("FridgeHandle",Vector3(29.95,1.0,-7.13),Vector3(0.06,0.5,0.07),"d3d1ba")
+		box("CabinetDoor",Vector3(x,.55,-12.91),Vector3(0.72,0.77,0.04),"6f765c",3)
+		box("CabinetHandle",Vector3(x+0.22,.69,-12.86),Vector3(0.045,0.2,0.045),"bec2a8")
+	box("FridgeSeam",Vector3(29.6,1.657,-7.19),Vector3(1.0,0.04,0.015),"596556")
+	box("FridgeHandle",Vector3(29.95,1.14,-7.13),Vector3(0.06,0.5,0.07),"d3d1ba")
 	# Bathroom, separated by full-height walls.
 	box("BathroomTile",Vector3(32.75,0.014,-10.5),Vector3(2.65,0.025,6.8),"7f9087",2)
 	box("ShowerTray",Vector3(32.7,0.1,-12.9),Vector3(2.3,0.2,1.7),"c4c9b8")
-	glass("ShowerScreen",Vector3(32.1,1.25,-12),1.1,2.3,Vector3.RIGHT)
-	box("ToiletBase",Vector3(33.35,0.3,-10.5),Vector3(0.55,0.6,0.75),"dfdfcd")
-	box("ToiletTank",Vector3(33.4,0.8,-10.85),Vector3(0.6,0.65,0.2),"dfdfcd")
-	box("Vanity",Vector3(31.85,0.44,-9.1),Vector3(0.8,0.88,1.1),"777559",3)
-	box("Basin",Vector3(31.85,0.95,-9.1),Vector3(0.82,0.14,1.05),"d6dbcb")
-	box("ToiletSeat",Vector3(33.35,0.63,-10.4),Vector3(0.55,0.06,0.58),"bfc8b5")
-	box("ToiletBowl",Vector3(33.35,0.666,-10.4),Vector3(0.34,0.012,0.38),"66746a")
-	box("VanityBasin",Vector3(31.85,1.024,-9.1),Vector3(0.53,0.014,0.68),"697c74")
-	box("VanityMirror",Vector3(31.43,1.75,-9.1),Vector3(0.04,0.95,0.85),"a5c3be")
+	glass("ShowerScreen",Vector3(32.1,1.4,-12),1.1,2.6,Vector3.RIGHT)
+	box("ToiletBase",Vector3(33.35,(ScalePolicy.SEAT_HEIGHT-.06)/2,-10.5),Vector3(.55,ScalePolicy.SEAT_HEIGHT-.06,.75),"dfdfcd")
+	box("ToiletTank",Vector3(33.4,.60821849,-10.85),Vector3(0.6,0.65,0.2),"dfdfcd")
+	box("Vanity",Vector3(31.85,.48,-9.1),Vector3(.8,.96,1.1),"777559",3)
+	box("Basin",Vector3(31.85,1.03,-9.1),Vector3(0.82,0.14,1.05),"d6dbcb")
+	box("ToiletSeat",Vector3(33.35,ScalePolicy.SEAT_HEIGHT-.03,-10.4),Vector3(0.55,0.06,0.58),"bfc8b5")
+	box("ToiletBowl",Vector3(33.35,ScalePolicy.SEAT_HEIGHT+.006,-10.4),Vector3(0.34,0.012,0.38),"66746a")
+	box("VanityBasin",Vector3(31.85,1.104,-9.1),Vector3(0.53,0.014,0.68),"697c74")
+	box("VanityMirror",Vector3(31.43,1.95,-9.1),Vector3(0.04,0.95,0.85),"a5c3be")
 	# Bedroom.
-	box("BedFrame",Vector3(36.5,0.3,-11.4),Vector3(2.1,0.6,3.2),"65533c",3)
-	box("Mattress",Vector3(36.5,0.69,-11.4),Vector3(2,0.25,3.1),"d6cfb7")
-	box("Blanket",Vector3(36.5,0.85,-10.9),Vector3(2.02,0.12,2.0),"788158")
-	box("Pillow",Vector3(36.5,0.87,-12.55),Vector3(1.5,0.18,0.55),"ece0c6")
-	box("Wardrobe",Vector3(34.85,1,-8.6),Vector3(0.85,2,1.2),"675b43",3)
+	box("BedFrame",Vector3(36.5,.215,-11.4),Vector3(2.1,.43,3.2),"65533c",3)
+	box("Mattress",Vector3(36.5,.555,-11.4),Vector3(2,0.25,3.1),"d6cfb7")
+	box("Blanket",Vector3(36.5,.74,-10.9),Vector3(2.02,0.12,2.0),"788158")
+	box("Pillow",Vector3(36.5,.77,-12.55),Vector3(1.5,0.18,0.55),"ece0c6")
+	box("Wardrobe",Vector3(34.85,1.25,-8.6),Vector3(.85,2.5,1.2),"675b43",3)
 	# Grow room preview equipment: no duplicate simulation plants or free inventory.
 	var grow_before := world.get_children()
 	var grow_fixtures: Array = []
@@ -354,12 +359,12 @@ func house() -> void:
 	world.house_controls.register_grow(grow_lamps,grow_fixtures)
 	# Packing room: bench, scale, jars, cabinets and storage shelves.
 	box("PackingTile",Vector3(40.8,0.012,-1),Vector3(8.1,0.02,7.7),"77796a",2)
-	table(Vector3(41.2,0,-4.2),Vector2(4.5,1.1))
-	box("PackingScale",Vector3(40.5,1.04,-4.2),Vector3(0.65,0.2,0.5),"b1b8a0")
-	box("ScaleDisplay",Vector3(40.5,1.15,-3.94),Vector3(0.28,0.09,0.02),"75a87c")
-	for x in [41.3,41.8,42.3]: cylinder("PackingJar",Vector3(x,1.15,-4.2),0.14,0.42,"839878")
+	table(Vector3(41.2,0,-4.2),Vector2(4.5,1.1),"87613e",ScalePolicy.WORKTOP_HEIGHT)
+	box("PackingScale",Vector3(40.5,1.26,-4.2),Vector3(0.65,0.2,0.5),"b1b8a0")
+	box("ScaleDisplay",Vector3(40.5,1.37,-3.94),Vector3(0.28,0.09,0.02),"75a87c")
+	for x in [41.3,41.8,42.3]: cylinder("PackingJar",Vector3(x,1.37,-4.2),0.14,0.42,"839878")
 	shelf(Vector3(44.35,0,-3.2),0.8,2.5,false)
-	box("PackingCabinet",Vector3(38,1,-4.25),Vector3(1.15,2,0.9),"444f43")
+	box("PackingCabinet",Vector3(38,1.2,-4.25),Vector3(1.15,2.4,.9),"444f43")
 	light(Vector3(29.2,3.32,-1),"living",Vector3(33.36,1.4,-1.7),Vector3.BACK,Vector3.LEFT)
 	light(Vector3(35,3.32,0),"entry_hall",Vector3(33.85,1.4,2.84),Vector3.RIGHT,Vector3.FORWARD)
 	light(Vector3(41,3.32,-1),"packing",Vector3(36.64,1.4,-1.7),Vector3.BACK,Vector3.RIGHT)
@@ -371,3 +376,6 @@ func house() -> void:
 	light(Vector3(28,3.32,-6),"cross_hall",Vector3(31.9,1.4,-5.14),Vector3.RIGHT,Vector3.FORWARD)
 	light(Vector3(42,3.32,-6),"cross_hall",Vector3(31.9,1.4,-5.14),Vector3.RIGHT,Vector3.FORWARD)
 
+func set_furniture_layers(node: Node) -> void:
+	if node is VisualInstance3D:node.layers=2
+	for child in node.get_children():set_furniture_layers(child)

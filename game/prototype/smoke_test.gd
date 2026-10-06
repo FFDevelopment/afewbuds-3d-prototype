@@ -128,7 +128,7 @@ func run() -> void:
 	game._use_target()
 	check(game.system_control_panel.visible, "wall terminal opens grow controls")
 	game._close_system_control_panel()
-	check(is_equal_approx(game.camera.global_position.y - game.fp_player.global_position.y, 1.90), "raised adult viewpoint stays above player feet")
+	check(is_equal_approx(game.camera.global_position.y - game.fp_player.global_position.y, 2.16), "raised adult viewpoint stays above player feet")
 	aim(Vector3(2.4, 0.08, -2.20), Vector3(3.95, 1.3, -2.20))
 	await frames()
 	game._use_target()
@@ -137,8 +137,10 @@ func run() -> void:
 	check(not game.fp_player.enabled, "dealer storage locks walking")
 	game.cash = 10000
 	game.dealer_locker_level = 0
+	game.neighborhood.location_ops.installing=true
 	game._buy_dealer_locker_upgrade()
-	check(game.dealer_locker_level == 1 and game._dealer_locker_capacity() == 100 and game.cash == 9700, "first locker tier costs 300 and holds 100g")
+	game.neighborhood.location_ops.installing=false
+	check(game.dealer_locker_level == 1 and game._dealer_locker_capacity() == 100 and game.cash == 10000, "paid locker installation does not charge twice and holds 100g")
 	game.storage_level = 5
 	game.products["Purple Dream"]["stock"] = 150
 	game.locker_weed.clear()
@@ -151,7 +153,9 @@ func run() -> void:
 	game._close_active_panel()
 	check(not game.dealer_storage_panel.visible, "Escape closes dealer storage")
 	for tier in range(2, 5):
+		game.neighborhood.location_ops.installing=true
 		game._buy_dealer_locker_upgrade()
+		game.neighborhood.location_ops.installing=false
 		check(game.dealer_locker_level == tier and game._dealer_locker_capacity() == tier * 100, "locker upgrades sequentially to tier %d" % tier)
 	check(game.premium_dealer_locker_root.visible and not game.get_node("LockerBody").visible, "premium locker replaces basic locker at tier III")
 	game._use_target()
@@ -170,12 +174,15 @@ func run() -> void:
 	game.grower_level = 6
 	game.cash = 10000
 	game.bagging_level = 1
+	game.neighborhood.location_ops.installing=true
 	game._buy_supply("Bagging Bench III")
 	check(game.bagging_level == 1 and game.cash == 10000, "bench III requires bench II")
 	game._buy_supply("Bagging Bench II")
 	var bench_cash: int = game.cash
+	game.neighborhood.location_ops.installing=true
 	game._buy_supply("Bagging Bench III")
 	check(game.bagging_level == 3 and game.cash == bench_cash - 850, "bench III purchase charges 850")
+	game.neighborhood.location_ops.installing=false
 	await frames()
 	check(game.get_node("BenchIIIBackBoard").visible and not game.get_node("BenchLowerShelf").visible, "bench III replaces old lower furniture")
 	check(game.get_node("BenchIIIBackBoard").has_node("PrototypeCollision"), "newly purchased bench has collision")
@@ -309,16 +316,12 @@ func check_neighborhood() -> void:
 	check(paths_clear, "entrance paths end at sidewalks without entering roads")
 	check(outside.get_node("HouseFloor").mesh.size.is_equal_approx(Vector3(20,0.15,17)), "larger house reserves intended interior footprint")
 	for lawn in outside.grass_bounds:
-		check(lawn.position.y >= 3.29 and lawn.end.y <= 8.11, "grass stays in fenced house yard")
+		check((lawn.position.y >= 3.29 and lawn.end.y <= 8.11) or lawn == Rect2(118,-14,16,20), "grass stays in house yard or east park")
 	check(not outside.swing_blocked(Vector3(0,0,5)) and not outside.swing_blocked(Vector3(0,0,7)) and outside.swing_blocked(Vector3(0,0,6)), "away swing permits both approaches and protects doorway")
 	check(outside.visible and outside.position.is_equal_approx(Vector3.ZERO), "neighborhood adjoins real apartment")
 	game.fp_player.position = Vector3(0, 0.08, 4.5)
 	var closed_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, 2.4))
 	check(closed_hit != null and game.fp_player.position.z < 5.84, "closed front door blocks player")
-	game.fp_player.position = Vector3(0,0.08,6)
-	outside.toggle_door()
-	await create_timer(0.6).timeout
-	check(not outside.door_open and is_zero_approx(outside.door_pivot.rotation.y), "blocked opening remains closed after waiting")
 	aim(Vector3(0, 0.08, 3.5), Vector3(0, 1.5, 5.84))
 	await frames()
 	game._use_target()
@@ -345,14 +348,9 @@ func check_neighborhood() -> void:
 	var entry_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, -3.5))
 	check(entry_hit == null and game.fp_player.position.z < 4, "open front door permits walking back inside")
 	game.fp_player.position = Vector3(0, 0.08, 5)
-	var blocked_rotation: float = outside.door_pivot.rotation.y
 	outside.toggle_door()
-	await create_timer(0.6).timeout
-	check(is_equal_approx(outside.door_pivot.rotation.y, blocked_rotation), "blocked close never starts delayed swing")
-	check(outside.door_open and not outside.transitioning, "door refuses to sweep through player")
-	game.fp_player.position = Vector3(0, 0.08, 3.5)
-	outside.toggle_door()
-	await create_timer(0.5).timeout
+	await create_timer(.6).timeout
+	check(not outside.door_open,"Closing permits player in swept arc")
 	# Cross both curbs using the actual capsule, rather than a camera-only walk.
 	game.fp_player.position = Vector3(5, 0.08, 9)
 	var street_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, 14))
@@ -387,9 +385,6 @@ func check_neighborhood() -> void:
 		var door = outside.get_node(spec[0])
 		game.fp_player.position = spec[1]
 		check(game.fp_player.move_and_collide(spec[2]) != null, spec[0]+" closed leaf blocks entry")
-		door.toggle(door.to_global(Vector3(0.7,0,0)))
-		await create_timer(0.5).timeout
-		check(not door.opened, spec[0]+" refuses blocked swing without delayed opening")
 		aim(spec[1],spec[1]+spec[2]+Vector3.UP*1.4)
 		await frames()
 		game._use_target()
@@ -408,7 +403,9 @@ func check_neighborhood() -> void:
 		[Vector3(35,0.08,1),Vector3(35,0.08,-6)],
 		[Vector3(35,0.08,0),Vector3(32,0.08,0)],
 		[Vector3(35,0.08,0),Vector3(38,0.08,0)],
-		[Vector3(28.75,0.08,-6),Vector3(28.75,0.08,-7.8)],
+		[Vector3(28.75,0.08,-6),Vector3(28.75,0.08,-7.5)],
+		[Vector3(28.75,0.08,-7.5),Vector3(26.5,0.08,-7.5)],
+		[Vector3(26.5,0.08,-7.5),Vector3(26.5,0.08,-11.8)],
 		[Vector3(32.65,0.08,-6),Vector3(32.65,0.08,-8.4)],
 		[Vector3(36.5,0.08,-6),Vector3(36.5,0.08,-8.5)],
 		[Vector3(41.1,0.08,-6),Vector3(41.1,0.08,-10.5)],

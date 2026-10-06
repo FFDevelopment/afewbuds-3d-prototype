@@ -3,6 +3,11 @@ extends Node3D
 # AFewBuds olive loveseat. Real, static furniture; local -Z faces the room.
 # Fits the established sofa bay. No economy, save, collision or input changes.
 const ANCHOR: Vector3 = Vector3(-2.28, 0.0, 3.07)
+const SEAT_TOP: float = 0.4682184907339378
+const SEAT_DROP: float = 0.27628150926606226
+const LEG_HEIGHT: float = 0.13
+const BASE_HEIGHT: float = 0.14
+var part_bounds: Dictionary = {}
 var fabric: StandardMaterial3D
 var trim: StandardMaterial3D
 var cream: StandardMaterial3D
@@ -18,11 +23,12 @@ func _ready() -> void:
 	trim = _material(Color("414c32"), weave, 0.96)
 	cream = _material(Color("d6ceb1"), weave, 0.98)
 	leaf = _material(Color("526535"), weave, 0.98)
-	wood = _material(Color("b68b61"), load("res://assets/textures/walnut.png") as Texture2D, 0.72)
+	wood = _material(Color("b68b61"), _walnut_texture(), 0.72)
 	wood.uv1_scale = Vector3(2, 2, 2)
 	throw_material = _material(Color("9aab78"), weave, 0.98)
 	throw_material.vertex_color_use_as_albedo = true
 	_build()
+	_build_seating()
 
 func _make_weave() -> Texture2D:
 	# A small repeating cloth tile, generated once; no large photo or runtime shader.
@@ -55,6 +61,8 @@ func _add(part_name: String, mesh: Mesh, pos: Vector3, material: Material, angle
 	part.position = pos
 	part.rotation_degrees = angles
 	parent.add_child(part)
+	if not part_bounds.has(part_name): part_bounds[part_name] = []
+	part_bounds[part_name].append(part.transform * mesh.get_aabb())
 	for surface: int in range(mesh.get_surface_count()):
 		triangle_count += int(mesh.surface_get_arrays(surface)[Mesh.ARRAY_INDEX].size() / 3) if mesh.surface_get_arrays(surface)[Mesh.ARRAY_INDEX] != null else int(mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX].size() / 3)
 	return part
@@ -229,7 +237,7 @@ func _throw_point(t: float, w: float) -> Vector3:
 		x = -1.329 - 0.014 * sin(a * PI)
 		y = 0.959 - 0.61 * a
 	var fold: float = 0.005 * sin(w * TAU * 4.0 + t * 1.7)
-	return Vector3(x + fold * maxf(0.0, (t - 0.5) * 2), y + fold * (1.0 - t), -0.05 + w * 0.59)
+	return Vector3(x + fold * maxf(0.0, (t - 0.5) * 2), y + fold * (1.0 - t) - SEAT_DROP, -0.05 + w * 0.59)
 
 func _build_throw() -> void:
 	var surface: SurfaceTool = SurfaceTool.new()
@@ -262,26 +270,26 @@ func _build_throw() -> void:
 			_add("KnitCable", _tube(points, 0.006), Vector3.ZERO, cream)
 
 func _build() -> void:
-	_add("CouchBase", _rounded(Vector3(2.29, 0.33, 0.89), 0.12), Vector3(0, 0.375, 0.0), fabric)
-	_add("BackFrame", _rounded(Vector3(2.34, 0.86, 0.18), 0.079), Vector3(0, 0.88, 0.35), fabric)
+	_add("CouchBase", _rounded(Vector3(2.29, BASE_HEIGHT, 0.89), 0.055), Vector3(0, 0.187, 0.0), fabric)
+	_add("BackFrame", _rounded(Vector3(2.34, 0.86, 0.18), 0.079), Vector3(0, 0.88 - SEAT_DROP, 0.35), fabric)
 	for side: int in [-1, 1]:
-		_add("RoundedArm", _rounded(Vector3(0.37, 0.65, 0.97), 0.155), Vector3(float(side) * 1.135, 0.78, 0.0), fabric)
-		_add("SeatCushion", _rounded(Vector3(0.96, 0.205, 0.80), 0.080, 0.015), Vector3(float(side) * 0.495, 0.627, -0.036), fabric)
-		_add("SeatPiping", _piping(Vector2(0.948, 0.788), 0.080, true), Vector3(float(side) * 0.495, 0.636, -0.036), trim)
-		_add("BackCushion", _rounded(Vector3(0.965, 0.65, 0.235), 0.105, 0.020), Vector3(float(side) * 0.497, 1.043, 0.241), fabric, Vector3(7.0, 0.0, 0.0))
-		_add("BackPiping", _piping(Vector2(0.954, 0.639), 0.095, false), Vector3(float(side) * 0.497, 1.043, 0.22), trim, Vector3(7.0, 0.0, 0.0))
+		_add("RoundedArm", _rounded(Vector3(0.37, 0.65, 0.97), 0.155), Vector3(float(side) * 1.135, 0.78 - SEAT_DROP, 0.0), fabric)
+		_add("SeatCushion", _rounded(Vector3(0.96, 0.205, 0.80), 0.080, 0.015), Vector3(float(side) * 0.495, 0.627 - SEAT_DROP, -0.036), fabric)
+		_add("SeatPiping", _piping(Vector2(0.948, 0.788), 0.080, true), Vector3(float(side) * 0.495, 0.636 - SEAT_DROP, -0.036), trim)
+		_add("BackCushion", _rounded(Vector3(0.965, 0.65, 0.235), 0.105, 0.020), Vector3(float(side) * 0.497, 1.043 - SEAT_DROP, 0.241), fabric, Vector3(7.0, 0.0, 0.0))
+		_add("BackPiping", _piping(Vector2(0.954, 0.639), 0.095, false), Vector3(float(side) * 0.497, 1.043 - SEAT_DROP, 0.22), trim, Vector3(7.0, 0.0, 0.0))
 		for rear: int in [-1, 1]:
 			var leg_mesh: CylinderMesh = CylinderMesh.new()
-			leg_mesh.height = 0.22
+			leg_mesh.height = LEG_HEIGHT
 			leg_mesh.top_radius = 0.064
 			leg_mesh.bottom_radius = 0.042
 			leg_mesh.radial_segments = 12
 			leg_mesh.rings = 1
-			_add("TaperedWoodLeg", leg_mesh, Vector3(float(side) * 0.995, 0.11, float(rear) * 0.29), wood)
-	_pillow("LeafPillow", Vector3(-0.70, 0.932, -0.065), Vector3(13, -10, -10), false)
-	_pillow("StripedPillow", Vector3(0.67, 0.925, -0.073), Vector3(14, 9, 10), true)
+			_add("TaperedWoodLeg", leg_mesh, Vector3(float(side) * 0.995, LEG_HEIGHT * 0.5, float(rear) * 0.29), wood)
+	_pillow("LeafPillow", Vector3(-0.70, 0.932 - SEAT_DROP, -0.065), Vector3(13, -10, -10), false)
+	_pillow("StripedPillow", Vector3(0.67, 0.925 - SEAT_DROP, -0.073), Vector3(14, 9, 10), true)
 	_build_throw()
-	_add("BrandPatch", _rounded(Vector3(0.017, 0.105, 0.32), 0.006), Vector3(1.324, 0.664, -0.13), cream)
+	_add("BrandPatch", _rounded(Vector3(0.017, 0.105, 0.32), 0.006), Vector3(1.324, 0.664 - SEAT_DROP, -0.13), cream)
 	var label: Label3D = Label3D.new()
 	label.name = "AFewBudsSideLabel"
 	label.text = "AFewBuds"
@@ -289,7 +297,7 @@ func _build() -> void:
 	label.pixel_size = 0.0015
 	label.outline_size = 0
 	label.modulate = Color("35492c")
-	label.position = Vector3(1.335, 0.664, -0.13)
+	label.position = Vector3(1.335, 0.664 - SEAT_DROP, -0.13)
 	label.rotation_degrees.y = 90
 	add_child(label)
 	_batch_static_parts()
@@ -334,3 +342,28 @@ func world_bounds() -> AABB:
 			result = result.merge(bounds) if initialized else bounds
 			initialized = true
 	return result
+
+func _build_seating() -> void:
+	for side in [-1,1]:
+		var marker := Marker3D.new()
+		marker.name = "SeatLeft" if side == -1 else "SeatRight"
+		marker.position = Vector3(side * .495, SEAT_TOP, -.036)
+		add_child(marker)
+	var body := StaticBody3D.new()
+	body.name = "CouchCollision"
+	add_child(body)
+	var shapes := [[Vector3(0,.187,0),Vector3(2.29,BASE_HEIGHT,.89)],[Vector3(0,.88-SEAT_DROP,.35),Vector3(2.34,.86,.18)]]
+	for side in [-1,1]:
+		shapes.append([Vector3(side*1.135,.78-SEAT_DROP,0),Vector3(.37,.65,.97)])
+		shapes.append([Vector3(side*.495,SEAT_TOP-.11,-.036),Vector3(.96,.22,.8)])
+		shapes.append([Vector3(side*.497,1.043-SEAT_DROP,.241),Vector3(.965,.65,.235)])
+	for entry in shapes:
+		var col := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = entry[1]
+		col.shape = box
+		col.position = entry[0]
+		body.add_child(col)
+
+func _walnut_texture() -> Texture2D:
+	return load("res://assets/furniture/walnut.png") as Texture2D

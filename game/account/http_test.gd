@@ -44,6 +44,21 @@ func run() -> void:
 	check(login.username.max_length == 20 and login.password.visible and not login.recovery_identifier.visible,"return to sign-in restores username rules")
 	login.toggle_mode()
 	check(login.email.visible and login.email.max_length == 254,"registration keeps separate full recovery email")
+	var board=load("res://account/account_panel.gd").new()
+	root.add_child(board)
+	autoload.accept_session({"account_id":"fixture-id","username":"fixture","session_token":"fixture-session"},false)
+	board.show_leaderboard()
+	while board.working:await process_frame
+	check("$98765" in board.notice.text and "#31" in board.notice.text,"Lifetime own total appears even outside top 25")
+	check(board.listing.get_child_count()==1 and "other" in board.listing.get_child(0).text,"Public rankings remain intact")
+	board.period="weekly";board.refresh_rankings()
+	board.period="lifetime";board.refresh_rankings()
+	while board.working:await process_frame
+	check("LIFETIME" in board.notice.text and "$98765" in board.notice.text,"In-flight period change cannot display stale weekly stats as lifetime")
+	board.period="weekly";await board.refresh_rankings()
+	check("$1250" in board.notice.text,"Weekly own value uses weekly server response")
+	check(board.ranking_value({},"revenue")=="Unavailable","Missing stats never become fabricated zeros")
+	board.queue_free();autoload.sign_out()
 	login.queue_free()
 	await process_frame
 	print("HTTP_TEST_RESULT: ", "PASS" if failures.is_empty() else str(failures))

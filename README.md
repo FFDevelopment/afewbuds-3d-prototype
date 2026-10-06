@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9.8 preview** (doors open away from the player; cloud-test .83 features retained).
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.10.0 preview** (doors open away from the player; cloud-test .83 features retained).
 
 ## Play the Windows build
 
@@ -225,3 +225,15 @@ The shared hinge calculation works in each door's local frame. Regression checks
 cover both opening sides, a rotated hinge, closing clearance, repeat input,
 original door alignment and the existing capsule routes through the entrances.
 No changes to cloud-test, beta, database, account/session behavior or house gates.
+
+
+## 0.10.0 — Cloud-test .96-east.2 parity
+
+Matches cloud-test through commit `024c607`: market orders/pickup, carried
+supplies, property computers, rent, crew contacts and door dealer service,
+Malik/Rod models, fitted furniture and the east residential expansion.
+Use **E** at computers, checkout, couch, doors and switches. Move to stand up.
+The player eye height is 2.16 and walking speed is 3.4 to match the new scale.
+Doors open away and allow safe pass-through while moving, restoring collision
+once clear. The leaderboard pins your own server total and handles filter
+changes and pending sync correctly. See `docs/CLOUDTEST_96_SYNC.md`.

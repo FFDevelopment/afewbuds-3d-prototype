@@ -96,7 +96,7 @@ func run() -> void:
 	visits._reply(index,-1)
 	prepare("Nia")
 	game._customer_arrives()
-	check(game.phone_text_messages[index].client_reply=="declined" and game.phone_text_messages.size()==index+1,"Another time cancels visit and prevents immediate repeated request")
+	check(game.phone_text_messages[index].client_reply=="declined" and game.phone_text_messages.size()==index+2 and game.phone_text_messages[index+1].get("outgoing",false),"Another time cancels visit and prevents immediate repeated request")
 	game.game_time_minutes+=61
 	prepare("Nia")
 	game._customer_arrives()

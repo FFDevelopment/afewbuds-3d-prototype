@@ -29,10 +29,13 @@ func run() -> void:
 			var obstructed: Vector3=door.to_global(Vector3(door.width*0.5,0,-side*0.5))
 			door.toggle(obstructed)
 			await create_timer(0.5).timeout
-			check(door.opened and not door.busy and is_equal_approx(door.get_node("Leaf").rotation.y,angle),id+" closing protects actual sweep without flipping or queuing")
-			door.toggle(approach)
-			await create_timer(0.5).timeout
-			check(not door.opened and is_zero_approx(door.get_node("Leaf").rotation.y),id+" closes on original hinge path")
+			check(not door.opened and not door.busy and is_zero_approx(door.get_node("Leaf").rotation.y),id+" closes on original path even with player in swing")
+			game.fp_player.position=door.to_global(Vector3(door.width*.5,0,0))
+			door.refresh_collision()
+			check(door.pass_through,id+" remains nonsolid while player overlaps leaf")
+			game.fp_player.position=approach
+			door.refresh_collision()
+			check(not door.pass_through,id+" restores collision after player clears leaf")
 		door.rotation=original_rotation
 	for side in [-1.0,1.0]:
 		game.fp_player.position=Vector3(0,0.08,6+side*1.4)
@@ -43,11 +46,13 @@ func run() -> void:
 		game.fp_player.position=Vector3(0,0.08,6-side*0.5)
 		world.toggle_door()
 		await create_timer(0.5).timeout
-		check(world.door_open and not world.transitioning and is_equal_approx(world.door_pivot.rotation.y,angle),"Apartment blocks occupied closing sweep")
-		game.fp_player.position=Vector3(0,0.08,6+side*1.4)
-		world.toggle_door()
-		await create_timer(0.5).timeout
-		check(not world.door_open and is_zero_approx(world.door_pivot.rotation.y),"Apartment closes using stored direction")
+		check(not world.door_open and is_zero_approx(world.door_pivot.rotation.y),"Apartment closes using stored direction without swing blockage")
+		game.fp_player.position=Vector3(0,.08,6)
+		world._refresh_apartment_door_collision()
+		check(world.door_pass_through,"Apartment waits for player to clear closed leaf")
+		game.fp_player.position=Vector3(0,.08,4)
+		world._refresh_apartment_door_collision()
+		check(not world.door_pass_through,"Apartment restores closed collision")
 	game.queue_free()
 	await process_frame
 	print("DOORS_TEST_RESULT: PASS" if failures==0 else "DOORS_TEST_RESULT: FAIL")

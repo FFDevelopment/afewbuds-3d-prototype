@@ -1,9 +1,9 @@
 extends CharacterBody3D
 ## Movement owns only the player body; all simulation stays in AFewBuds.
-const WALK_SPEED := 3.0
+const WALK_SPEED := 3.4
 const RUN_SPEED := 4.8
 const LOOK_SENSITIVITY := 0.0022
-const EYE_HEIGHT := 1.90
+const EYE_HEIGHT := 2.16
 var yaw := 0.0
 var pitch := 0.0
 var enabled := false
@@ -15,10 +15,10 @@ func _ready() -> void:
 	floor_snap_length = 0.25
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.27
-	capsule.height = 2.0
+	capsule.height = 2.43
 	var shape := CollisionShape3D.new()
 	shape.shape = capsule
-	shape.position.y = 1.0
+	shape.position.y = 1.215
 	add_child(shape)
 
 func look(relative: Vector2) -> void:
@@ -27,6 +27,12 @@ func look(relative: Vector2) -> void:
 	sync_camera()
 
 func _physics_process(delta: float) -> void:
+	if get_parent().neighborhood.couch_seated:
+		if enabled and (Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_D)):
+			get_parent().neighborhood._toggle_couch()
+		else:
+			sync_camera()
+			return
 	var direction := Vector3.ZERO
 	if enabled:
 		var axis := Vector2(float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A)), float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W))).limit_length()

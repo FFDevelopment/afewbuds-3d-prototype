@@ -1,0 +1,173 @@
+{
+  "name": "AFB_Malik_v1_6",
+  "status": "Lower couch fitted to corrected-size characters; feet grounded and pelvis supported",
+  "character_size_unchanged": true,
+  "seat_top": 0.4682184907339378,
+  "couch_width_depth_preserved": true,
+  "results": {
+    "source/sit_validation.json": {
+      "failures": [],
+      "feet_grounded": true,
+      "foot_clearance": -5.58793544769287e-09,
+      "passed": true,
+      "pelvis_cushion_y": 0.468227803707123,
+      "sit_to_idle_reset": true
+    },
+    "source/godot_validation.json": {
+      "animation_clips": [
+        "bend_test",
+        "idle",
+        "sit",
+        "walk"
+      ],
+      "bone_count": 56,
+      "engine": "4.7.2-stable (official)",
+      "failures": [],
+      "mesh_instances": 1,
+      "passed": true,
+      "vertices": 24386
+    },
+    "source/unchanged_geometry.json": {
+      "passed": true,
+      "character_scale_unchanged": true,
+      "mesh_skin_bone_nodes_unchanged": true,
+      "original_binary_geometry_preserved": true,
+      "blender_source_unchanged": true,
+      "only_runtime_change": "Sitting root position lowered to match the rebuilt couch"
+    }
+  },
+  "files": {
+    "godot/assets/Malik.glb": {
+      "bytes": 2589608,
+      "sha256": "4086d6a9022bc5eb2ed08c24f2ae311cc28c066cdea95262f832693cdcb18e2a"
+    },
+    "godot/assets/Malik.tscn": {
+      "bytes": 311,
+      "sha256": "c608516bf8b3fa018bccd9462b5fef15a6ea08f2dc7a94151158afd2363d5146"
+    },
+    "godot/assets/Malik_0.png": {
+      "bytes": 732433,
+      "sha256": "9b0794ce68a3620a0328b5737530c7f8daeea23584cc8bb91e91ba8ea130a120"
+    },
+    "godot/assets/Malik_BaseColor.png": {
+      "bytes": 762386,
+      "sha256": "4848653ad1a5cf6d5790171cf47aee05ac8e9431ad25b6d6354ffbe55bcfeac2"
+    },
+    "godot/assets/malik_material.gd": {
+      "bytes": 661,
+      "sha256": "2dfab4e3c1b6c92278c51e157dc0e76f658b83350969948568e64976583b5758"
+    },
+    "godot/check_rig.gd": {
+      "bytes": 3908,
+      "sha256": "f47654bf95a8b9673566047edb270d816f8fccc7c9cf3a9687145e560546071a"
+    },
+    "godot/check_sit.gd": {
+      "bytes": 2153,
+      "sha256": "35b4cbd201ac4a82826689bd28e878505d5db2bf4b3c300cb270169eae2fb56d"
+    },
+    "godot/project.godot": {
+      "bytes": 405,
+      "sha256": "aa7c96325f62f909a3261c4c52a01f954eb4cb56e49f0bd61fcc4422133479ac"
+    },
+    "godot/review.gd": {
+      "bytes": 4166,
+      "sha256": "c8dadf1c96143f5d3253addf292fd857a1383c03d2b04533343c7d9d43272a1d"
+    },
+    "godot/review.tscn": {
+      "bytes": 166,
+      "sha256": "3dc67d943d24c456dc46ec2b13feca3a48c5c182ba223de56474f0d3110103be"
+    },
+    "preview/Malik_full.png": {
+      "bytes": 1243831,
+      "sha256": "d4b2628eaa4db6311257a95edecac8613b4cf30867b22acc617160e2af0fe5e6"
+    },
+    "preview/Malik_Rod_couch.png": {
+      "bytes": 164874,
+      "sha256": "b822229aa1594c22614791ed93bbebef1d6043bcefd93d30a981a91583ccfe5d"
+    },
+    "preview/Malik_Rod_couch_side.png": {
+      "bytes": 192928,
+      "sha256": "eb3c27de99ffb4e46d20c6224f81b555c4a2a0e069e538fb78b766f3a23d2155"
+    },
+    "README.txt": {
+      "bytes": 664,
+      "sha256": "48d3c40e3d080b0a7eec623a080087db091bb91eafcb3d5fdc26e00574510b29"
+    },
+    "SIZE_CORRECTION.txt": {
+      "bytes": 664,
+      "sha256": "48d3c40e3d080b0a7eec623a080087db091bb91eafcb3d5fdc26e00574510b29"
+    },
+    "source/blender_knee_validation.json": {
+      "bytes": 317,
+      "sha256": "7ad0055a1a4fc6e9d7b7352530c2d301e9cbaadbb77dc39eb02860b06941bfc9"
+    },
+    "source/build_malik.py": {
+      "bytes": 37100,
+      "sha256": "9382fc081c5d54642976f9c028b21e36c10ee9eb370793f69d77280170fa4647"
+    },
+    "source/finalize_couch_glb.py": {
+      "bytes": 2713,
+      "sha256": "a103384c2b5c68e9511b00c006023aa1d460639c71cb0f7479eb8a01143b6e3b"
+    },
+    "source/garment_validation.json": {
+      "bytes": 532,
+      "sha256": "3895b4c401a997c545433709106cdab4f15b35f2b3804e4f8d91c7300718bac8"
+    },
+    "source/godot_validation.json": {
+      "bytes": 204,
+      "sha256": "9a5bb29133da98984522b9b0b03c655fd4ad34993e378fb37304996b0e8ac552"
+    },
+    "source/Malik.blend": {
+      "bytes": 4971360,
+      "sha256": "2ddadb172f83f12ca4f04bcb7b0c8a5ba3bf5df0d8d94f6505227ea1a4bde8be"
+    },
+    "source/master_rig/AFB_MasterRig.tscn": {
+      "bytes": 15735,
+      "sha256": "c1781e190be9d98599b52d27765c92a491aa57844408fa2117a94e686e2eb379"
+    },
+    "source/master_rig/bone_contract.json": {
+      "bytes": 8061,
+      "sha256": "a2f822eb3bbc8025d90cd5275f3c40f70fea1076e671cfc77bd4d187490a7281"
+    },
+    "source/master_rig/build_rig.py": {
+      "bytes": 3049,
+      "sha256": "e1bbb2b4541d4ebb9c2a7f148d96a7b99e2ae44473a909d2474102f84edceab4"
+    },
+    "source/master_rig/README.md": {
+      "bytes": 2962,
+      "sha256": "0e90daa51f47f775d92c39e21419681087f709638f711a40db3280d79f721f4c"
+    },
+    "source/mesh_stats.json": {
+      "bytes": 215,
+      "sha256": "567acdf6ffee2c5ece355d1adab4432468ac3622bc9d0089c307cb47bc44fd8f"
+    },
+    "source/package_malik.py": {
+      "bytes": 1739,
+      "sha256": "c17b5c6eb50c14f4f0cc03bc214efe8aa6b5e4d2a2b601466abc381df48e7c74"
+    },
+    "source/sit_validation.json": {
+      "bytes": 175,
+      "sha256": "5728768d974a6c3b3f2f468afbd58d0f2f9797d5563791c944551296e7adf9e8"
+    },
+    "source/size_revision.json": {
+      "bytes": 471,
+      "sha256": "a7e44baef8f8351303ca4bd470f9f71632700b0431b488755f4c53dbcda36869"
+    },
+    "source/static_validation.json": {
+      "bytes": 577,
+      "sha256": "b7ec359ce634bdc69adeb7d0209b412472eb94479bf4ac3b8b76879f6d269404"
+    },
+    "source/unchanged_geometry.json": {
+      "bytes": 273,
+      "sha256": "38ed3fd7373df167ce7fcbaa5e26d20b795a6fdb7f5bbdec0631ebee38926043"
+    },
+    "source/update_delivery_stats.py": {
+      "bytes": 462,
+      "sha256": "c06f52eeb192d423f45f18745a34ddf2708a83d61d1fc3cc52c9c3d42c34b75f"
+    },
+    "source/validate_glb.py": {
+      "bytes": 3217,
+      "sha256": "196729d3fb65ad427816adfc4db67c9bac47449a1bae3808381e243704804935"
+    }
+  }
+}

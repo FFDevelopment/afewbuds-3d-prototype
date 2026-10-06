@@ -40,7 +40,7 @@ func _ready() -> void:
 	camera.fov = 76.0
 	var saved: Dictionary = AFBCloud.read_json(AFBCloud.settings_path()) if AFBCloud.launched else restored_runtime.get("prototype_player", {})
 	if not saved.is_empty():
-		fp_player.position = Vector3(clampf(float(saved.get("x", 0)), -31.5, 72.5), 0.12, clampf(float(saved.get("z", 1.2)), -35.5, 38.5))
+		fp_player.position = Vector3(clampf(float(saved.get("x", 0)), -31.5, 136.5), 0.12, clampf(float(saved.get("z", 1.2)), -35.5, 38.5))
 		fp_player.yaw = float(saved.get("yaw", 0))
 		fp_player.pitch = clampf(float(saved.get("pitch", 0)), -1.35, 1.35)
 	# Reject invalid/interior-wall positions from stale desktop settings.
@@ -87,7 +87,7 @@ func _process(delta: float) -> void:
 	fp_prompt.visible = not modal
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
-	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.9.8 PREVIEW\n%s   ·   %s   ·   $%d" % [neighborhood.location_label(fp_player.position) if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
+	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.10.0 PREVIEW\n%s   ·   %s   ·   $%d" % [neighborhood.location_label(fp_player.position) if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
 	fp_hint.text = "WASD  Walk     E  Interact     P  Phone     Esc  Pause     F5  Save"
 	_hide_old_navigation()
 
@@ -240,6 +240,9 @@ func _on_cloud_status(message: String) -> void:
 	if AFBCloud.blocked and not session_paused: _pause_gameplay()
 
 func _close_active_panel() -> bool:
+	if neighborhood.location_ops.is_open():
+		neighborhood.location_ops.close()
+		return true
 	if neighborhood.property_opportunity.is_open():
 		neighborhood.property_opportunity.end_tour()
 		return true
@@ -278,7 +281,7 @@ func _close_active_panel() -> bool:
 
 func _add_physical_collisions(root: Node) -> void:
 	for child in root.get_children():
-		if child == fp_player or child == production_worker_node:
+		if child == fp_player or child == production_worker_node or child is Skeleton3D:
 			continue
 		if child is MeshInstance3D and child.mesh is BoxMesh and not child.get_meta("no_collision", false):
 			var size_value: Vector3 = child.mesh.size
@@ -298,15 +301,15 @@ func _add_physical_collisions(root: Node) -> void:
 
 func _add_prop_collisions() -> void:
 	var couch := get_node_or_null("AFBLoveseat")
-	if couch != null:
+	if couch != null and not couch.has_node("CouchCollision"):
 		var body := StaticBody3D.new()
 		body.collision_layer = 1
 		body.collision_mask = 4
 		var box := BoxShape3D.new()
-		box.size = Vector3(2.68, 1.45, 0.98)
+		box.size = Vector3(2.68, 0.95, 0.98)
 		var shape := CollisionShape3D.new()
 		shape.shape = box
-		shape.position.y = 0.73
+		shape.position.y = 0.475
 		body.add_child(shape)
 		couch.add_child(body)
 	for plant in plant_visuals:
@@ -327,9 +330,14 @@ func _sync_physical_collisions() -> void:
 		var mesh: MeshInstance3D = entry.mesh
 		var shape: CollisionShape3D = entry.shape
 		if is_instance_valid(mesh) and is_instance_valid(shape):
+			if shape.shape is BoxShape3D and mesh.mesh is BoxMesh:shape.shape.size=mesh.mesh.size
 			shape.set_deferred("disabled", not mesh.is_visible_in_tree())
 
 func _add_station_targets() -> void:
+	_add_interaction_area("FP_ApartmentComputer",Vector3(3.70,1.35,4.35),Vector3(.30,1.3,1.5),"operation_apartment_computer")
+	_add_interaction_area("FP_HouseComputer",Vector3(25.90,1.35,1.65),Vector3(.30,1.3,1.5),"operation_house_computer")
+	_add_interaction_area("FP_Checkout",Vector3(14,1.35,3),Vector3(1.6,1.0,.35),"operation_market_checkout")
+	_add_interaction_area("FP_Couch",Vector3(-2.28,.9,2.8),Vector3(2.5,1.1,.4),"sit_couch")
 	# Target fronts sit just ahead of the relevant surfaces, not at fixed-view anchors.
 	_add_interaction_area("FP_Locker", Vector3(3.95, 1.3, -2.20), Vector3(0.25, 2.0, 1.5), "station_locker")
 	_add_interaction_area("FP_Bench", Vector3(3.25, 1.35, 0.78), Vector3(0.3, 0.8, 2.25), "station_workbench")
@@ -391,7 +399,11 @@ func _use_target() -> void:
 		_open_direct_plant(int(fp_target.get_meta("plant_slot")))
 	else:
 		var id := str(fp_target.get_meta("interaction_id"))
+		if id.begins_with("operation_"):
+			neighborhood.location_ops.use(id.trim_prefix("operation_"))
+			return
 		match id:
+			"sit_couch": neighborhood._toggle_couch()
 			"station_locker": _open_fp_locker()
 			"station_workbench": _open_bagging_panel()
 			"station_storage", "storage_vault": _open_storage_panel()

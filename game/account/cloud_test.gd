@@ -19,14 +19,16 @@ func run() -> void:
 	cloud.session = {}
 	var remembered: Dictionary = await cloud.restore_session()
 	check(remembered.get("username") == "QA" and cloud.session.session_token == "mock", "remembered session validates and restores")
-	cloud.remote = {"cash": 400, "save_schema": 2, "future_field": {"keep": true}, "runtime": {"current_view": "main_grow_door", "future": 7}}
+	cloud.remote = {"lifetime_revenue":98765,"advancement_stats":{"sales":321,"dealer_sales":84},"cash": 400, "save_schema": 2, "future_field": {"keep": true}, "runtime": {"current_view": "main_grow_door", "future": 7}}
 	var result: Dictionary = await cloud.prepare()
 	check(result.get("ok", false) and cloud.remote_signature == cloud.fingerprint(cloud.remote), "account career restores existing API save")
+	check(cloud.read_json(cloud.ACTIVE).get("lifetime_revenue")==98765 and cloud.read_json(cloud.ACTIVE).get("advancement_stats",{}).get("sales")==321,"Existing account lifetime and sales load without guest zeros")
 	var save := {"cash": 500, "save_schema": 2, "runtime": {"prototype_player": {"x": 2}, "current_view": "fp_walk"}}
 	cloud.queue_save(save)
 	await cloud.flush()
 	while cloud.busy: await process_frame
 	check(cloud.remote.cash == 500 and cloud.writes == 1, "desktop uploads shared progression")
+	check(cloud.remote.get("lifetime_revenue")==98765 and cloud.remote.get("advancement_stats",{}).get("sales")==321,"Desktop save preserves account leaderboard totals")
 	check(not cloud.remote.runtime.has("prototype_player") and cloud.remote.runtime.current_view == "main_grow_door", "camera isolated from shared save")
 	check(cloud.remote.future_field.keep and cloud.remote.runtime.future == 7, "unknown root and runtime fields retained")
 	check(cloud.read_json(cloud.settings_path()).x == 2, "camera persisted per account on desktop")

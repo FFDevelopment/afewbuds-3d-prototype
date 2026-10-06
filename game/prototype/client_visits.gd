@@ -9,7 +9,7 @@ func setup(owner_node: Node3D) -> void:
 	host=world.host
 
 func is_home() -> bool:
-	return world._indoors(host.camera.global_position)
+	return world._indoors(host.camera.position)
 
 func clock() -> float:
 	return float(host.game_day)*1440.0+host.game_time_minutes
@@ -36,6 +36,7 @@ func route_arrival() -> bool:
 		if message.get("client_reply","")=="scheduled" or float(message.get("declined_until",0))>clock():
 			_release_visit()
 			return true
+	if world.location_ops.crew.can_handle():return false
 	if is_home(): return false
 	var request: Dictionary=host.active_request.duplicate(true)
 	_release_visit()
@@ -48,7 +49,7 @@ func _send_missed(client: Dictionary, request: Dictionary, body: String = "I sto
 		if message.get("sender","")==name and message.has("client_visit") and message.get("client_reply","")=="pending": return
 	# Add the reply payload before refreshing the phone, so its first render has buttons.
 	host.phone_text_messages.append({"sender":name,"body":body,"day":host.game_day,"time":host._format_game_clock(),"read":false,"client_visit":client.duplicate(true),"client_request":request.duplicate(true),"client_reply":"pending"})
-	while host.phone_text_messages.size()>60: host.phone_text_messages.pop_front()
+	while host.phone_text_messages.size()>120: host.phone_text_messages.pop_front()
 	host.phone_text_unread+=1
 	world.play_text()
 	host.status_label.text=name+" texted you. Open Phone → Texts to reply."
@@ -103,6 +104,7 @@ func _reply(index: int, minutes: float) -> void:
 		message.erase("declined_until")
 		host.status_label.text="%s will stop by %s. Be at your apartment with your storefront open." % [message.sender,"soon" if minutes==10 else "at "+_appointment_label(message.client_due)]
 	host.phone_text_messages[index]=message
+	world.location_ops.crew.outgoing(str(message.sender),"Another time." if minutes<0 else ("Stop by now." if minutes==10 else "Stop by at "+_appointment_label(message.client_due)))
 	host._save_game()
 	if host.phone_open: host._refresh_phone()
 
@@ -127,7 +129,7 @@ func update(delta: float) -> void:
 		if host.customer_waiting: return
 		var client: Dictionary=message.get("client_visit",{}).duplicate(true)
 		var request: Dictionary=message.get("client_request",{}).duplicate(true)
-		if not is_home():
+		if not is_home() and not world.location_ops.crew.can_handle():
 			message.client_reply="missed"
 			host.phone_text_messages[index]=message
 			_send_missed(client,request,"I stopped by at our scheduled time and you weren't home. Let me know when you're available.")
@@ -154,4 +156,3 @@ func update(delta: float) -> void:
 		host._save_game()
 		if host.phone_open and host.phone_current_app=="texts": host._refresh_phone()
 		return
-

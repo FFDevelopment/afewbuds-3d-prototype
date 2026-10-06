@@ -1,0 +1,8 @@
+Rod: corrected character proportions retained (about 2.35 units tall).
+The couch seat is now 0.468218491 units high; legs/base rebuilt and upper furniture lowered.
+The sit clip now supports the pelvis with feet at floor level. Character geometry, scale and Blender source unchanged.
+Use godot/assets/Rod.glb or its material wrapper.
+Clips: idle, walk, bend_test, sit. Review keys: 1/2/3/4/5.
+For the supplied couch, sit roots are floor-level at local x +/-0.495, y 0, z approximately -0.035; local -Z faces forward.
+The couch SeatLeft/SeatRight markers identify the cushion surface, not the character root.
+Repos and earlier packages remain unchanged.
