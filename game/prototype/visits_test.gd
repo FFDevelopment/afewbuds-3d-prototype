@@ -120,7 +120,13 @@ func run() -> void:
 	game.camera.position=Vector3(0,1.64,9)
 	visits.update(0.1)
 	check(not game.customer_waiting and not game.knock_player.playing,"Walking away from waiting client converts visit to text")
+	# Let deferred phone-scroll restoration finish while its controls still exist.
+	await process_frame
+	await process_frame
+	visits=null
+	n=null
 	game.queue_free()
+	game=null
 	await process_frame
 	await process_frame
 	print("VISITS_TEST_RESULT: PASS" if failures == 0 else "VISITS_TEST_RESULT: FAIL")
