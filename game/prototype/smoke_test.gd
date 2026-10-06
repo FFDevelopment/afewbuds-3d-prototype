@@ -278,10 +278,25 @@ func run() -> void:
 
 func check_neighborhood() -> void:
 	var outside = game.neighborhood
-	check(outside.visible and outside.position.is_equal_approx(Vector3(16, 0, 11.5)), "neighborhood adjoins real apartment")
+	for bounds in outside.building_bounds:
+		check(not bounds.intersects(outside.APARTMENT_BOUNDS), "exterior building stays outside apartment and grow-room volume")
+	var mesh_overlap := false
+	for child in outside.get_children():
+		if child is MeshInstance3D:
+			var actual_bounds: AABB = child.global_transform * child.get_aabb()
+			mesh_overlap = mesh_overlap or actual_bounds.intersects(outside.APARTMENT_BOUNDS)
+	check(not mesh_overlap, "actual exterior mesh bounds cannot enter apartment volume")
+	for lawn in outside.grass_bounds:
+		check(lawn.position.y >= 3.29 and lawn.end.y <= 8.11, "grass stays in fenced house yard")
+	check(outside.swing_blocked(Vector3(0,0,5)) and not outside.swing_blocked(Vector3(0,0,7)), "inward sweep blocks interior arc but permits exterior operation")
+	check(outside.visible and outside.position.is_equal_approx(Vector3.ZERO), "neighborhood adjoins real apartment")
 	game.fp_player.position = Vector3(0, 0.08, 4.5)
 	var closed_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, 2.4))
 	check(closed_hit != null and game.fp_player.position.z < 5.84, "closed front door blocks player")
+	game.fp_player.position = Vector3(0,0.08,5)
+	outside.toggle_door()
+	await create_timer(0.6).timeout
+	check(not outside.door_open and is_zero_approx(outside.door_pivot.rotation.y), "blocked opening remains closed after waiting")
 	aim(Vector3(0, 0.08, 3.5), Vector3(0, 1.5, 5.84))
 	await frames()
 	game._use_target()
@@ -307,8 +322,11 @@ func check_neighborhood() -> void:
 	game.fp_player.position = Vector3(0, 0.08, 7)
 	var entry_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, -3.5))
 	check(entry_hit == null and game.fp_player.position.z < 4, "open front door permits walking back inside")
-	game.fp_player.position = Vector3(0, 0.08, 6)
+	game.fp_player.position = Vector3(0, 0.08, 5)
+	var blocked_rotation: float = outside.door_pivot.rotation.y
 	outside.toggle_door()
+	await create_timer(0.6).timeout
+	check(is_equal_approx(outside.door_pivot.rotation.y, blocked_rotation), "blocked close never starts delayed swing")
 	check(outside.door_open and not outside.transitioning, "door refuses to sweep through player")
 	game.fp_player.position = Vector3(0, 0.08, 3.5)
 	outside.toggle_door()
@@ -318,10 +336,10 @@ func check_neighborhood() -> void:
 	var street_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, 14))
 	check(street_hit == null and game.fp_player.position.z > 22, "sidewalk and street are continuously walkable")
 	var boundary_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, 5))
-	check(boundary_hit != null and game.fp_player.position.z < 25.8, "far fence contains player")
-	game.fp_player.position = Vector3(-11, 0.08, 16)
+	check(boundary_hit != null and game.fp_player.position.z < 26.1, "far fence contains player")
+	game.fp_player.position = Vector3(-17, 0.08, 16)
 	check(game.fp_player.move_and_collide(Vector3(-3, 0, 0)) != null, "side barrier contains player")
-	aim(Vector3(30, 0.08, 8), Vector3(30, 1.4, 5.8))
+	aim(Vector3(35, 0.08, 5.5), Vector3(35, 1.4, 3.2))
 	await frames()
 	game.property_offer_unlocked = false
 	game._use_target()

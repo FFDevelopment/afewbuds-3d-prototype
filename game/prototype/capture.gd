@@ -75,11 +75,24 @@ func run() -> void:
 	game.neighborhood.toggle_door()
 	await create_timer(0.5).timeout
 	await capture("11-outside-closed.png")
-	aim(Vector3(4, 0.08, 14), Vector3(29, 1.8, 6))
+	aim(Vector3(4, 0.08, 14), Vector3(35, 1.8, 3))
 	await capture("12-neighborhood.png")
 	game._toggle_phone()
 	game._open_phone_app("advancements")
 	await capture("13-advancements.png")
 	game._open_phone_app("bills")
 	await capture("14-water-bill.png")
+	game._toggle_phone()
+	aim(Vector3(35,0.08,10),Vector3(35,2.4,2))
+	await capture("16-house-yard.png")
+	var plan := Camera3D.new()
+	game.add_child(plan)
+	plan.projection = Camera3D.PROJECTION_ORTHOGONAL
+	plan.size = 76
+	plan.position = Vector3(19,70,3)
+	plan.rotation_degrees = Vector3(-90,0,0)
+	plan.environment = game.neighborhood.outdoor_environment
+	plan.make_current()
+	game.fp_hud.hide()
+	await capture("15-top-down.png")
 	quit()

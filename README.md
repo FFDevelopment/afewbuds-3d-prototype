@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9 preview** (cloud-test .64 integration branch).
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.9.1 preview** (cloud-test .64 integration branch).
 
 ## Play the Windows build
 
@@ -139,3 +139,14 @@ Source: `FFDevelopment/afewbuds-cloud-test@9a9c8015df45b4b527fe20238a59bd6cebee5
 The main prototype branch, cloud-test, beta and database are unchanged. CI on this branch has read-only repository permissions. This preview awaits desktop playtesting before any merge into main. Save and close one version before switching careers; the existing backend still has no atomic compare-and-swap conflict protection.
 
 Validation: Godot import, real-capsule door/street/boundary tests, visitor control, house story gating, water billing/save reload, all existing workstation and portrait-phone regressions, mocked cloud conflicts/account isolation and local HTTP login fixtures. No live account or database writes were made for QA.
+
+
+## Prototype 0.9.1 — door and neighborhood correction
+
+Addresses the October 5 desktop video: the door leaf now fills the opening with recessed jambs, head stop and threshold. It swings inward. Collision prevention samples the actual door sweep rather than blocking an entire circle around the hinge. A refused operation creates no tween or queued action; opening/closing status is updated when the animation completes.
+
+The exterior layout now follows the supplied top-down reference: starter apartment on the left, shop centrally with parking behind, house and fenced lawn to the right, side streets and rear alley. Background buildings sit beyond the rear alley, outside the entire apartment/grow-room volume. Exterior room detection uses the apartment footprint rather than only the front-door Z coordinate. The house inspection target and local position limits follow the revised layout.
+
+Brick, concrete, asphalt, lawn and roof surfaces use prototype procedural materials, without treating the supplied materials collage as tileable texture maps. A hip roof replaces the stacked-slab house roof. This is still a prototype art pass, not a reproduction of the reference image's finished detail.
+
+QA includes delayed-blocked-door checks, both-direction traversal, actual exterior mesh bounds against the entire apartment, lawn bounds, existing gameplay/account fixture tests, and runtime captures of closed/open door, grow room, street, house yard and top-down layout. Changes are limited to the prototype integration branch.

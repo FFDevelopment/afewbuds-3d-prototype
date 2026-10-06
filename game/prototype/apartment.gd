@@ -39,11 +39,11 @@ func _ready() -> void:
 	camera.fov = 76.0
 	var saved: Dictionary = AFBCloud.read_json(AFBCloud.settings_path()) if AFBCloud.launched else restored_runtime.get("prototype_player", {})
 	if not saved.is_empty():
-		fp_player.position = Vector3(clampf(float(saved.get("x", 0)), -11.8, 43.8), 0.12, clampf(float(saved.get("z", 1.2)), -9.5, 25.0))
+		fp_player.position = Vector3(clampf(float(saved.get("x", 0)), -17.5, 56.5), 0.12, clampf(float(saved.get("z", 1.2)), -17.5, 25.5))
 		fp_player.yaw = float(saved.get("yaw", 0))
 		fp_player.pitch = clampf(float(saved.get("pitch", 0)), -1.35, 1.35)
 	# Reject invalid/interior-wall positions from stale desktop settings.
-	if fp_player.position.z < 6.1 and absf(fp_player.position.x) > 4.5:
+	if fp_player.position.z > -10.4 and fp_player.position.z < 6.1 and absf(fp_player.position.x) > 4.5 and absf(fp_player.position.x) < 5.4:
 		fp_player.position = Vector3(0, 0.12, 1.2)
 	_add_physical_collisions(self)
 	_add_prop_collisions()
@@ -78,7 +78,7 @@ func _process(delta: float) -> void:
 	fp_player.enabled = not modal and not neighborhood.transitioning and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 	if not modal:
 		current_view = "fp_walk"
-		current_room = "neighborhood" if fp_player.position.z > 6.1 else ("grow" if fp_player.position.z < -4.0 else "main")
+		current_room = "neighborhood" if not neighborhood.indoors(fp_player.position) else ("grow" if fp_player.position.z < -4.0 else "main")
 		_update_target()
 	else:
 		fp_target = null
@@ -86,7 +86,7 @@ func _process(delta: float) -> void:
 	fp_prompt.visible = not modal
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
-	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.9 PREVIEW\n%s   ·   %s   ·   $%d" % ["NEIGHBORHOOD" if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
+	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.9.1 PREVIEW\n%s   ·   %s   ·   $%d" % ["NEIGHBORHOOD" if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
 	fp_hint.text = "WASD  Walk     E  Interact     P  Phone     Esc  Pause     F5  Save"
 	_hide_old_navigation()
 
@@ -326,7 +326,7 @@ func _add_station_targets() -> void:
 	_add_interaction_area("FP_Bench", Vector3(3.25, 1.35, 0.78), Vector3(0.3, 0.8, 2.25), "station_workbench")
 	_add_interaction_area("FP_Storage", Vector3(-3.95, 1.3, -0.30 if storage_level >= 4 else -0.06), Vector3(0.3, 1.8, 2.4), "station_storage")
 	_add_interaction_area("FP_Door", Vector3(0, 1.4, 5.84), Vector3(1.85, 2.6, 0.6), "station_door")
-	_add_interaction_area("FP_House", Vector3(30, 1.4, 5.8), Vector3(1.8, 2.6, 0.4), "inspect_house")
+	_add_interaction_area("FP_House", Vector3(35, 1.4, 3.2), Vector3(1.8, 2.6, 0.4), "inspect_house")
 	_add_interaction_area("FP_System", Vector3(4.45, 1.8, -6.65), Vector3(0.25, 1.0, 1.2), "station_system", "grow")
 	_add_interaction_area("FP_Supply", Vector3(-4.05, 1.25, -6.45), Vector3(0.25, 1.8, 1.3), "station_supply", "grow")
 
