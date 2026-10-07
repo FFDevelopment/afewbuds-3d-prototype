@@ -49,6 +49,8 @@ func run():
  var joy:=InputEventJoypadButton.new();joy.button_index=JOY_BUTTON_DPAD_UP;joy.pressed=true
  game._input(joy)
  check(game.phone_open,"Default D-pad Up opens Phone")
+ game._input(joy)
+ check(game.phone_open,"D-pad Up in the phone stays available for menu navigation")
  game._toggle_phone()
  joy.button_index=JOY_BUTTON_DPAD_RIGHT
  game._input(joy)

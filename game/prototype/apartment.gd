@@ -97,7 +97,7 @@ func _process(delta: float) -> void:
 		if bag_minigame_panel.visible and bag_current_units<bag_target_units:bag_instruction.text="Hold A / Cross and move the left stick. Release over the bag to add up to %dg." % _packing_drop_size()
 	fp_info.visible = not modal
 	fp_info.text = "%s\n%s   ·   %s   ·   $%d" % [Districts.heading(fp_player.position), neighborhood.location_label(fp_player.position) if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
-	fp_hint.text = "L3 click while moving forward: toggle sprint · Right stick: look · A: interact · Y: phone · Start: pause" if DesktopInput.controller_active else "%s/%s/%s/%s Walk · Shift + forward Sprint · %s Interact · %s Phone · Esc Pause · %s Save" % [DesktopInput.label("forward"),DesktopInput.label("left"),DesktopInput.label("backward"),DesktopInput.label("right"),DesktopInput.label("interact"),DesktopInput.label("phone"),DesktopInput.label("save")]
+	fp_hint.text = "L3 click while moving forward: toggle sprint · Right stick: look · A: interact · D-pad Up: phone · Start: pause" if DesktopInput.controller_active else "%s/%s/%s/%s Walk · Shift + forward Sprint · %s Interact · %s Phone · Esc Pause · %s Save" % [DesktopInput.label("forward"),DesktopInput.label("left"),DesktopInput.label("backward"),DesktopInput.label("right"),DesktopInput.label("interact"),DesktopInput.label("phone"),DesktopInput.label("save")]
 	_update_fp_stamina_hud()
 	_hide_old_navigation()
 
@@ -129,7 +129,7 @@ func _input(event: InputEvent) -> void:
 			neighborhood.property_opportunity.show_details()
 			get_viewport().set_input_as_handled()
 			return
-		if DesktopInput.pressed(event,"phone") and (phone_open or not _any_modal_open()):
+		if DesktopInput.pressed(event,"phone") and ((phone_open and event is InputEventKey) or not _any_modal_open()):
 			_toggle_phone()
 			get_viewport().set_input_as_handled()
 			return
