@@ -50,6 +50,10 @@ func run() -> void:
 	click_layer.queue_free()
 	controls.bindings=controls.DEFAULTS.duplicate();controls.install_actions();controls.mouse_sensitivity=1
 	game._resume_gameplay()
+	check(game.fp_player.has_method("drive") and game.fp_player.has_method("stop"),"Desktop player exposes shared drive/stop controller API")
+	check(is_equal_approx(game.fp_player.WALK_SPEED,3.4) and is_equal_approx(game.fp_player.ACCELERATION,15.0) and is_equal_approx(game.fp_player.DECELERATION,20.0),"Desktop movement tuning matches mobile 3D core")
+	var capsule:CapsuleShape3D=game.fp_player.get_node("PlayerCapsule").shape
+	check(is_equal_approx(capsule.radius,.26) and is_equal_approx(capsule.height,2.43) and is_equal_approx(game.fp_player.floor_snap_length,.32),"Desktop capsule and floor snap match mobile 3D core")
 	var yaw:float=game.fp_player.yaw
 	game.fp_player.look(Vector2(10,0))
 	var first:float=absf(game.fp_player.yaw-yaw)
