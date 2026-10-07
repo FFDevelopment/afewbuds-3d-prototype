@@ -33,6 +33,19 @@ func run() -> void:
 			for wall in station.wall_bounds:
 				frames_clear=frames_clear and not part.bounds.intersects(wall)
 	check(frames_clear,"Window frames clear adjacent walls")
+	var upstairs_decks:Array[AABB]=[]
+	for part in station.parts:
+		if str(part.id) in ["UpperFloorWest","UpperFloorNorth","UpperFloorSouth","TopLanding"]:upstairs_decks.append(part.bounds)
+	var stair_clips:Array[String]=[]
+	var stair_nosings:=0
+	for part in station.parts:
+		var part_id:=str(part.id)
+		if part_id=="StairNosing" and int(part.floor)==0:stair_nosings+=1
+		if int(part.floor)==0 and (part_id.begins_with("Stair") or part_id=="ContinuousHandrail" or part_id=="RailWallBracket"):
+			for deck in upstairs_decks:
+				if part.bounds.intersects(deck):stair_clips.append(part_id)
+	check(stair_clips.is_empty(),"Stairwell walls and stairs do not clip through upstairs deck")
+	check(stair_nosings==19,"Top stair nosing stops at the upstairs landing edge")
 	player.position=station.point(11.2,.1,30)
 	game.camera.position=player.position+Vector3.UP*2.16;game.camera.look_at(station.point(11.2,1.6,28));await frames()
 	game._use_target();await create_timer(.5).timeout
