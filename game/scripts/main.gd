@@ -103,6 +103,7 @@ var reputation: int = 0
 var brand_level: int = 1
 var lifetime_revenue: int = 0
 var bagging_level: int = 1
+var last_save_ok: bool = false
 var inventory_system: Node
 var storage_level: int = 1
 var storage_vault: StorageVault
@@ -3385,7 +3386,6 @@ func _build_phone_panel() -> void:
 	_add_phone_dock_button(dock, "HOME", "home")
 	_add_phone_dock_button(dock, "BUSINESSES", "budshop")
 	_add_phone_dock_button(dock, "TASKS", "task")
-	_add_phone_dock_button(dock, "SETTINGS", "settings")
 
 func _add_phone_dock_button(dock: HBoxContainer, label_text: String, app_name: String) -> void:
 	var dock_button: Button = Button.new()
@@ -3427,7 +3427,7 @@ func _build_tutorial_panel() -> void:
 
 Follow the on-screen guide and do each action yourself. Time and plants are protected until the sale lesson. Controls match your device and current bindings.
 
-You can skip any step or resume from Phone > Help."
+You can skip any step or resume from Pause > Help."
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_theme_font_size_override("font_size", 20)
 	root.add_child(body)
@@ -6853,7 +6853,6 @@ func _build_phone_home() -> void:
 	_add_phone_app_tile(grid, "", "Messages", ("%d unread" % phone_text_unread) if phone_text_unread > 0 else "Crew & story messages", "texts")
 	_add_phone_app_tile(grid, "", "Tasks & Rewards", "Chapters, goals & rewards", "task")
 	_add_phone_app_tile(grid, "", "Leaderboard", "Weekly & lifetime rankings", "leaderboard")
-	_add_phone_app_tile(grid, "", "Settings", "Help & system controls", "settings")
 
 func _build_real_estate_app() -> void:
 	if neighborhood!=null and neighborhood.location_ops!=null:
@@ -6934,7 +6933,7 @@ func _build_system_app() -> void:
 	quit_box.add_theme_constant_override("separation", 10)
 	quit_card.add_child(quit_box)
 	var quit_title: Label = Label.new()
-	quit_title.text = "Sleep / safe quit"
+	quit_title.text = "Save & quit"
 	quit_title.add_theme_font_size_override("font_size", 20)
 	quit_box.add_child(quit_title)
 	var quit_note: Label = Label.new()
@@ -6943,7 +6942,7 @@ func _build_system_app() -> void:
 	quit_note.modulate = Color("c9bdad")
 	quit_box.add_child(quit_note)
 	var quit_button: Button = Button.new()
-	quit_button.text = "SAVE & SLEEP / QUIT"
+	quit_button.text = "SAVE & QUIT"
 	quit_button.custom_minimum_size.y = 62
 	quit_button.add_theme_font_size_override("font_size", 19)
 	quit_button.pressed.connect(_phone_safe_quit)
@@ -6955,12 +6954,23 @@ func _phone_manual_save() -> void:
 	_refresh_phone()
 
 func _phone_safe_quit() -> void:
+	var menu:Node=inventory_system.session_menu
+	if menu.quitting:return
+	menu.quitting=true
+	phone_open=false;phone_panel.hide()
+	_pause_gameplay()
 	_save_game()
-	_show_save_notification("GAME SAVED", "Career saved. AFewBuds is safe to close.")
-	phone_open = false
-	phone_panel.visible = false
-	_set_world_controls_visible(true)
-	_pause_gameplay("Game saved. It is safe to close AFewBuds now. Resume whenever you return.")
+	if not last_save_ok:
+		menu.quit_failed("Could not save on this device. Please try again. The game is still open.")
+		return
+	if OS.has_feature("web"):
+		var until:int=Time.get_ticks_msec()+15000
+		while str(JavaScriptBridge.eval("window.AFB_QUIT_SAVE_STATE || 'pending'",true))=="pending" and Time.get_ticks_msec()<until:
+			await get_tree().process_frame
+		if str(JavaScriptBridge.eval("window.AFB_QUIT_SAVE_STATE || 'pending'",true))!="saved":
+			menu.quit_failed("Saving could not be confirmed. Keep this tab open and try again.")
+			return
+	menu.quit_saved()
 
 func _phone_category_grid() -> GridContainer:
 	var grid: GridContainer = GridContainer.new()
@@ -9471,6 +9481,7 @@ func _reset_failed(message: String) -> void:
 
 
 func _save_game() -> void:
+	last_save_ok=false
 	if reset_in_progress:
 		return # Do not recreate a deleted save during the scene reload.
 	var data: Dictionary = {
@@ -9608,6 +9619,8 @@ func _save_game() -> void:
 	if file == null:
 		return
 	file.store_string(JSON.stringify(data))
+	file.flush()
+	last_save_ok=file.get_error()==OK
 	file.close()
 
 func _apply_cloud_boot_save() -> void:
@@ -10961,6 +10974,7 @@ func _pause_gameplay(reason: String = "Paused. Resume whenever you are ready.", 
 		offline_plant_report.clear()
 	session_paused = true
 	if inventory_system!=null:inventory_system.pause_inventory()
+	if inventory_system!=null and inventory_system.session_menu!=null:inventory_system.session_menu.show_page("home")
 	_cancel_beta_reset()
 	_cancel_phone_gesture()
 	room_look_drag_active = false
@@ -10992,6 +11006,7 @@ func _pause_gameplay(reason: String = "Paused. Resume whenever you are ready.", 
 	_save_game()
 
 func _resume_gameplay() -> void:
+	if inventory_system!=null and inventory_system.session_menu!=null and inventory_system.session_menu.quitting:return
 	if not session_paused:
 		return
 	if web_lifecycle != null and bool(web_lifecycle.hidden):
@@ -11213,7 +11228,7 @@ func _tutorial_can_do(action: String) -> bool:
 	return false
 
 func _tutorial_record(action: String, slot_index: int = -1, strain_name: String = "") -> void:
-	if inventory_system!=null and inventory_system.guide!=null:inventory_system.guide.record(action)
+	if inventory_system!=null and inventory_system.guide!=null:inventory_system.guide.record(action,slot_index)
 	if not tutorial_active or tutorial_step >= TUTORIAL_ACTIONS.size() or TUTORIAL_ACTIONS[tutorial_step] != action:
 		return
 	if action == "harvest":
@@ -12012,4 +12027,4 @@ func _packing_batch_size() -> int:
 
 func _guide_protects_plants() -> bool:
 	var guide:Dictionary=location_state.get("first_day_guide",{})
-	return bool(guide.get("active",false)) and int(guide.get("step",0))<15
+	return bool(guide.get("active",false)) and int(guide.get("step",0))<16

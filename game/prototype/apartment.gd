@@ -89,7 +89,7 @@ func _process(delta: float) -> void:
 	else:
 		fp_target = null
 	fp_crosshair.visible = not modal
-	fp_prompt.visible = not modal and not (inventory_system!=null and fp_target!=null and inventory_system.native_station_target(str(fp_target.get_meta("interaction_id",""))))
+	fp_prompt.visible = not modal and not fp_prompt.text.is_empty() and not (inventory_system!=null and fp_target!=null and inventory_system.native_station_target(str(fp_target.get_meta("interaction_id",""))))
 	fp_hint.visible = false
 	_controller_work_tick(delta,DesktopInput.stick(false))
 	if DesktopInput.controller_active:
@@ -226,13 +226,20 @@ func _phone_manual_save() -> void:
 	_show_save_notification("GAME SAVED", "Saved locally. Cloud sync is queued." if not AFBCloud.session.is_empty() else "Saved on this device — guest.")
 
 func _phone_safe_quit() -> void:
-	phone_open = false
-	phone_panel.hide()
-	_pause_gameplay()
-	_save_game()
+	var menu:Node=inventory_system.session_menu
+	if menu.quitting:return
+	menu.quitting=true
+	phone_open=false;phone_panel.hide()
+	_pause_gameplay();_save_game()
+	if not last_save_ok:
+		menu.quit_failed("Could not save on this device. Please try again. The game is still open.")
+		return
 	await AFBCloud.flush()
-	while AFBCloud.busy: await get_tree().process_frame
-	_show_save_notification("SAVE & SLEEP", AFBCloud.last_status)
+	while AFBCloud.busy:await get_tree().process_frame
+	if not AFBCloud.pending.is_empty() or AFBCloud.blocked:
+		menu.quit_failed("Saved on this device, but cloud sync needs attention. Please retry before quitting.")
+		return
+	menu.quit_saved()
 
 func _any_modal_open() -> bool:
 	if neighborhood != null and neighborhood.property_opportunity != null and neighborhood.property_opportunity.is_open(): return true
@@ -481,12 +488,15 @@ func _setup_desktop_panels() -> void:
 	phone_title.add_theme_font_size_override("font_size", 24)
 	phone_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	phone_title.clip_text = true
-	status_label.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	status_label.offset_left = 28
-	status_label.offset_right = -28
-	status_label.offset_top = -72
-	status_label.offset_bottom = -44
+	status_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	status_label.offset_left = -280
+	status_label.offset_right = 280
+	status_label.offset_top = 90
+	status_label.offset_bottom = 150
 	status_label.add_theme_font_size_override("font_size", 16)
+	status_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	status_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	status_label.add_theme_stylebox_override("normal",_style_box(Color("17251fee"),Color("689c50"),12,1))
 	# Prototype-only wording; the original account UI cannot access a live backend.
 	# Account and cloud wording now reflects the native integration.
 
@@ -537,11 +547,15 @@ func _build_fp_hud() -> void:
 	fp_crosshair.text = "+"
 	fp_prompt = _fp_label(Vector2.ZERO, 20)
 	fp_prompt.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	fp_prompt.offset_left = -330
-	fp_prompt.offset_right = 330
-	fp_prompt.offset_top = -135
+	fp_prompt.offset_left = -180
+	fp_prompt.offset_right = 180
+	fp_prompt.offset_top = -145
 	fp_prompt.offset_bottom = -95
 	fp_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	fp_prompt.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+	fp_prompt.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	fp_prompt.add_theme_font_size_override("font_size",16)
+	fp_prompt.add_theme_stylebox_override("normal",_style_box(Color("438d31"),Color("69aa4f"),9,1))
 	fp_hint = _fp_label(Vector2.ZERO, 16)
 	fp_hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	fp_hint.offset_left = 28
