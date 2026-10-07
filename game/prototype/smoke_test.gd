@@ -76,8 +76,9 @@ func run() -> void:
 	aim(Vector3(1.8, 0.08, 0.78), Vector3(3.25, 1.35, 0.78))
 	await frames()
 	game._use_target()
-	check(game.bagging_panel.visible, "bench opens original packaging pipeline")
-	game._start_trim_minigame("Purple Dream")
+	check(game.inventory_system.is_open() and game.inventory_system.container_id=="apartment:packing", "bench opens modern packaging inventory")
+	game.inventory_system.select_item("apartment:packing","raw|Purple Dream")
+	game.inventory_system.process_selected()
 	await frames()
 	check(game.trim_panel.get_global_rect().end.y <= game.hud.size.y, "trim panel fits landscape viewport")
 	for target in game.trim_targets:
@@ -94,7 +95,8 @@ func run() -> void:
 			game._input(release)
 	check(int(game.trimmed_inventory.get("Purple Dream", 0)) > 0, "mouse dragging trims harvested product")
 	game._close_trim_minigame()
-	game._start_bag_minigame("Purple Dream")
+	game.inventory_system.select_item("apartment:packing","trimmed|Purple Dream")
+	game.inventory_system.process_selected()
 	await frames()
 	check(game.bag_minigame_panel.get_global_rect().end.y <= game.hud.size.y, "bagging panel fits landscape viewport")
 	for i in range(game.bag_target_units):
@@ -110,13 +112,14 @@ func run() -> void:
 	game._seal_current_bag()
 	check(int(game.bagged_inventory.get("Purple Dream", 0)) > 0, "mouse dragging and sealing creates packaged product")
 	var old_stock: int = game.products["Purple Dream"].stock
-	game._store_product("Purple Dream")
-	check(int(game.products["Purple Dream"].stock) > old_stock, "packaged product transfers to storage")
-	game._close_bagging_panel()
+	game.inventory_system.transfer("apartment:packing","backpack","product|Purple Dream",1)
+	game.inventory_system.close()
 	aim(Vector3(-2.3, 0.08, -0.3), Vector3(-3.95, 1.3, -0.3))
 	await frames()
 	game._use_target()
 	check(game.inventory_system.is_open(), "storage opens physical container inventory")
+	game.inventory_system.transfer("backpack","apartment:storage","product|Purple Dream",1)
+	check(int(game.products["Purple Dream"].stock)==old_stock+1,"packaged product reaches storage through backpack")
 	game._close_storage_panel()
 	aim(Vector3(-2.4, 0.08, -6.45), Vector3(-4.05, 1.3, -6.45))
 	await frames()
@@ -193,7 +196,10 @@ func run() -> void:
 	check(game.fp_collisions.size() == collider_count, "repeated upgrades do not duplicate collision")
 	game.trimmed_inventory["Purple Dream"] = 17
 	var bags_before: int = game.bagged_inventory.get("Purple Dream", 0)
-	game._start_bag_minigame("Purple Dream")
+	aim(Vector3(1.8, 0.08, 0.78), Vector3(3.25, 1.35, 0.78))
+	game.inventory_system.open_container("packing")
+	game.inventory_system.select_item("apartment:packing","trimmed|Purple Dream")
+	game.inventory_system.process_selected()
 	var batches := 0
 	while game.bag_minigame_panel.visible and batches < 20:
 		var remaining: int = game.trimmed_inventory["Purple Dream"]
@@ -204,7 +210,7 @@ func run() -> void:
 		if game.trimmed_inventory["Purple Dream"] > 0:
 			check(game.bag_minigame_panel.visible and game.bag_current_units == 0, "bench III continues next bag without reopening")
 	check(batches > 1 and not game.bag_minigame_panel.visible and game.bagged_inventory["Purple Dream"] == bags_before + 17, "continuous bagging finishes and conserves all product")
-	game._close_bagging_panel()
+	game.inventory_system.close()
 	check(not game.has_node("WindowBuildingA") and not game.has_node("WindowBuildingB") and not game.has_node("WindowBuildingC"), "window placeholder squares removed")
 	check(game.neighborhood.has_node("ApartmentWindow") and game.window_sun_disc == null, "real glazed window replaces fake sky and sun")
 	# Latest furniture must line up with its first-person targets.
