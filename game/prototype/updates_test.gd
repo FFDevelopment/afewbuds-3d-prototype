@@ -22,7 +22,7 @@ func ready_game() -> void:
 	game.visit_timer.stop()
 	await physics_frame
 func run() -> void:
-	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://afewbuds_3d_prototype_save.json"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(str(root.get_node("AFBCloud").ACTIVE)))
 	await ready_game()
 	var n: Node3D=game.neighborhood
 	var controls: RefCounted=n.house_controls

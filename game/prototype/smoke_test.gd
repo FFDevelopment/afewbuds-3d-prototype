@@ -33,7 +33,7 @@ func run() -> void:
 		quit(1)
 		return
 	DirAccess.make_dir_recursive_absolute(OS.get_user_data_dir())
-	var save_path := "user://afewbuds_3d_prototype_save.json"
+	var save_path := str(root.get_node("AFBCloud").ACTIVE)
 	if FileAccess.file_exists(save_path):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
 	game = load("res://prototype/apartment.tscn").instantiate()
