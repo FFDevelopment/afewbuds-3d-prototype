@@ -48,6 +48,34 @@ func run() -> void:
 				var overlap_z:float=minf(part.bounds.end.z,deck.end.z)-maxf(part.bounds.position.z,deck.position.z)
 				if overlap_x>.005 and overlap_y>.005 and overlap_z>.005:stair_clips.append(part_id)
 	check(stair_clips.is_empty(),"Stairwell walls and stairs do not clip through upstairs deck")
+	for wall_id in ["Front","Rear","West","East"]:
+		var wall_top:float=-INF
+		for part in station.parts:
+			if int(part.floor)==0 and str(part.id)==wall_id:wall_top=maxf(wall_top,part.bounds.end.y)
+		check(absf(wall_top-station.STORY)<.01,"Downstairs "+wall_id+" wall closes to upstairs floor line")
+
+	var door_trim_clips:Array[String]=[]
+	for part in station.parts:
+		var trim_id:=str(part.id)
+		if trim_id not in ["DoorJamb","DoorHeader"]:continue
+		for wall in station.wall_bounds:
+			var ox:float=minf(part.bounds.end.x,wall.end.x)-maxf(part.bounds.position.x,wall.position.x)
+			var oy:float=minf(part.bounds.end.y,wall.end.y)-maxf(part.bounds.position.y,wall.position.y)
+			var oz:float=minf(part.bounds.end.z,wall.end.z)-maxf(part.bounds.position.z,wall.position.z)
+			if ox>.003 and oy>.003 and oz>.003:door_trim_clips.append(trim_id)
+	check(door_trim_clips.is_empty(),"Door jamb/header trim stays inside masonry openings")
+
+	var side_width_mismatches:Array[String]=[]
+	for door in station.doors:
+		if bool(door.get_meta("side_door",false)):
+			var expected_width:float=float(door.get_meta("plan_width",0.0))*.8
+			if absf(float(door.width)-expected_width)>.001:side_width_mismatches.append(str(door.name))
+	check(side_width_mismatches.is_empty(),"Side-door leaves fit scaled wall apertures")
+
+	var buried_trim:Array[String]=[]
+	for part in station.parts:
+		if str(part.id).ends_with("Skirting") and minf(part.bounds.size.x,part.bounds.size.z)>.04:buried_trim.append(str(part.id))
+	check(buried_trim.is_empty(),"Wall-base trim is surface-mounted and not buried in masonry")
 	check(stair_nosings==19,"Top stair nosing stops at the upstairs landing edge")
 	player.position=station.point(11.2,.1,30)
 	game.camera.position=player.position+Vector3.UP*2.16;game.camera.look_at(station.point(11.2,1.6,28));await frames()
