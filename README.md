@@ -1,3 +1,7 @@
+# Inventory test build
+
+This branch is an isolated inventory experiment. See [preview instructions and save behavior](INVENTORY_PREVIEW.md).
+
 # AFewBuds — desktop 3D baseline
 
 `main` is the canonical desktop game. Baseline: **0.13.2-preview**, paired with [mobile 3D v12](https://github.com/FFDevelopment/afewbuds-cloud-test).

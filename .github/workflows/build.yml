@@ -1,7 +1,7 @@
-name: Build desktop baseline
+name: Build inventory preview
 on:
   push:
-    branches: [main]
+    branches: [experiment/container-inventory]
   workflow_dispatch:
 permissions:
   contents: read

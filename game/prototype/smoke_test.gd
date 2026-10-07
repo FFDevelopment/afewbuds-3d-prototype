@@ -116,12 +116,12 @@ func run() -> void:
 	aim(Vector3(-2.3, 0.08, -0.3), Vector3(-3.95, 1.3, -0.3))
 	await frames()
 	game._use_target()
-	check(game.storage_panel.visible, "storage opens original inventory")
+	check(game.inventory_system.is_open(), "storage opens physical container inventory")
 	game._close_storage_panel()
 	aim(Vector3(-2.4, 0.08, -6.45), Vector3(-4.05, 1.3, -6.45))
 	await frames()
 	game._use_target()
-	check(game.supply_inventory_panel.visible, "supply shelf opens seeds and fertilizer")
+	check(game.inventory_system.is_open(), "supply shelf opens seeds and fertilizer")
 	game._close_supply_inventory_panel()
 	aim(Vector3(2.8, 0.08, -6.65), Vector3(4.45, 1.8, -6.65))
 	await frames()
@@ -132,7 +132,7 @@ func run() -> void:
 	aim(Vector3(2.4, 0.08, -2.20), Vector3(3.95, 1.3, -2.20))
 	await frames()
 	game._use_target()
-	check(game.dealer_storage_panel.visible, "E opens native dealer storage")
+	check(not game.inventory_system.is_open(), "Unpurchased dealer container stays locked")
 	await frames()
 	check(not game.fp_player.enabled, "dealer storage locks walking")
 	game.cash = 10000
@@ -141,6 +141,8 @@ func run() -> void:
 	game._buy_dealer_locker_upgrade()
 	game.neighborhood.location_ops.installing=false
 	check(game.dealer_locker_level == 1 and game._dealer_locker_capacity() == 100 and game.cash == 10000, "paid locker installation does not charge twice and holds 100g")
+	game._use_target()
+	check(game.inventory_system.is_open(), "Purchased dealer container opens with E")
 	game.storage_level = 5
 	game.products["Purple Dream"]["stock"] = 150
 	game.locker_weed.clear()
@@ -149,9 +151,9 @@ func run() -> void:
 	game._dealer_storage_transfer("Purple Dream", 5, false)
 	check(game.locker_weed["Purple Dream"] == 95 and game.products["Purple Dream"]["stock"] == 55, "minus five returns dealer stock to storage")
 	game._refresh_dealer_storage_panel()
-	check(game.dealer_storage_list.find_children("", "Button", true, false).size() >= 6, "dealer rows provide transfer controls")
+	check(game.inventory_system.confirm != null, "dealer container provides quantity transfer controls")
 	game._close_active_panel()
-	check(not game.dealer_storage_panel.visible, "Escape closes dealer storage")
+	check(not game.inventory_system.is_open(), "Escape closes dealer storage")
 	for tier in range(2, 5):
 		game.neighborhood.location_ops.installing=true
 		game._buy_dealer_locker_upgrade()
@@ -160,16 +162,16 @@ func run() -> void:
 	check(game.premium_dealer_locker_root.visible and not game.get_node("LockerBody").visible, "premium locker replaces basic locker at tier III")
 	game._use_target()
 	await create_timer(0.4).timeout
-	check(game.dealer_storage_panel.visible and game.premium_dealer_locker_open, "premium locker doors open before first-person menu")
+	check(game.inventory_system.is_open() and game.premium_dealer_locker_open, "premium locker doors open before first-person menu")
 	game._pause_gameplay()
-	check(not game.dealer_storage_panel.visible, "pause hides locker controls")
+	check(not game.inventory_system.is_open(), "pause hides locker controls")
 	game._resume_gameplay()
-	check(game.dealer_storage_panel.visible, "resume restores locker in first-person view")
+	check(game.inventory_system.is_open(), "resume restores locker in first-person view")
 	game._close_dealer_storage_panel()
 	game._use_target()
 	game._pause_gameplay()
 	await create_timer(0.4).timeout
-	check(not game.dealer_storage_panel.visible and not game.fp_station_opening, "pause cancels pending locker opening")
+	check(not game.inventory_system.is_open() and not game.fp_station_opening, "pause cancels pending locker opening")
 	game._resume_gameplay()
 	game.grower_level = 6
 	game.cash = 10000
@@ -219,15 +221,16 @@ func run() -> void:
 	game.storage_level = 5
 	game._apply_visual_upgrades()
 	check(game.hidden_stash_interior_root.position.is_equal_approx(Vector3(-4.69, 0, -0.30)), "stash moves toward wall without moving along it")
+	aim(Vector3(-2.3, 0.08, -0.3), Vector3(-3.95, 1.3, -0.3))
 	game._open_storage_panel()
 	check(game.fp_station_opening, "stash animation blocks movement")
 	game._pause_gameplay()
 	await create_timer(0.35).timeout
-	check(not game.storage_panel.visible, "pause cancels pending stash menu")
+	check(not game.inventory_system.is_open(), "pause cancels pending stash menu")
 	game._resume_gameplay()
 	game._open_storage_panel()
 	await create_timer(0.35).timeout
-	check(game.storage_panel.visible, "stash opens normally after resume")
+	check(game.inventory_system.is_open(), "stash opens normally after resume")
 	game._close_storage_panel()
 	game.seed_inventory.clear()
 	for seed_name in game.SEED_ORDER:

@@ -103,6 +103,7 @@ var reputation: int = 0
 var brand_level: int = 1
 var lifetime_revenue: int = 0
 var bagging_level: int = 1
+var inventory_system: Node
 var storage_level: int = 1
 var storage_vault: StorageVault
 var hidden_stash_frame_pivot: Node3D
@@ -734,6 +735,9 @@ func _ready() -> void:
 	neighborhood = load("res://prototype/neighborhood.gd").new()
 	add_child(neighborhood)
 	neighborhood.setup(self)
+	inventory_system=load("res://scripts/container_inventory.gd").new()
+	add_child(inventory_system)
+	inventory_system.setup(self)
 	_update_day_night_visuals()
 	_build_visit_timer()
 	_build_customer_patience_timers()
@@ -4814,6 +4818,7 @@ func _context_action() -> void:
 				_open_peephole()
 
 func _any_modal_open() -> bool:
+	if inventory_system!=null and inventory_system.is_open():return true
 	if neighborhood!=null and neighborhood.location_ops!=null and neighborhood.location_ops.is_open():return true
 	if neighborhood!=null and neighborhood.property_opportunity!=null and neighborhood.property_opportunity.is_open(): return true
 	return reset_confirmation_open or reset_in_progress or session_paused or phone_open or sale_panel.visible or grow_panel.visible or (plant_direct_panel != null and plant_direct_panel.visible) or bagging_panel.visible or storage_panel.visible or (dealer_storage_panel != null and dealer_storage_panel.visible) or (supply_inventory_panel != null and supply_inventory_panel.visible) or (system_control_panel != null and system_control_panel.visible) or trim_panel.visible or bag_minigame_panel.visible or (peephole_panel != null and peephole_panel.visible) or (tutorial_panel != null and tutorial_panel.visible) or (daily_report_panel != null and daily_report_panel.visible)
@@ -6199,7 +6204,7 @@ func _refresh_bagging_panel() -> void:
 	_restore_station_list_scroll.call_deferred("bagging", restore_y, bagging_refresh_revision)
 	_add_pipeline_section("UNTRIMMED HARVEST", untrimmed_inventory, "TRIM BY HAND", _start_trim_minigame, "bud")
 	_add_pipeline_section("TRIMMED / READY TO BAG", trimmed_inventory, "BAG BY HAND", _start_bag_minigame, "bud")
-	_add_pipeline_section("BAGGED / READY FOR STORAGE", bagged_inventory, "PUT IN STORAGE", _store_product, "bag")
+	_add_pipeline_section("BAGGED / READY FOR STORAGE", bagged_inventory, "TAKE TO BACKPACK", _inventory_take_packed, "bag")
 
 func _add_pipeline_section(title_text: String, inventory: Dictionary, action_text: String, action_callable: Callable, icon_key: String) -> void:
 	var title: Label = Label.new()
@@ -6292,6 +6297,9 @@ func _store_product(strain_name: String) -> void:
 	_schedule_next_customer(true)
 
 func _open_storage_panel() -> void:
+	if inventory_system!=null:
+		inventory_system.open_container("storage")
+		return
 	if storage_level >= 5:
 		_set_hidden_stash_open(true)
 		await get_tree().create_timer(0.28).timeout
@@ -6302,6 +6310,9 @@ func _open_storage_panel() -> void:
 	_refresh_storage_panel()
 
 func _close_storage_panel() -> void:
+	if inventory_system!=null and inventory_system.is_open():
+		inventory_system.close()
+		return
 	_cancel_phone_gesture()
 	storage_panel.visible = false
 	if storage_level >= 5:
@@ -6311,6 +6322,9 @@ func _close_storage_panel() -> void:
 	status_label.text = "You close the hidden stash." if storage_level >= 5 else "You step back from storage."
 
 func _open_dealer_storage_panel() -> void:
+	if inventory_system!=null:
+		inventory_system.open_container("dealer")
+		return
 	if dealer_storage_panel == null:
 		status_label.text = "Dealer Storage panel failed to initialize."
 		return
@@ -6321,6 +6335,9 @@ func _open_dealer_storage_panel() -> void:
 	status_label.text = "Dealer Storage opened."
 
 func _close_dealer_storage_panel() -> void:
+	if inventory_system!=null and inventory_system.is_open():
+		inventory_system.close()
+		return
 	dealer_storage_reopen_after_pause = false
 	if dealer_storage_scroll != null:
 		dealer_storage_scroll.cancel_touch()
@@ -6429,6 +6446,9 @@ func _refresh_dealer_storage_panel() -> void:
 		_dealer_storage_row(dealer_storage_list, strain, _available_amount(strain), maxi(0, int(locker_weed.get(strain, 0))))
 
 func _open_supply_inventory_panel() -> void:
+	if inventory_system!=null:
+		inventory_system.open_container("supply")
+		return
 	if supply_inventory_panel == null:
 		return
 	supply_inventory_panel.visible = true
@@ -6436,6 +6456,9 @@ func _open_supply_inventory_panel() -> void:
 	_refresh_supply_inventory_panel()
 
 func _close_supply_inventory_panel() -> void:
+	if inventory_system!=null and inventory_system.is_open():
+		inventory_system.close()
+		return
 	_cancel_phone_gesture()
 	if supply_inventory_panel != null:
 		supply_inventory_panel.visible = false
@@ -10922,6 +10945,7 @@ func _pause_gameplay(reason: String = "Paused. Resume whenever you are ready.", 
 		away_worker_next_service = OfflinePlantCare.CARE_INTERVAL
 		offline_plant_report.clear()
 	session_paused = true
+	if inventory_system!=null:inventory_system.pause_inventory()
 	_cancel_beta_reset()
 	_cancel_phone_gesture()
 	room_look_drag_active = false
@@ -10973,6 +10997,7 @@ func _resume_gameplay() -> void:
 		status_label.text = _offline_plant_summary()
 
 	session_paused = false
+	if inventory_system!=null:inventory_system.resume_inventory()
 	if web_lifecycle != null:
 		web_lifecycle.away = false
 	last_active_frame_msec = Time.get_ticks_msec()
@@ -11974,3 +11999,7 @@ func _go_to_waiting_customer() -> void:
 	_open_peephole()
 	_refresh_door_alert()
 	_save_game()
+func _inventory_take_packed(strain_name:String) -> void:
+	bagging_panel.hide()
+	inventory_system.open_container("packing")
+	inventory_system.select_item(inventory_system.container_id,"product|"+strain_name)

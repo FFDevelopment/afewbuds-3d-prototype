@@ -254,6 +254,9 @@ func _on_cloud_status(message: String) -> void:
 	if AFBCloud.blocked and not session_paused: _pause_gameplay()
 
 func _close_active_panel() -> bool:
+	if inventory_system!=null and inventory_system.is_open():
+		inventory_system.close()
+		return true
 	if neighborhood.location_ops.is_open():
 		neighborhood.location_ops.close()
 		return true
@@ -653,9 +656,7 @@ func _open_storage_panel() -> void:
 	fp_station_opening = false
 	if session_paused:
 		return
-	storage_panel.visible = true
-	_set_world_controls_visible(false)
-	_refresh_storage_panel()
+	inventory_system.open_container("storage")
 
 func _build_door_alert() -> void:
 	super._build_door_alert()

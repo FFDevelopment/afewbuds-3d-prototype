@@ -54,7 +54,8 @@ func _ready() -> void:
 	logo.custom_minimum_size.y = 100
 	box.add_child(logo)
 	label("AFewBuds", 32)
-	label("3D Edition · AFewBuds Account", 18)
+	label("INVENTORY PREVIEW · Separate test career", 18)
+	label("Copies your career once. Test progress stays on this device.", 16)
 	username = field("Username")
 	username.max_length = 20
 	password = field("Password", true)

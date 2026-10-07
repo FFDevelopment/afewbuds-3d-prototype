@@ -3,9 +3,10 @@ signal sync_changed(message: String)
 # Existing public AFewBuds API configuration; no admin/service-role credentials.
 const BASE := "https://nlrrnhdcjrnfuftyoaqn.supabase.co"
 const API_KEY := "sb_publishable_f8LrZYozO8h2xAvn90L-gw_dZiaUwTY"
-const CONNECTION_NOTE := "Use your existing AFewBuds username and password. Save and close the other version before switching."
+const CONNECTION_NOTE := "Sign in to copy your existing career. Inventory preview progress stays on this device; live career saves are unchanged."
 const ACTIVE := "user://afewbuds_3d_prototype_save.json"
 const SESSION := "user://account_session.json"
+var inventory_preview := true
 var service_url := BASE
 var session: Dictionary = {}
 var remote_signature := ""
@@ -58,6 +59,7 @@ func request_password_reset(identifier: String) -> Dictionary:
 	return {"ok": true, "message": RECOVERY_MESSAGE}
 
 func request_rpc(method: String, payload: Dictionary) -> Dictionary:
+	if inventory_preview and method in ["afb_set_save","afb_leaderboard_report"]:return {"error":"Inventory preview cannot write to live careers."}
 	return await request_json("/rest/v1/rpc/" + method, payload)
 
 func wire_numbers(value: Variant) -> Variant:
@@ -154,6 +156,7 @@ func prepare(guest: bool = false, use_cloud: bool = false) -> Dictionary:
 		if int(cloud.get("save_schema", 0)) > 2: return {"error": "This career needs a newer desktop build. Please update."}
 		remote_signature = fingerprint(cloud)
 		var cached := read_json(cache_path())
+		if inventory_preview and cached.get("inventory_preview",false):cloud=cached.get("save",{});remote_signature=fingerprint(cloud)
 		if cached.get("dirty", false):
 			if str(cached.get("remote_signature", "")) != remote_signature and fingerprint(cached.get("save", {})) != remote_signature and not use_cloud:
 				return {"conflict": true, "error": "Another version saved this career. Continue from cloud to keep its progress. Your desktop copy will be backed up."}
@@ -193,6 +196,13 @@ func shared_save(raw: Dictionary) -> Dictionary:
 func queue_save(raw: Dictionary) -> void:
 	if not launched: return
 	var save := shared_save(raw)
+	if inventory_preview:
+		baseline=save
+		write_json(cache_path(),{"save":save,"inventory_preview":true,"dirty":false})
+		var preview_pose:Dictionary=raw.get("runtime",{}).get("prototype_player",{})
+		if not preview_pose.is_empty():write_json(settings_path(),preview_pose)
+		set_status("Inventory preview saved locally. Live career unchanged.")
+		return
 	var pose: Dictionary = raw.get("runtime", {}).get("prototype_player", {})
 	if not pose.is_empty(): write_json(settings_path(), pose)
 	write_json(cache_path(), {"save": save, "remote_signature": remote_signature, "dirty": not session.is_empty()})

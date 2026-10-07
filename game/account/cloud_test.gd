@@ -11,6 +11,7 @@ func run() -> void:
 	if failures: quit(1); return
 	var cloud = load("res://account/mock_cloud.gd").new()
 	root.add_child(cloud)
+	cloud.inventory_preview=false
 	cloud.write_json(cloud.ACTIVE, {"cash": 321, "runtime": {"prototype_player": {"x": 1.5, "z": 2}}})
 	var rejected: Dictionary = await cloud.request_rpc("afb_login", {"p_password": "wrong"})
 	check(rejected.has("error"), "invalid credentials remain on sign-in")
