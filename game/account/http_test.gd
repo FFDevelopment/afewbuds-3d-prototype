@@ -49,7 +49,7 @@ func run() -> void:
 	autoload.accept_session({"account_id":"fixture-id","username":"fixture","session_token":"fixture-session"},false)
 	board.show_leaderboard()
 	while board.working:await process_frame
-	check("$98765" in board.notice.text and "#31" in board.notice.text,"Lifetime own total appears even outside top 25")
+	check("$98765" in board.notice.text and "#31" in board.notice.text,"Matching ranked total and rank survive a conflicting zero profile response")
 	check(board.listing.get_child_count()==1 and "other" in board.listing.get_child(0).text,"Public rankings remain intact")
 	board.period="weekly";board.refresh_rankings()
 	board.period="lifetime";board.refresh_rankings()
@@ -57,7 +57,7 @@ func run() -> void:
 	check("LIFETIME" in board.notice.text and "$98765" in board.notice.text,"In-flight period change cannot display stale weekly stats as lifetime")
 	board.period="weekly";await board.refresh_rankings()
 	check("$1250" in board.notice.text,"Weekly own value uses weekly server response")
-	check("$98765 lifetime revenue" in board.notice.text and "321 sales" in board.notice.text,"Shared career card remains visible alongside weekly rank")
+	check("$0 lifetime revenue" in board.notice.text and "321 sales" in board.notice.text,"Shared career card remains visible alongside weekly rank")
 	check(board.ranking_value({},"revenue")=="Unavailable","Missing stats never become fabricated zeros")
 	check(board.own_ranking({"top":[{"account_id":"fixture-id","value":36068,"rank":4}],"me":{"account_id":"fixture-id","value":0}},autoload.session).value==36068,"Own summary uses matching authoritative public row instead of inconsistent zero")
 	check(board.own_ranking({"top":[],"me":{"account_id":"other-id","value":999999}},autoload.session)==null,"A different account cannot supply own stats")

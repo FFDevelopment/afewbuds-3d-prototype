@@ -12,7 +12,7 @@ func run() -> void:
 	check(is_equal_approx(couch.SEAT_TOP,0.4682184907339378),"Uploaded lower couch replaces original")
 	check(couch.has_node("SeatLeft") and couch.has_node("SeatRight"),"Couch retains fitted seat markers")
 	var visuals: Array[Node3D]=[]
-	for name in ["Malik","Rod"]:
+	for name in ["Malik","Rod","Kobi"]:
 		var model: Node3D=crew.character_instance(name);root.add_child(model);visuals.append(model)
 		var rig: Skeleton3D=model.find_children("*","Skeleton3D",true,false)[0]
 		var player: AnimationPlayer=model.find_children("*","AnimationPlayer",true,false)[0]
@@ -42,6 +42,16 @@ func run() -> void:
 	game.customer_waiting=false;crew.update_malik();game.production_worker_node.show();game.production_worker_pending_action="";game.production_worker_task="Waiting for work";game.production_worker_node.position=Vector3(-2.775,0,2.1);crew.update_seating(.1)
 	check(bool(crew.malik_worker.get_meta("seated",false)) and is_zero_approx(crew.malik_worker.position.y),"Worker sits with floor-level character root")
 	game.production_worker_pending_action="water";crew.update_seating(.1);check(not bool(crew.malik_worker.get_meta("seated",true)),"Worker resumes standing for work")
+	game.production_worker_friend_name="Rod";game.friend_staff_roles["Kobi"]="dealer"
+	game.location_state["apartment_manager"]="Kobi";game.location_state.staff_assignments["Kobi"]="apartment"
+	crew.update(.01)
+	check(crew.manager_node!=null and crew.manager_node.get_meta("character","")=="Kobi","Assigned Kobi door manager uses his ped")
+	check(crew.manager_node!=crew.malik_worker,"Kobi manager and Rod worker have independent instances")
+	crew.animate_manager(Vector3(.1,0,0),false,.1)
+	var manager_player:AnimationPlayer=crew.manager_node.find_children("*","AnimationPlayer",true,false)[0]
+	check(manager_player.current_animation.ends_with("walk"),"Kobi manager walks during movement")
+	crew.seated_pose(crew.manager_node,true);check(manager_player.current_animation.ends_with("sit"),"Kobi manager can sit")
+	crew.seated_pose(crew.manager_node,false);check(manager_player.current_animation.ends_with("idle"),"Kobi manager stands back into idle")
 	var header: Material=game.get_node("FrontWallHeader").get_active_material(0)
 	var wall: Material=game.get_node("FrontWallR").get_active_material(0)
 	check(header.albedo_texture!=null and header.albedo_texture==wall.albedo_texture and header.albedo_color==wall.albedo_color and header.uv1_scale==wall.uv1_scale,"Door header matches adjoining painted-wall material")

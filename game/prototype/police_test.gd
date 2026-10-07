@@ -21,6 +21,18 @@ func run() -> void:
 	check(player.move_and_collide(Vector3(60,0,0))==null,"Native capsule crosses old east fence into police district")
 	player.position=Vector3(199,.1,17)
 	check(player.move_and_collide(Vector3(5,0,0))!=null,"New east fence contains player")
+	for route in [[Vector3(132.5,.1,-1.6),Vector3(4.5,0,0)],[Vector3(188.5,.1,-12),Vector3(0,0,28)],[Vector3(161.5,.1,-30),Vector3(0,0,11)]]:
+		player.position=route[0]
+		check(player.move_and_collide(route[1])==null,"Native capsule passes repaired park exit or driveway "+str(route[0]))
+	var panes_fit:=true
+	for window in station.windows:panes_fit=panes_fit and window.aperture.encloses(window.bounds)
+	check(panes_fit,"Window panes stay inside masonry apertures")
+	var frames_clear:=true
+	for part in station.parts:
+		if part.id in ["WindowJamb","WindowRail","WindowMullion"]:
+			for wall in station.wall_bounds:
+				frames_clear=frames_clear and not part.bounds.intersects(wall)
+	check(frames_clear,"Window frames clear adjacent walls")
 	player.position=station.point(11.2,.1,30)
 	game.camera.position=player.position+Vector3.UP*2.16;game.camera.look_at(station.point(11.2,1.6,28));await frames()
 	game._use_target();await create_timer(.5).timeout

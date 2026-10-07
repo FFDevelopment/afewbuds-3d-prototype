@@ -214,9 +214,9 @@ func update(delta: float) -> void:
 	if manager_node!=null and str(manager_node.get_meta("contact",""))!=name:manager_node.queue_free();manager_node=null
 	if not name.is_empty() and host.production_worker_node!=null:
 		if manager_node==null:
-			manager_node=character_instance(name) if name in ["Malik","Rod"] else host.production_worker_node.duplicate()
+			manager_node=character_instance(name) if name in ["Malik","Rod","Kobi"] else host.production_worker_node.duplicate()
 			manager_node.name="ApartmentDoorManager";host.add_child(manager_node);manager_node.set_meta("contact",name)
-			if name not in ["Malik","Rod"]:
+			if name not in ["Malik","Rod","Kobi"]:
 				for child in manager_node.get_children():
 					if str(child.name).ends_with("Visual"):child.queue_free()
 					if child is MeshInstance3D:child.visible=child.name!=host.production_worker_face_shell.name
@@ -249,7 +249,7 @@ func update(delta: float) -> void:
 
 func malik_instance() -> Node3D:return character_instance("Malik")
 func character_instance(name: String) -> Node3D:
-	if name not in ["Malik","Rod"]:return Node3D.new()
+	if name not in ["Malik","Rod","Kobi"]:return Node3D.new()
 	var scene: PackedScene=character_scenes.get(name)
 	if scene==null:
 		# Native exports resolve Godot's imported scenes/textures, not raw file bytes.
@@ -269,7 +269,7 @@ func character_instance(name: String) -> Node3D:
 func update_malik() -> void:
 	var worker: Node3D=host.production_worker_node
 	var name: String=host.production_worker_friend_name
-	if name in ["Malik","Rod"] and worker!=null:
+	if name in ["Malik","Rod","Kobi"] and worker!=null:
 		if malik_worker!=null and str(malik_worker.get_meta("character",""))!=name:malik_worker.queue_free();malik_worker=null
 		if malik_worker==null:malik_worker=character_instance(name);worker.add_child(malik_worker)
 		malik_worker.show()
@@ -285,7 +285,7 @@ func update_malik() -> void:
 			for child in worker.get_children():
 				if child is MeshInstance3D and child!=host.production_worker_face_shell:child.show()
 	var visitor: String=str(host.current_customer.get("name",""))
-	if host.customer_waiting and visitor in ["Malik","Rod"]:
+	if host.customer_waiting and visitor in ["Malik","Rod","Kobi"]:
 		if malik_visitor!=null and str(malik_visitor.get_meta("character",""))!=visitor:malik_visitor.queue_free();malik_visitor=null
 		if malik_visitor==null:malik_visitor=character_instance(visitor);host.add_child(malik_visitor);malik_visitor.position=Vector3(0,0,7.1)
 		malik_visitor.show()

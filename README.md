@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.12.0 preview** (cloud-test .97-police.2 map, desktop controls, wider portrait phone, and quiet background saves).
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.12.1 preview** (cloud-test .98-kobi.1 characters and police/park repairs, desktop controls, wider portrait phone, quiet background saves, and ranked-total precedence).
 
 ## Play the Windows build
 
@@ -31,7 +31,7 @@ Press **Escape → Controls & Display Settings** for key rebinding, mouse/contro
 
 Controller: left stick walks, right stick looks, A/Cross interacts, Y/Triangle opens the phone, X/Square checks visitors, L3 sprints, and Start pauses. In menus, left stick moves the pointer, A/Cross clicks or holds to drag, right stick scrolls, and B/Circle returns. Keyboard input is still needed for account credentials and key rebinding. Hardware/controller mapping needs a Windows playtest.
 
-The phone uses a wider 0.64:1 portrait shell, with wrapping app content and a compact dock. Leaderboards show the signed-in username and select your exact account-ID row from the server. Report failures are visible instead of silently ignored. The shared career card also uses cloud-test’s public profile endpoint; if the own ranked row is missing or inconsistent, lifetime totals come directly from that account’s server profile. Weekly ranking values remain weekly, with lifetime career totals labeled separately. A signed-in playtest is still needed to confirm the reported discrepancy on your computer.
+The phone uses a wider 0.64:1 portrait shell, with wrapping app content and a compact dock. Leaderboards show the signed-in username and select your exact account-ID row from the server. Report failures are visible instead of silently ignored. The shared career card also uses cloud-test’s public profile endpoint; if no matching ranked row is returned, lifetime totals come from that account’s server profile. A profile response never replaces a matching ranked total or rank. Weekly ranking values remain weekly, with lifetime career totals labeled separately. A signed-in playtest is still needed to confirm the reported discrepancy on your computer.
 
 ## First test route
 

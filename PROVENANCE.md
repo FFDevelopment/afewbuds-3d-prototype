@@ -37,3 +37,7 @@ Reviewed cloud-test54–57 commits and synchronized the runtime at `e0a132fcbd47
 ## Visual update: prototype 0.7
 
 Ports the exact main.gd transformations from cloud-test58 preparation commit `d3568348816ee711ce3a9a52b8b996f5e4c1d88a`, deployed at `f702bb7357809a92952bc5802a07293560b89600`: remove WindowBuildingA/B/C and change Hidden Wall Stash X offset from -0.24 to -0.36. No other simulation or asset changes. Engine integration checks verify the new stash position, unchanged vault anchor, and removal of placeholders while retaining the window.
+
+## Desktop 0.12.1 preview
+
+Ports police frame/floor joins, parking access and park exit/sidewalk repairs from cloud-test commits `e3997cb8baaf7b839235f585e6f98c677a4fd056` and `6addda9c7fad6316f74ea3c4de1100cef592f606`. Native capsule collision, stairs and E-key door interaction are retained. Kobi model and atlas come from `ec056a58874df82750275bc539c90e1a778a6b1c`; SHA-256, original user-art provenance and shared 56-bone validation are retained in `game/assets/characters/Kobi.receipt.json`. The upstream five character-selection changes are applied to the desktop crew adapter. Matching server ranked rows now take precedence over conflicting career profiles. No backend or save-schema changes.

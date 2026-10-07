@@ -168,9 +168,9 @@ func refresh_rankings() -> void:
 	var me: Variant=own_ranking(result,AFBCloud.session)
 	# Career cards use the same public profile RPC as cloud-test. A missing
 	# ranked row must not be described as an account with no career stats.
-	if selected_period=="lifetime" and not profile.is_empty():
+	if selected_period=="lifetime" and me==null and not profile.is_empty():
 		var field_name:String={"revenue":"lifetime_revenue","hybrids":"hybrids_created","raids":"raids_survived","days":"days_played"}.get(selected_metric,selected_metric)
-		if profile.has(field_name) and (me==null or me.get("value")!=profile[field_name]):me={"value":profile[field_name],"account_id":profile.account_id}
+		if profile.has(field_name) and profile[field_name]!=null:me={"value":profile[field_name],"account_id":profile.account_id}
 	notice.text=("THIS WEEK" if selected_period=="weekly" else "LIFETIME")+" · "+selected_metric.replace("_"," ").capitalize()
 	if me is Dictionary:
 		notice.text+="\n"+str(AFBCloud.session.get("username","Your account"))+" — "+("rank #%s — " % me.rank if me.has("rank") else "total: ")+ranking_value(me,selected_metric)
