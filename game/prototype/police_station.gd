@@ -59,7 +59,9 @@ func wall(id:String,x:float,z:float,length:float,along_x:bool,holes:Array=[],col
 	var span:=length if along_x else length*.8
 	var cuts:Array[Rect2]=[]
 	for raw in holes:cuts.append(Rect2(raw.position*Vector2(1 if along_x else .8,1),raw.size*Vector2(1 if along_x else .8,1)))
-	var wall_height:float=STORY-.20 if floor_index==0 else STORY-.23
+	var wall_height:float=STORY
+	if floor_index==0 and id.begins_with("Stair"):wall_height=STORY-.20
+	elif floor_index==1:wall_height=STORY-.23
 	var xs:Array[float]=[0,span];var ys:Array[float]=[0,wall_height]
 	for h in cuts:
 		xs.append(h.position.x);xs.append(h.end.x);ys.append(h.position.y);ys.append(h.end.y)
@@ -84,8 +86,20 @@ func wall(id:String,x:float,z:float,length:float,along_x:bool,holes:Array=[],col
 			# Facade skirting belongs on the inside only; a centered trim box
 			# previously protruded outside as a dark band at both floor levels.
 			var inward:Vector3={"Front":Vector3.FORWARD,"Rear":Vector3.BACK,"West":Vector3.RIGHT,"East":Vector3.LEFT}.get(id,Vector3.ZERO)
-			var depth:=.035 if inward!=Vector3.ZERO else .245
-			box(id+"Skirting",start+axis*mid+Vector3.UP*.07+inward*.12,Vector3(xs[i+1]-xs[i],.14,depth) if along_x else Vector3(depth,.14,xs[i+1]-xs[i]),"737777",false)
+			var normal:=Vector3.BACK if along_x else Vector3.RIGHT
+			var trim_depth:=.03
+			var trim_offset:=.11+trim_depth/2+.003
+			var faces:Array[Vector3]=[inward] if inward!=Vector3.ZERO else [normal,-normal]
+			var trim_from:float=xs[i]
+			var trim_to:float=xs[i+1]
+			if inward==Vector3.ZERO:
+				if is_equal_approx(trim_from,0.0):trim_from+=.11
+				if is_equal_approx(trim_to,span):trim_to-=.11
+			var trim_length:=trim_to-trim_from
+			if trim_length>.02:
+				var trim_mid:float=(trim_from+trim_to)/2
+				for face in faces:
+					box(id+"Skirting",start+axis*trim_mid+Vector3.UP*.07+face*trim_offset,Vector3(trim_length,.14,trim_depth) if along_x else Vector3(trim_depth,.14,trim_length),"737777",false)
 
 func window_at(x:float,z:float,width:float,along_x:bool,sill:float=1.15,height:float=1.6,privacy:bool=false) -> void:
 	# Width/height describe the masonry aperture, not the pane. All frame
@@ -108,32 +122,39 @@ func window_at(x:float,z:float,width:float,along_x:bool,sill:float=1.15,height:f
 	box("WindowMullion",at,Vector3(.06,pane_height,.14) if along_x else Vector3(.14,pane_height,.06),"303e49",false)
 
 func door(id:String,x:float,z:float,width:float,side:bool=false,bars:bool=false,glazed:bool=false) -> void:
-	var pivot:Node3D=load("res://prototype/police_door.gd").new();pivot.name=id;pivot.width=width;pivot.host=world.host
+	var physical_width:=width*(.8 if side else 1.0)
+	var pivot:Node3D=load("res://prototype/police_door.gd").new();pivot.name=id;pivot.width=physical_width;pivot.host=world.host
+	pivot.set_meta("plan_width",width);pivot.set_meta("side_door",side)
 	if id in ["LOCKER_ROOM","STAFF_TOILET"]:pivot.swing_side=-1.0
-	var yaw:=PI/2 if side else 0.0;pivot.position=point(x,floor_index*STORY,z)-Basis(Vector3.UP,yaw)*Vector3(width/2,0,0);pivot.rotation.y=yaw
+	var yaw:=PI/2 if side else 0.0;pivot.position=point(x,floor_index*STORY,z)-Basis(Vector3.UP,yaw)*Vector3(physical_width/2,0,0);pivot.rotation.y=yaw
 	pivot.set_meta("station_floor",floor_index);pivot.set_meta("title",id.replace("_"," "));add_child(pivot)
 	var leaf:=Node3D.new();leaf.name="Leaf";pivot.add_child(leaf)
 	if bars:
-		for i in range(9):door_box(leaf,Vector3(.06+i*(width-.12)/8,1.425,0),Vector3(.055,2.85,.065),"525d65")
-		for y in [.12,1.4,2.75]:door_box(leaf,Vector3(width/2,y,0),Vector3(width,.065,.075),"525d65")
+		for i in range(9):door_box(leaf,Vector3(.06+i*(physical_width-.12)/8,1.425,0),Vector3(.055,2.85,.065),"525d65")
+		for y in [.12,1.4,2.75]:door_box(leaf,Vector3(physical_width/2,y,0),Vector3(physical_width,.065,.075),"525d65")
 	else:
-		door_box(leaf,Vector3(width/2,1.425,0),Vector3(width-.035,2.85,.10),"264760" if glazed else "aa8961")
-		if glazed:door_box(leaf,Vector3(width/2,1.65,.06),Vector3(width-.24,1.95,.025),"64858b")
-	door_box(leaf,Vector3(width-.15,1.28,.12),Vector3(.09,.25,.14),"b5b8b2")
+		door_box(leaf,Vector3(physical_width/2,1.425,0),Vector3(physical_width-.035,2.85,.10),"264760" if glazed else "aa8961")
+		if glazed:door_box(leaf,Vector3(physical_width/2,1.65,.06),Vector3(maxf(.2,physical_width-.24),1.95,.025),"64858b")
+	door_box(leaf,Vector3(maxf(.12,physical_width-.15),1.28,.12),Vector3(.09,.25,.14),"b5b8b2")
 	var area:=Area3D.new();area.collision_layer=8;area.collision_mask=0
 	area.set_meta("interaction_id","interior_door");area.set_meta("door_controller",pivot)
-	var target_shape:=CollisionShape3D.new();var target_box:=BoxShape3D.new();target_box.size=Vector3(width,2.85,.35);target_shape.shape=target_box;area.add_child(target_shape)
-	area.position=Vector3(width/2,1.425,0);leaf.add_child(area)
-	# Cell bars need a solid leaf hull so a capsule cannot pass between them.
+	var target_shape:=CollisionShape3D.new();var target_box:=BoxShape3D.new();target_box.size=Vector3(physical_width,2.85,.35);target_shape.shape=target_box;area.add_child(target_shape)
+	area.position=Vector3(physical_width/2,1.425,0);leaf.add_child(area)
 	var hull:=StaticBody3D.new();hull.collision_layer=1;hull.collision_mask=4
-	var hull_shape:=CollisionShape3D.new();var hull_box:=BoxShape3D.new();hull_box.size=Vector3(width,2.85,.11);hull_shape.shape=hull_box;hull_shape.position=Vector3(width/2,1.425,0);hull.add_child(hull_shape);leaf.add_child(hull)
+	var hull_shape:=CollisionShape3D.new();var hull_box:=BoxShape3D.new();hull_box.size=Vector3(physical_width,2.85,.11);hull_shape.shape=hull_box;hull_shape.position=Vector3(physical_width/2,1.425,0);hull.add_child(hull_shape);leaf.add_child(hull)
 	doors.append(pivot)
 	if id not in ["PUBLIC_ENTRANCE","REAR_BOOKING_ENTRANCE"]:
 		label(id.replace("_"," "),x-.25 if side else x,floor_index*STORY+3.16,z if side else z+.32,-PI/2 if side else 0,.0025)
-	# Jambs remain outside the collision-free opening.
-	var along:=Vector3.BACK if side else Vector3.RIGHT;var center:=point(x,floor_index*STORY,z)
-	for s in [-1.0,1.0]:box("DoorJamb",center+along*s*(width/2+.04)+Vector3.UP*1.45,Vector3(.30,2.9,.08) if side else Vector3(.08,2.9,.30),"747d82",false)
-	box("DoorHeader",center+Vector3.UP*2.94,Vector3(.30,.08,width+.16) if side else Vector3(width+.16,.08,.30),"747d82",false)
+	var along:=Vector3.BACK if side else Vector3.RIGHT
+	var center:=point(x,floor_index*STORY,z)
+	var frame_width:=.07
+	var frame_depth:=.16
+	var frame_height:=2.82
+	var frame_edge:=physical_width/2-frame_width/2-.006
+	for s in [-1.0,1.0]:
+		box("DoorJamb",center+along*s*frame_edge+Vector3.UP*(frame_height/2),Vector3(frame_depth,frame_height,frame_width) if side else Vector3(frame_width,frame_height,frame_depth),"747d82",false)
+	var header_span:=maxf(.1,physical_width-frame_width*2-.012)
+	box("DoorHeader",center+Vector3.UP*2.86,Vector3(frame_depth,.07,header_span) if side else Vector3(header_span,.07,frame_depth),"747d82",false)
 
 func door_box(parent:Node3D,at:Vector3,size:Vector3,color:String) -> void:
 	var n:=MeshInstance3D.new();var mesh:=BoxMesh.new();mesh.size=size;n.mesh=mesh;n.position=at;n.material_override=mat(color);n.layers=2;n.set_meta("no_collision",true);parent.add_child(n)
