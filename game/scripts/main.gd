@@ -4313,8 +4313,11 @@ func _close_trim_minigame() -> void:
 	trim_active_strain = ""
 	trim_harvest_amount = 0
 	trim_scissors_picked = false
-	bagging_panel.visible = true
-	_refresh_bagging_panel()
+	if inventory_system!=null:
+		inventory_system.return_to_packing()
+	else:
+		bagging_panel.visible = true
+		_refresh_bagging_panel()
 	_set_world_controls_visible(false)
 
 func _start_bag_minigame(strain_name: String) -> void:
@@ -4402,8 +4405,11 @@ func _close_bag_minigame() -> void:
 	bag_minigame_panel.visible = false
 	bag_active_strain = ""
 	bag_dragging = false
-	bagging_panel.visible = true
-	_refresh_bagging_panel()
+	if inventory_system!=null:
+		inventory_system.return_to_packing()
+	else:
+		bagging_panel.visible = true
+		_refresh_bagging_panel()
 	_set_world_controls_visible(false)
 
 func _clamp_control_to_parent(control: Control, parent_control: Control) -> void:
@@ -6181,6 +6187,9 @@ func _fictional_harvest_amount(strain_name: String) -> int:
 
 
 func _open_bagging_panel() -> void:
+	if inventory_system!=null:
+		inventory_system.open_container("packing")
+		return
 	bagging_panel.visible = true
 	_set_world_controls_visible(false)
 	_refresh_bagging_panel()
