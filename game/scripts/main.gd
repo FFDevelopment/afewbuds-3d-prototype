@@ -723,6 +723,9 @@ var packing_bench_filled_bag_root: Node3D
 var packing_bench_visual_signature: String = ""
 
 func _ready() -> void:
+	# Recipe outputs are earned through genetics, never purchased as seeds.
+	for recipe in _genetics_recipe_catalog():
+		seed_catalog[str(recipe.output)]["recipe_only"]=true
 	rng.randomize()
 	_apply_cloud_boot_save()
 	_load_game()

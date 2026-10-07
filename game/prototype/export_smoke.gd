@@ -19,6 +19,11 @@ func run() -> void:
 	game.fp_player.wants_sprint=true
 	game.fp_player._update_stamina(1.0,true,true)
 	valid=valid and is_equal_approx(game.fp_player.stamina,82.0) and game.fp_player.is_sprinting
+	for item in ["seed|Purple Dream","fertilizer","cash","product|Purple Dream","raw|Purple Dream","equipment|Grow Tent upgrade"]:
+		var texture:Texture2D=game.inventory_system.art(item)
+		var correct:bool=texture!=null and texture.get_width()>=1024 and texture.get_height()>=1024
+		print("EXPORTED_INVENTORY_ART ",item," ",texture.get_size() if texture!=null else Vector2.ZERO)
+		valid=valid and correct
 	game.queue_free()
 	await get_tree().process_frame
 	print("EXPORTED_WORLD_RESULT: PASS" if valid else "EXPORTED_WORLD_RESULT: FAIL")

@@ -1,7 +1,11 @@
 extends Node
 ## Device preferences are never included in the shared career save.
 const PATH := "user://desktop_preferences.json"
-const DEFAULTS := {"forward":KEY_W,"backward":KEY_S,"left":KEY_A,"right":KEY_D,"sprint":KEY_SHIFT,"interact":KEY_E,"phone":KEY_P,"visitor":KEY_R,"tour":KEY_T,"save":KEY_F5}
+const DEFAULTS := {"forward":KEY_W,"backward":KEY_S,"left":KEY_A,"right":KEY_D,"sprint":KEY_SHIFT,"interact":KEY_E,"phone":KEY_P,"backpack":KEY_I,"visitor":KEY_R,"tour":KEY_T,"save":KEY_F5}
+const PAD_DEFAULTS := {"interact":JOY_BUTTON_A,"phone":JOY_BUTTON_Y,"backpack":JOY_BUTTON_DPAD_UP,"visitor":JOY_BUTTON_X,"tour":JOY_BUTTON_RIGHT_SHOULDER,"sprint":JOY_BUTTON_LEFT_STICK,"save":JOY_BUTTON_BACK}
+var pad_bindings:Dictionary=PAD_DEFAULTS.duplicate()
+var rebind_device:="keyboard"
+var focus_key:=""
 var bindings: Dictionary = DEFAULTS.duplicate()
 var mouse_sensitivity := 1.0
 var controller_sensitivity := 1.0
@@ -27,6 +31,9 @@ func _ready() -> void:
 		for action in DEFAULTS:
 			var key:=int(data.get("bindings",{}).get(action,DEFAULTS[action]))
 			if key>0 and key!=KEY_ESCAPE:bindings[action]=key
+		for action in PAD_DEFAULTS:
+			var button:int=int(data.get("pad_bindings",{}).get(action,PAD_DEFAULTS[action]))
+			if button>=0 and button<JOY_BUTTON_MAX and button not in [JOY_BUTTON_B,JOY_BUTTON_START]:pad_bindings[action]=button
 	install_actions()
 	Input.joy_connection_changed.connect(func(_device,connected):
 		if not connected and dragging:dragging=false;mouse_button(MOUSE_BUTTON_LEFT,false)
@@ -39,14 +46,14 @@ func install_actions() -> void:
 		if not InputMap.has_action(id):InputMap.add_action(id,.2)
 		InputMap.action_erase_events(id)
 		var key:=InputEventKey.new();key.physical_keycode=int(bindings[action]);InputMap.action_add_event(id,key)
-	for spec in [["interact",JOY_BUTTON_A],["phone",JOY_BUTTON_Y],["visitor",JOY_BUTTON_X],["tour",JOY_BUTTON_RIGHT_SHOULDER],["sprint",JOY_BUTTON_LEFT_STICK]]:
-		var button:=InputEventJoypadButton.new();button.button_index=spec[1];InputMap.action_add_event("fp_"+spec[0],button)
+	for action in pad_bindings:
+		var button:=InputEventJoypadButton.new();button.button_index=int(pad_bindings[action]);InputMap.action_add_event("fp_"+action,button)
 	for spec in [["left",JOY_AXIS_LEFT_X,-1],["right",JOY_AXIS_LEFT_X,1],["forward",JOY_AXIS_LEFT_Y,-1],["backward",JOY_AXIS_LEFT_Y,1]]:
 		var axis:=InputEventJoypadMotion.new();axis.axis=spec[1];axis.axis_value=spec[2];InputMap.action_add_event("fp_"+spec[0],axis)
 
 func save_preferences() -> void:
 	var file:=FileAccess.open(PATH,FileAccess.WRITE)
-	if file:file.store_string(JSON.stringify({"bindings":bindings,"mouse":mouse_sensitivity,"controller":controller_sensitivity,"invert_y":invert_y,"width":window_size.x,"height":window_size.y,"fullscreen":fullscreen}))
+	if file:file.store_string(JSON.stringify({"bindings":bindings,"pad_bindings":pad_bindings,"mouse":mouse_sensitivity,"controller":controller_sensitivity,"invert_y":invert_y,"width":window_size.x,"height":window_size.y,"fullscreen":fullscreen}))
 
 func apply_display() -> void:
 	if DisplayServer.get_name()=="headless":return
@@ -56,10 +63,24 @@ func apply_display() -> void:
 		DisplayServer.window_set_size(Vector2i(mini(window_size.x,available.x),mini(window_size.y,available.y)))
 		DisplayServer.window_set_position(DisplayServer.screen_get_usable_rect().position+(available-DisplayServer.window_get_size())/2)
 
-func label(action: String) -> String:
-	if controller_active:
-		return {"interact":"A / Cross","phone":"Y / Triangle","visitor":"X / Square","tour":"RB / R1","save":"F5"}.get(action,action.capitalize())
+func pad_label(index:int) -> String:
+	return {JOY_BUTTON_A:"A / Cross",JOY_BUTTON_B:"B / Circle",JOY_BUTTON_X:"X / Square",JOY_BUTTON_Y:"Y / Triangle",JOY_BUTTON_LEFT_SHOULDER:"LB / L1",JOY_BUTTON_RIGHT_SHOULDER:"RB / R1",JOY_BUTTON_LEFT_STICK:"L3",JOY_BUTTON_RIGHT_STICK:"R3",JOY_BUTTON_BACK:"Back / Select",JOY_BUTTON_START:"Start",JOY_BUTTON_DPAD_UP:"D-pad Up",JOY_BUTTON_DPAD_DOWN:"D-pad Down",JOY_BUTTON_DPAD_LEFT:"D-pad Left",JOY_BUTTON_DPAD_RIGHT:"D-pad Right"}.get(index,"Button %d" % index)
+func label(action:String) -> String:
+	if controller_active and pad_bindings.has(action):return pad_label(int(pad_bindings[action]))
 	return OS.get_keycode_string(int(bindings.get(action,0)))
+func binding_label(action:String,device:String) -> String:
+	return pad_label(int(pad_bindings[action])) if device=="controller" else OS.get_keycode_string(int(bindings[action]))
+func assign_binding(action:String,device:String,value:int) -> bool:
+	var table:Dictionary=pad_bindings if device=="controller" else bindings
+	if device=="controller" and (value<0 or value>=JOY_BUTTON_MAX or value in [JOY_BUTTON_B,JOY_BUTTON_START]):return false
+	if device=="keyboard" and (value<=0 or value==KEY_ESCAPE):return false
+	for other in table:
+		if other!=action and int(table[other])==value:return false
+	table[action]=value;install_actions();save_preferences();return true
+func begin_rebind(action:String,device:String,button:Button) -> void:
+	if not rebinding.is_empty() and is_instance_valid(rebind_button):rebind_button.text=binding_label(rebinding,rebind_device)
+	rebinding=action;rebind_device=device;rebind_button=button
+	button.text="Press a controller button · B cancels" if device=="controller" else "Press a key · Escape cancels"
 
 func stick(right: bool) -> Vector2:
 	var devices:=Input.get_connected_joypads()
@@ -74,23 +95,28 @@ func is_back(event: InputEvent) -> bool:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventJoypadButton or (event is InputEventJoypadMotion and absf(event.axis_value)>.25):controller_active=true
-	elif event is InputEventKey or (event is InputEventMouseMotion and event.device!=-9):controller_active=false
+	elif event is InputEventKey or event is InputEventMouseButton or (event is InputEventMouseMotion and event.device!=-9):controller_active=false
 	if not rebinding.is_empty():
-		if event is InputEventKey and event.pressed and not event.echo:
-			if event.keycode!=KEY_ESCAPE:
-				var key:int=event.physical_keycode if event.physical_keycode else event.keycode
-				for action in bindings:
-					if action!=rebinding and bindings[action]==key:
-						rebind_button.text="Already assigned — choose another key";get_viewport().set_input_as_handled();return
-				bindings[rebinding]=key;install_actions();save_preferences()
-			rebind_button.text=OS.get_keycode_string(int(bindings[rebinding]));rebinding=""
+		var cancel:bool=(event is InputEventKey and event.pressed and event.keycode==KEY_ESCAPE) or (rebind_device=="controller" and event is InputEventJoypadButton and event.pressed and event.button_index==JOY_BUTTON_B)
+		var candidate:bool=(rebind_device=="keyboard" and event is InputEventKey and event.pressed and not event.echo) or (rebind_device=="controller" and event is InputEventJoypadButton and event.pressed)
+		if cancel:
+			rebind_button.text=binding_label(rebinding,rebind_device);rebinding=""
+		elif candidate:
+			var value:int=int(event.button_index) if rebind_device=="controller" else int(event.physical_keycode if event.physical_keycode else event.keycode)
+			if assign_binding(rebinding,rebind_device,value):rebind_button.text=binding_label(rebinding,rebind_device);rebinding=""
+			else:rebind_button.text="Already assigned or reserved — try another"
 		get_viewport().set_input_as_handled();return
 	if is_instance_valid(settings) and is_back(event):
 		close_settings();get_viewport().set_input_as_handled();return
-	if Input.mouse_mode!=Input.MOUSE_MODE_CAPTURED and event is InputEventJoypadButton and event.button_index==JOY_BUTTON_A:
-		if event.pressed:cursor=get_viewport().get_mouse_position()
-		dragging=event.pressed
-		mouse_button(MOUSE_BUTTON_LEFT,event.pressed)
+	if event is InputEventJoypadButton and event.button_index==JOY_BUTTON_A and not is_instance_valid(settings):
+		for game in get_tree().root.get_children():
+			if game.has_method("_controller_grab") and game._controller_grab(event.pressed):
+				get_viewport().set_input_as_handled();return
+	if event is InputEventJoypadButton and menu_root()!=null and event.button_index in [JOY_BUTTON_A,JOY_BUTTON_DPAD_UP,JOY_BUTTON_DPAD_DOWN,JOY_BUTTON_DPAD_LEFT,JOY_BUTTON_DPAD_RIGHT]:
+		if event.pressed:
+			ensure_focus()
+			if event.button_index==JOY_BUTTON_A:activate_focus()
+			else:move_focus({JOY_BUTTON_DPAD_UP:Vector2.UP,JOY_BUTTON_DPAD_DOWN:Vector2.DOWN,JOY_BUTTON_DPAD_LEFT:Vector2.LEFT,JOY_BUTTON_DPAD_RIGHT:Vector2.RIGHT}[event.button_index])
 		get_viewport().set_input_as_handled()
 
 # Cursor coordinates are already viewport-local. Applying window stretch again
@@ -99,21 +125,71 @@ func mouse_button(button: int, pressed: bool) -> void:
 	var event:=InputEventMouseButton.new();event.device=-9;event.button_index=button;event.pressed=pressed;event.position=cursor;event.global_position=cursor
 	get_viewport().push_input(event, true)
 
-func _process(delta: float) -> void:
-	if Input.mouse_mode==Input.MOUSE_MODE_CAPTURED:
-		if dragging:dragging=false;mouse_button(MOUSE_BUTTON_LEFT,false)
-		return
-	var axis:=stick(false)
-	if axis.length()>.01:
-		cursor=get_viewport().get_mouse_position()
-		var previous:=cursor
-		cursor=(cursor+axis*650*delta).clamp(Vector2.ZERO,get_viewport().get_visible_rect().size-Vector2.ONE)
-		get_viewport().warp_mouse(cursor)
-		var event:=InputEventMouseMotion.new();event.device=-9;event.position=cursor;event.global_position=cursor;event.relative=cursor-previous;event.button_mask=MOUSE_BUTTON_MASK_LEFT if dragging else 0
-		get_viewport().push_input(event, true)
-	scroll_timer-=delta
-	if absf(stick(true).y)>.35 and scroll_timer<=0:
-		cursor=get_viewport().get_mouse_position();mouse_button(MOUSE_BUTTON_WHEEL_DOWN if stick(true).y>0 else MOUSE_BUTTON_WHEEL_UP,true);scroll_timer=.09
+func menu_root() -> Node:
+	if is_instance_valid(settings):return settings
+	for game in get_tree().root.get_children():
+		if not game.has_method("_any_modal_open"):continue
+		if is_instance_valid(game.get("account_overlay")):return game.account_overlay
+		if game.inventory_system!=null and game.inventory_system.is_open():return game.inventory_system.panel
+		for name in ["pause_overlay","daily_report_panel","tutorial_panel","trim_panel","bag_minigame_panel","sale_panel","peephole_panel","plant_direct_panel","grow_panel","phone_panel","system_control_panel"]:
+			var panel=game.get(name)
+			if panel is Control and panel.is_visible_in_tree():return panel
+		if game.neighborhood.location_ops.is_open():return game.neighborhood.location_ops.ui.overlay
+		if game.neighborhood.property_opportunity.is_open():return game.neighborhood.property_opportunity.overlay
+	var scene:Node=get_tree().current_scene
+	if scene is Control and scene.is_visible_in_tree():return scene
+	return null
+func focusables(node:Node,result:Array[Control]) -> void:
+	if node is Control and not node.is_visible_in_tree():return
+	if node is ScrollContainer:node.follow_focus=true
+	if (node is BaseButton and not node.disabled) or node is Range or (node is LineEdit and not node.get_parent() is SpinBox):
+		node.focus_mode=Control.FOCUS_ALL;result.append(node)
+	for child in node.get_children():focusables(child,result)
+func menu_controls() -> Array[Control]:
+	var result:Array[Control]=[];var menu:Node=menu_root()
+	if menu!=null:focusables(menu,result)
+	return result
+func ensure_focus() -> void:
+	var controls:=menu_controls()
+	if controls.is_empty():return
+	var current:Control=get_viewport().gui_get_focus_owner()
+	if current in controls:
+		focus_key=str(current.get_meta("navigation_key",""));return
+	for control in controls:
+		if not focus_key.is_empty() and str(control.get_meta("navigation_key",""))==focus_key:control.grab_focus();return
+	for control in controls:
+		if control.has_meta("navigation_key"):control.grab_focus();return
+	controls[0].grab_focus()
+func move_focus(direction:Vector2) -> void:
+	var controls:=menu_controls();var current:Control=get_viewport().gui_get_focus_owner()
+	if controls.is_empty():return
+	if current==null:controls[0].grab_focus();return
+	if current is Range and direction.x!=0:
+		current.value+=direction.x*maxf(current.step,.1);return
+	if current is OptionButton and direction.x!=0:
+		var index:int=posmod(current.selected+int(direction.x),current.item_count)
+		current.select(index);current.item_selected.emit(index);return
+	var origin:Vector2=current.get_global_rect().get_center();var best:Control=null;var score:=INF
+	for control in controls:
+		if control==current:continue
+		var offset:Vector2=control.get_global_rect().get_center()-origin
+		var ahead:float=offset.dot(direction)
+		if ahead<=1:continue
+		var distance:float=ahead+absf(offset.cross(direction))*3
+		if distance<score:score=distance;best=control
+	if best==null:best=controls[0] if direction.x+direction.y>0 else controls[-1]
+	best.grab_focus();focus_key=str(best.get_meta("navigation_key",""))
+func activate_focus() -> void:
+	var control:Control=get_viewport().gui_get_focus_owner()
+	if control==null:return
+	focus_key=str(control.get_meta("navigation_key",""))
+	if control is OptionButton:
+		move_focus(Vector2.RIGHT)
+	elif control is BaseButton and not control.disabled:
+		if control.toggle_mode:control.button_pressed=not control.button_pressed
+		control.pressed.emit()
+func _process(_delta:float) -> void:
+	if controller_active and rebinding.is_empty() and menu_root()!=null:ensure_focus()
 
 func close_settings() -> void:
 	rebinding=""
@@ -129,7 +205,9 @@ func show_settings() -> void:
 	var scroll:=ScrollContainer.new();scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED;panel.add_child(scroll)
 	var box:=VBoxContainer.new();box.size_flags_horizontal=Control.SIZE_EXPAND_FILL;box.add_theme_constant_override("separation",12);scroll.add_child(box)
 	var title:=Label.new();title.text="DESKTOP SETTINGS";title.add_theme_font_size_override("font_size",28);box.add_child(title)
-	var hint:=Label.new();hint.text="Controller: left stick moves the pointer in menus; A/Cross clicks or holds to drag.\nRight stick scrolls. B/Circle goes back; Start pauses. In the world: left stick walks,\nright stick looks, A interacts, Y opens phone, X checks visitors, L3 sprints.";hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;box.add_child(hint)
+	var hint:=Label.new();hint.text="Menus: D-pad moves focus, A/Cross selects, B/Circle goes back.
+D-pad left/right changes sliders and choices. Start pauses.
+Click L3 to toggle forward sprint; keyboard sprint is hold Shift.";hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;box.add_child(hint)
 	add_slider(box,"Mouse sensitivity",mouse_sensitivity,func(v):mouse_sensitivity=v;save_preferences())
 	add_slider(box,"Controller look sensitivity",controller_sensitivity,func(v):controller_sensitivity=v;save_preferences())
 	var invert:=CheckBox.new();invert.text="Invert vertical camera";invert.button_pressed=invert_y;invert.toggled.connect(func(v):invert_y=v;save_preferences());box.add_child(invert)
@@ -140,15 +218,17 @@ func show_settings() -> void:
 		resolution.add_item("Window: %d × %d" % [size_value.x,size_value.y])
 		if size_value==window_size:resolution.select(resolution.item_count-1)
 	resolution.item_selected.connect(func(i):window_size=sizes[i];fullscreen=false;full.set_pressed_no_signal(false);apply_display();save_preferences());box.add_child(resolution)
-	for action in DEFAULTS:
-		var row:=HBoxContainer.new();box.add_child(row)
-		var name_label:=Label.new();name_label.text=action.capitalize();name_label.size_flags_horizontal=Control.SIZE_EXPAND_FILL;row.add_child(name_label)
-		var button:=Button.new();button.text=OS.get_keycode_string(int(bindings[action]));button.custom_minimum_size=Vector2(360,36);row.add_child(button)
-		button.pressed.connect(func():
-			if not rebinding.is_empty():rebind_button.text=OS.get_keycode_string(int(bindings[rebinding]))
-			rebinding=action;rebind_button=button;button.text="Press a key · Escape cancels"
-		)
-	var reset:=Button.new();reset.text="Reset controls and sensitivity";reset.pressed.connect(func():bindings=DEFAULTS.duplicate();mouse_sensitivity=1;controller_sensitivity=1;invert_y=false;install_actions();close_settings();show_settings());box.add_child(reset)
+	for device in ["keyboard","controller"]:
+		var heading:=Label.new();heading.text="KEYBOARD BINDINGS" if device=="keyboard" else "CONTROLLER BINDINGS";box.add_child(heading)
+		var table:Dictionary=bindings if device=="keyboard" else pad_bindings
+		for action in table:
+			var row:=HBoxContainer.new();box.add_child(row)
+			var name_label:=Label.new();name_label.text=action.capitalize();name_label.size_flags_horizontal=Control.SIZE_EXPAND_FILL;row.add_child(name_label)
+			var button:=Button.new();button.text=binding_label(action,device);button.custom_minimum_size=Vector2(360,36);row.add_child(button)
+			button.set_meta("binding_action",action);button.set_meta("binding_device",device)
+			button.pressed.connect(begin_rebind.bind(action,device,button))
+
+	var reset:=Button.new();reset.text="Reset controls and sensitivity";reset.pressed.connect(func():bindings=DEFAULTS.duplicate();pad_bindings=PAD_DEFAULTS.duplicate();mouse_sensitivity=1;controller_sensitivity=1;invert_y=false;install_actions();close_settings();show_settings());box.add_child(reset)
 	var done:=Button.new();done.text="Back to pause menu";done.custom_minimum_size.y=46;done.pressed.connect(close_settings);box.add_child(done)
 
 func add_slider(box: VBoxContainer, title: String, value: float, changed: Callable) -> void:

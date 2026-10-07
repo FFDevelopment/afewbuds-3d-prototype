@@ -45,19 +45,15 @@ func run() -> void:
 	var saved:Dictionary=JSON.parse_string(FileAccess.get_file_as_string(controls.PATH))
 	check(saved.bindings.interact==KEY_F and saved.mouse==2 and not cloud.baseline.has("bindings"),"Device controls persist separately from career")
 	controls.close_settings()
-	# A controller press must become one UI click, including its release.
-	var click_layer:=CanvasLayer.new();click_layer.layer=150;root.add_child(click_layer)
-	var target:=Button.new();target.position=Vector2(20,20);target.size=Vector2(180,50);target.text="Pointer fixture";click_layer.add_child(target)
-	var clicks:=[0];target.pressed.connect(func():clicks[0]+=1)
-	root.warp_mouse(Vector2(60,40));controls.cursor=Vector2(60,40)
+	# Controller confirms the focused UI control without moving/clicking a pointer.
+	var target:=Button.new();target.text="Focus fixture";target.focus_mode=Control.FOCUS_ALL;game.pause_overlay.add_child(target)
+	var clicks:=[0];target.pressed.connect(func():clicks[0]+=1);target.grab_focus()
+	var mouse_before:Vector2=root.get_mouse_position()
 	var click:=InputEventJoypadButton.new();click.button_index=JOY_BUTTON_A;click.pressed=true
 	controls._input(click);await frames(2)
 	click.pressed=false;controls._input(click);await frames(2)
-	if DisplayServer.get_name()!="headless":
-		check(clicks[0]==1 and not controls.dragging,"Controller pointer clicks once and releases drag")
-	else:
-		check(not controls.dragging,"Controller pointer releases drag (GUI click tested in rendered run)")
-	click_layer.queue_free()
+	check(clicks[0]==1 and root.get_mouse_position()==mouse_before,"Controller selects the focused button once without moving the mouse")
+	target.queue_free()
 	controls.bindings=controls.DEFAULTS.duplicate();controls.install_actions();controls.mouse_sensitivity=1
 	game._resume_gameplay()
 	check(game.fp_player.has_method("drive") and game.fp_player.has_method("stop"),"Desktop player exposes shared drive/stop controller API")

@@ -21,6 +21,7 @@ var enabled := false
 var view: Camera3D
 var desired := Vector2.ZERO
 var wants_sprint := false
+var controller_sprint_toggled:=false
 var is_sprinting := false
 var exhausted := false
 var stamina := STAMINA_MAX
@@ -50,7 +51,13 @@ func drive(input_vector: Vector2, heading: float, sprint_request: bool = false) 
 	wants_sprint = sprint_request
 	enabled = true
 
+func toggle_controller_sprint() -> void:
+	if enabled and desired.y<-.35:controller_sprint_toggled=not controller_sprint_toggled
+func sprint_request(axis:Vector2,keyboard_held:bool) -> bool:
+	if not enabled or axis.y>=-.35 or exhausted:controller_sprint_toggled=false
+	return axis.y<-.35 and (keyboard_held or controller_sprint_toggled)
 func stop() -> void:
+	controller_sprint_toggled=false
 	desired = Vector2.ZERO
 	wants_sprint = false
 	is_sprinting = false
@@ -98,10 +105,10 @@ func _physics_process(delta: float) -> void:
 		var aim: Vector2 = DesktopInput.stick(true) * DesktopInput.controller_sensitivity * delta * 2.2
 		yaw = wrapf(yaw - aim.x, -PI, PI)
 		pitch = clampf(pitch - aim.y * (-1.0 if DesktopInput.invert_y else 1.0), -1.35, 1.35)
-		var full_stick_sprint := DesktopInput.controller_active and axis.length() >= .92 and axis.y <= -.72
-		var keyboard_sprint := Input.is_action_pressed("fp_sprint") and axis.y < -.35
-		drive(axis, yaw, full_stick_sprint or keyboard_sprint)
+		var keyboard_sprint:bool=Input.is_physical_key_pressed(int(DesktopInput.bindings.sprint))
+		drive(axis,yaw,sprint_request(axis,keyboard_sprint))
 	else:
+		controller_sprint_toggled=false
 		desired = Vector2.ZERO
 		wants_sprint = false
 	var moving := desired.length_squared() > .0025

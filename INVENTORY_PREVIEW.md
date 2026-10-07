@@ -27,3 +27,7 @@ Run the inventory integration test, existing gameplay suites, and browser save-i
 ## Station UI update
 
 Packing now opens the shared inventory screen. Select untrimmed product for Trim by hand or trimmed product for Bag by hand; completing or leaving either work area returns to the bench. Take packaged product into the backpack and carry it to storage. Production work uses the active operation bench. The modern nearby button replaces duplicate legacy station prompts, while other interactions retain their actions. Empty-category messages span the panel width. The tutorial redesign remains deferred.
+
+Desktop controls: Shift holds sprint; L3 toggles sprint while moving forward. D-pad Up opens Backpack. Settings supports keyboard and controller rebinding. D-pad navigates menus; A/Cross selects. During trimming and bagging, hold A/Cross and move the left stick; release over the bag to drop a gram. Phone appears below Backpack.
+
+Seed shops sell base strains only. Every genetics recipe output is excluded from purchase; existing owned seeds and paid orders are preserved.

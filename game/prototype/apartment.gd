@@ -22,6 +22,7 @@ var fp_collision_timer := 0.0
 var fp_station_opening := false
 var fp_open_epoch := 0
 var fp_sync_warning := ""
+var controller_work_held:bool=false
 
 func _load_game() -> void:
 	super._load_game()
@@ -89,11 +90,15 @@ func _process(delta: float) -> void:
 	else:
 		fp_target = null
 	fp_crosshair.visible = not modal
-	fp_prompt.visible = not modal
-	fp_hint.visible = not modal
+	fp_prompt.visible = not modal and not (inventory_system!=null and fp_target!=null and inventory_system.native_station_target(str(fp_target.get_meta("interaction_id",""))))
+	fp_hint.visible = false
+	_controller_work_tick(delta,DesktopInput.stick(false))
+	if DesktopInput.controller_active:
+		if trim_panel.visible and trim_harvest_amount>0:trim_instruction.text="Hold A / Cross and move the left stick to trim."
+		if bag_minigame_panel.visible and bag_current_units<bag_target_units:bag_instruction.text="Hold A / Cross and move the left stick. Release over the bag to add 1g."
 	fp_info.visible = not modal
 	fp_info.text = "%s\n%s   ·   %s   ·   $%d" % [Districts.heading(fp_player.position), neighborhood.location_label(fp_player.position) if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
-	fp_hint.text = "Full left-stick forward: sprint · Right stick: look · A: interact · Y: phone · Start: pause" if DesktopInput.controller_active else "%s/%s/%s/%s Walk · Shift + forward Sprint · %s Interact · %s Phone · Esc Pause · %s Save" % [DesktopInput.label("forward"),DesktopInput.label("left"),DesktopInput.label("backward"),DesktopInput.label("right"),DesktopInput.label("interact"),DesktopInput.label("phone"),DesktopInput.label("save")]
+	fp_hint.text = "L3 click while moving forward: toggle sprint · Right stick: look · A: interact · Y: phone · Start: pause" if DesktopInput.controller_active else "%s/%s/%s/%s Walk · Shift + forward Sprint · %s Interact · %s Phone · Esc Pause · %s Save" % [DesktopInput.label("forward"),DesktopInput.label("left"),DesktopInput.label("backward"),DesktopInput.label("right"),DesktopInput.label("interact"),DesktopInput.label("phone"),DesktopInput.label("save")]
 	_update_fp_stamina_hud()
 	_hide_old_navigation()
 
@@ -111,6 +116,12 @@ func _input(event: InputEvent) -> void:
 			return
 		if get_viewport().gui_get_focus_owner() is LineEdit or get_viewport().gui_get_focus_owner() is TextEdit:
 			return
+		if event is InputEventJoypadButton and DesktopInput.pressed(event,"sprint") and not _any_modal_open():
+			fp_player.toggle_controller_sprint();get_viewport().set_input_as_handled();return
+		if DesktopInput.pressed(event,"backpack") and (not _any_modal_open() or (inventory_system.is_open() and event is InputEventKey)):
+			if inventory_system.is_open():inventory_system.close()
+			else:inventory_system.open_backpack()
+			get_viewport().set_input_as_handled();return
 		if DesktopInput.pressed(event,"save"):
 			_phone_manual_save()
 			get_viewport().set_input_as_handled()
@@ -715,3 +726,29 @@ func _build_phone_panel() -> void:
 	var header: HBoxContainer=phone_title.get_parent()
 	header.get_child(header.get_child_count()-1).custom_minimum_size.x=32
 	phone_status_label.add_theme_font_size_override("font_size",11)
+
+func _controller_grab(pressed:bool) -> bool:
+	var trimming:bool=trim_panel.visible and trim_harvest_amount>0
+	var bagging:bool=bag_minigame_panel.visible and bag_current_units<bag_target_units
+	if not trimming and not bagging and not controller_work_held:return false
+	if pressed:
+		controller_work_held=true
+	else:
+		if controller_work_held and bagging:
+			_finish_bud_drag()
+			if bag_current_units>=bag_target_units:bag_seal_button.grab_focus()
+		controller_work_held=false
+	return true
+
+func _controller_work_tick(delta:float,axis:Vector2) -> void:
+	if not DesktopInput.controller_active or not (trim_panel.visible or bag_minigame_panel.visible):
+		controller_work_held=false;return
+	if not controller_work_held:return
+	if trim_panel.visible and trim_harvest_amount>0:
+		trim_scissors.position+=axis*400.0*delta
+		_clamp_control_to_parent(trim_scissors,trim_play_area)
+		_check_trim_collisions()
+		if trim_harvest_amount<=0:trim_continue_button.grab_focus()
+	elif bag_minigame_panel.visible and bag_current_units<bag_target_units:
+		bag_bud_token.position+=axis*400.0*delta
+		_clamp_control_to_parent(bag_bud_token,bag_play_area)
