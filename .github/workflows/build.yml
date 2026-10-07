@@ -1,7 +1,7 @@
-name: Build prototype
+name: Build desktop baseline
 on:
   push:
-    branches: [main, integration/cloudtest64-walkable-door]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -11,6 +11,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Identify packaged version
+        id: release
+        run: |
+          python -c 'import re; from pathlib import Path; print("version=" + re.search(r"config/version=\"([^\"]+)", Path("game/project.godot").read_text()).group(1))' >> "$GITHUB_OUTPUT"
       - name: Install Godot 4.7.2 and desktop export templates
         run: |
           set -euo pipefail
@@ -43,24 +47,26 @@ jobs:
           XDG_DATA_HOME="$(mktemp -d)" timeout 60s build/linux/AFewBuds-3D-Prototype.x86_64 --headless -- --export-smoke 2>&1 | tee build/exported-world.log
           if grep -E 'SCRIPT ERROR|^ERROR:' build/exported-world.log; then exit 1; fi
           grep -q 'EXPORTED_WORLD_RESULT: PASS' build/exported-world.log
+          printf 'AFewBuds Desktop %s\nSource: %s\n' '${{ steps.release.outputs.version }}' '${{ github.sha }}' > build/windows/BUILD_VERSION.txt
+          cp build/windows/BUILD_VERSION.txt build/linux/BUILD_VERSION.txt
           cp README.md build/windows/README.md
           cp README.md build/linux/README.md
           python tools/package_source.py
       - uses: actions/upload-artifact@v4
         with:
-          name: AFewBuds-3D-Prototype-Windows
+          name: AFewBuds-Desktop-${{ steps.release.outputs.version }}-Windows
           path: build/windows/
           if-no-files-found: error
           retention-days: 30
       - uses: actions/upload-artifact@v4
         with:
-          name: AFewBuds-3D-Prototype-Linux
+          name: AFewBuds-Desktop-${{ steps.release.outputs.version }}-Linux
           path: build/linux/
           if-no-files-found: error
           retention-days: 30
       - uses: actions/upload-artifact@v4
         with:
-          name: AFewBuds-3D-Prototype-Source
+          name: AFewBuds-Desktop-${{ steps.release.outputs.version }}-Source
           path: build/AFewBuds-3D-Prototype-Source.zip
           if-no-files-found: error
           retention-days: 30
