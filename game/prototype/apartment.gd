@@ -571,7 +571,7 @@ func _update_fp_stamina_hud() -> void:
 	if fp_stamina_bar == null or fp_stamina_label == null or fp_player == null:
 		return
 	fp_stamina_bar.value = fp_player.stamina
-	var show_bar := fp_player.is_sprinting or fp_player.stamina < fp_player.STAMINA_MAX - .1
+	var show_bar: bool = fp_player.is_sprinting or fp_player.stamina < fp_player.STAMINA_MAX - .1
 	fp_stamina_bar.visible = show_bar
 	fp_stamina_label.visible = show_bar
 	if show_bar:
