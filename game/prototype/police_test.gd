@@ -43,7 +43,10 @@ func run() -> void:
 		if part_id=="StairNosing" and int(part.floor)==0:stair_nosings+=1
 		if int(part.floor)==0 and (part_id.begins_with("Stair") or part_id=="ContinuousHandrail" or part_id=="RailWallBracket"):
 			for deck in upstairs_decks:
-				if part.bounds.intersects(deck):stair_clips.append(part_id)
+				var overlap_x:float=minf(part.bounds.end.x,deck.end.x)-maxf(part.bounds.position.x,deck.position.x)
+				var overlap_y:float=minf(part.bounds.end.y,deck.end.y)-maxf(part.bounds.position.y,deck.position.y)
+				var overlap_z:float=minf(part.bounds.end.z,deck.end.z)-maxf(part.bounds.position.z,deck.position.z)
+				if overlap_x>.005 and overlap_y>.005 and overlap_z>.005:stair_clips.append(part_id)
 	check(stair_clips.is_empty(),"Stairwell walls and stairs do not clip through upstairs deck")
 	check(stair_nosings==19,"Top stair nosing stops at the upstairs landing edge")
 	player.position=station.point(11.2,.1,30)
