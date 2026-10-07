@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.12.1 preview** (cloud-test .98-kobi.1 characters and police/park repairs, desktop controls, wider portrait phone, quiet background saves, and ranked-total precedence).
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.12.2 preview** (cloud-test .98-kobi.1 characters and police/park repairs, desktop controls, wider portrait phone, quiet background saves, ranked-total precedence, and seamless exterior ground collision).
 
 ## Play the Windows build
 
@@ -134,7 +134,7 @@ Desktop UI proportions: portrait phone (up to 460 × 680), smaller header typogr
 Rewards/Advancements no longer expands the portrait desktop phone. Long labels and buttons wrap inside the fixed phone width, horizontal scrolling stays disabled, and a smoke test verifies the phone width remains unchanged when Rewards opens.
 
 
-## Prototype 0.9 preview — cloud-test .64 integration
+## Desktop 0.12.2 — seamless exterior ground\n\nAll low exterior road, sidewalk, parking, lawn, curb, and road-marking meshes are now render-only for physics. A single flat collision floor covers the playable map, eliminating small height lips where these visual surfaces meet while preserving walls, fences, cars, doors, furniture, interiors, and police-station structure. The QA suite audits every tagged exterior ground mesh for stray colliders and retains native capsule traversal checks across the hub, park, and police district.\n\n## Prototype 0.9 preview — cloud-test .64 integration
 
 This branch ports the complete .64 Godot gameplay runtime: 95 milestone rewards with progression lanes, water utilities/billing, Chapter 4 story and persistent property-offer unlock, softer door knock and text notification audio. Bench III, premium Dealer Storage, moved furniture, native accounts/cloud saves and the 0.8.1 portrait Rewards fix remain in place.
 
