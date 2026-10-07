@@ -13,6 +13,12 @@ func run() -> void:
 	valid=valid and game.neighborhood.has_meta("east_landmarks")
 	valid=valid and game.neighborhood.police_station.doors.size()==14 and game.neighborhood.police_station.has_node("StationStructure")
 	valid=valid and game.neighborhood.bench_seating.benches.size()==3
+	valid=valid and game.has_method("_build_real_estate_app") and game.neighborhood.location_ops.has_method("utility_state")
+	valid=valid and game.fp_stamina_bar is ProgressBar and game.fp_player.STAMINA_MAX==100.0
+	game.fp_player.enabled=true
+	game.fp_player.wants_sprint=true
+	game.fp_player._update_stamina(1.0,true,true)
+	valid=valid and is_equal_approx(game.fp_player.stamina,82.0) and game.fp_player.is_sprinting
 	game.queue_free()
 	await get_tree().process_frame
 	print("EXPORTED_WORLD_RESULT: PASS" if valid else "EXPORTED_WORLD_RESULT: FAIL")

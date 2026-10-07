@@ -432,6 +432,9 @@ func swing_blocked(pos: Vector3) -> bool:
 
 func toggle_door() -> void:
 	if transitioning: return
+	if location_ops!=null and not location_ops.apartment_lease_active():
+		host.status_label.text="Apartment lease released. The door is locked."
+		return
 	transitioning = true
 	door_pass_through=true
 	_set_apartment_door_collision(false)
@@ -458,7 +461,7 @@ func _interact() -> void:
 func location_label(pos: Vector3) -> String:
 	if police_station!=null and police_station.covers(pos):return police_station.room_title(pos+Vector3.UP*2.16)
 	if Rect2(12,-2,10,8).has_point(Vector2(pos.x,pos.z)): return "CENTRAL MARKET"
-	if Rect2(25,-14,20,17).has_point(Vector2(pos.x,pos.z)): return "HOUSE TOUR"
+	if Rect2(25,-14,20,17).has_point(Vector2(pos.x,pos.z)): return "HOUSE" if bool(host.property_opportunity_state.get("relocated",false)) else "HOUSE TOUR"
 	return "NEIGHBORHOOD"
 
 func _interior_piece(id: String, at: Vector3, size: Vector3, color: String, kind: int = 0) -> MeshInstance3D:
@@ -554,7 +557,7 @@ func _car_wheel(at: Vector3, radius: float, height: float, color: String, angles
 	add_child(wheel)
 
 func use_interior_door(door: Node3D) -> void:
-	if door.name == "HouseEntrance" and not door.opened and not property_opportunity.touring and door.to_local(host.fp_player.position).z >= 0.0:
+	if door.name == "HouseEntrance" and not door.opened and not property_opportunity.touring and not bool(host.property_opportunity_state.get("relocated",false)) and door.to_local(host.fp_player.position).z >= 0.0:
 		property_opportunity.show_details()
 		return
 	door.toggle(host.fp_player.position)

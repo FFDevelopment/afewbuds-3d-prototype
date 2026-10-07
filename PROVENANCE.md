@@ -1,5 +1,9 @@
 # Source provenance
 
+## Desktop 0.13.0 / mobile 3D v11 paired update
+
+Ports the Chapter 4/5, property agreement, Real Estate, utility ledger, release/re-rental, equipment-preservation, Heat and branching-task changes from mobile 3D v10 (`9766974`) using the upstream progression transformation. Includes v11 newest-first messages from `a80c08b`, preserving saved-message order and reply indexes. Desktop movement, door collision, camera/mouse capture, native accounts and ranked-total precedence remain intact. The existing shared stamina controller is covered by depletion, recovery-delay, exhaustion-threshold and HUD checks, plus an exported-runtime check. Property/message tests run against the desktop scene, with independent disposable saves per test suite. No backend schema changes.
+
 Recovered from the user's existing `FFDevelopment/afewbuds-cloud-test` repository, pinned at commit `233bbbd1324c1397ea4ef1953e59b8f0600a4937`.
 
 - Package: `index-cloudtest10.pck` (the filename is reused by the source project's runtime patches; it does not identify the content version).

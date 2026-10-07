@@ -62,7 +62,7 @@ func _ready() -> void:
 	fp_player.sync_camera()
 	_refresh_navigation_ui()
 	if not session_paused:
-		_pause_gameplay("FIRST-PERSON NEIGHBORHOOD TEST\n\nWASD to walk · Mouse to look · Shift to move faster\nE to use a station or open/close the front door · P for phone\nEsc to pause · F5 to save\n\nOpen the front door and walk outside, then close it behind you. R at the door checks for visitors. Walk through the interior opening into the grow room. Harvest the ready Purple Dream plant, then take it to the packaging bench.\n\nSigned-in careers sync with AFewBuds. Save and close one version before switching. Guests save locally.")
+		_pause_gameplay("FIRST-PERSON NEIGHBORHOOD TEST\n\nWASD to walk · Mouse to look · Shift to sprint (uses stamina)\nE to use a station or open/close the front door · P for phone\nEsc to pause · F5 to save\n\nOpen the front door and walk outside, then close it behind you. R at the door checks for visitors. Walk through the interior opening into the grow room. Harvest the ready Purple Dream plant, then take it to the packaging bench.\n\nSigned-in careers sync with AFewBuds. Save and close one version before switching. Guests save locally.")
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 func _process(delta: float) -> void:
@@ -413,7 +413,7 @@ func _update_target() -> void:
 		else:
 			var id := str(fp_target.get_meta("interaction_id"))
 			label_text = {"station_locker": "Dealer Storage", "station_workbench": "Packaging bench", "station_storage": "Product storage", "storage_vault": "Storage vault", "station_door": ("Close front door" if neighborhood.door_open else "Open front door") + ("   [ " + DesktopInput.label("visitor") + " ] Answer visitor" if customer_waiting else "   [ " + DesktopInput.label("visitor") + " ] Peephole"), "interior_door": "Open / close door", "inspect_house": "Inspect house", "station_system": "Grow-room controls", "station_supply": "Seeds & fertilizer", "main_light_switch": "Main lights", "floor_lamp": "Floor lamp", "grow_room_light_switch": "Grow-room light"}.get(id, id.replace("_", " ").capitalize())
-			if id == "interior_door" and fp_target.get_meta("door_controller").name == "HouseEntrance" and not neighborhood.get_node("HouseEntrance").opened and not neighborhood.property_opportunity.touring and neighborhood.get_node("HouseEntrance").to_local(fp_player.position).z >= 0.0:
+			if id == "interior_door" and fp_target.get_meta("door_controller").name == "HouseEntrance" and not neighborhood.get_node("HouseEntrance").opened and not neighborhood.property_opportunity.touring and not bool(property_opportunity_state.get("relocated",false)) and neighborhood.get_node("HouseEntrance").to_local(fp_player.position).z >= 0.0:
 				label_text = "View house details" if property_offer_unlocked else "House not available yet"
 		fp_prompt.text = "[ " + DesktopInput.label("interact") + " ]   " + label_text
 	fp_crosshair.modulate = Color("b6f38a") if fp_target != null or not fp_control.is_empty() else Color(1, 1, 1, 0.7)

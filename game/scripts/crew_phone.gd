@@ -44,7 +44,7 @@ func contacts() -> void:
 func open_thread(name: String) -> void:
 	thread=name;actions=false;host.phone_current_app="texts";host.phone_open=true;host.phone_panel.show();host._refresh_phone();jump_latest.call_deferred()
 func jump_latest() -> void:
-	host.phone_scroll.scroll_vertical=int(host.phone_scroll.get_v_scroll_bar().max_value)
+	host.phone_scroll.scroll_vertical=0
 func back() -> void:
 	if actions:actions=false
 	else:thread=""
@@ -81,7 +81,7 @@ func threads() -> void:
 		render_actions()
 		return
 	button(host.phone_list,"CONTACT DETAILS & ACTIONS",show_actions)
-	for i in range(host.phone_text_messages.size()):
+	for i in range(host.phone_text_messages.size()-1,-1,-1):
 		var msg: Dictionary=host.phone_text_messages[i]
 		if peer(msg)!=thread:continue
 		var card:=PanelContainer.new();card.add_theme_stylebox_override("panel",host._style_box(Color("183126") if bool(msg.get("outgoing",false)) else Color("171d24"),Color("33434f"),16,1));host.phone_list.add_child(card)

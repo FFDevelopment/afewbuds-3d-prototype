@@ -63,8 +63,15 @@ with tempfile.TemporaryDirectory(prefix='afb-prototype-test-') as temp:
         env.update(APPDATA=str(fixture / 'userdata'), LOCALAPPDATA=str(fixture / 'localdata'))
         (fixture / 'userdata').mkdir()
         (fixture / 'localdata').mkdir()
-    for script, marker in [('prototype/smoke_test.gd', 'PROTOTYPE_TEST_RESULT: PASS'), ('prototype/desktop_test.gd', 'DESKTOP_TEST_RESULT: PASS'), ('prototype/police_test.gd', 'POLICE_TEST_RESULT: PASS'), ('prototype/doors_test.gd', 'DOORS_TEST_RESULT: PASS'), ('prototype/property_test.gd', 'PROPERTY_TEST_RESULT: PASS'), ('prototype/updates_test.gd', 'UPDATES_TEST_RESULT: PASS'), ('prototype/visits_test.gd', 'VISITS_TEST_RESULT: PASS'), ('prototype/commerce_test.gd', 'COMMERCE_TEST_RESULT: PASS'), ('prototype/crew_test.gd', 'CREW_TEST_RESULT: PASS'), ('prototype/assets_test.gd', 'ASSETS_TEST_RESULT: PASS'), ('account/cloud_test.gd', 'CLOUD_TEST_RESULT: PASS'), ('account/http_test.gd', 'HTTP_TEST_RESULT: PASS')]:
+    for script, marker in [('prototype/smoke_test.gd', 'PROTOTYPE_TEST_RESULT: PASS'), ('prototype/desktop_test.gd', 'DESKTOP_TEST_RESULT: PASS'), ('prototype/police_test.gd', 'POLICE_TEST_RESULT: PASS'), ('prototype/doors_test.gd', 'DOORS_TEST_RESULT: PASS'), ('prototype/property_test.gd', 'PROPERTY_TEST_RESULT: PASS'), ('prototype/progression_test.gd', 'PROGRESSION_TEST_RESULT: PASS'), ('prototype/updates_test.gd', 'UPDATES_TEST_RESULT: PASS'), ('prototype/visits_test.gd', 'VISITS_TEST_RESULT: PASS'), ('prototype/commerce_test.gd', 'COMMERCE_TEST_RESULT: PASS'), ('prototype/crew_test.gd', 'CREW_TEST_RESULT: PASS'), ('prototype/assets_test.gd', 'ASSETS_TEST_RESULT: PASS'), ('account/cloud_test.gd', 'CLOUD_TEST_RESULT: PASS'), ('account/http_test.gd', 'HTTP_TEST_RESULT: PASS')]:
         if len(sys.argv)>2 and Path(script).stem not in sys.argv[2:]:continue
+        # Each suite starts its own career; property/message fixtures must not
+        # change the initial inventory or progression of subsequent suites.
+        suite_data = fixture / ('userdata-' + Path(script).stem)
+        suite_data.mkdir()
+        env['XDG_DATA_HOME'] = str(suite_data)
+        if os.name == 'nt':
+            env.update(APPDATA=str(suite_data), LOCALAPPDATA=str(suite_data))
         try:
             run = subprocess.run([godot, '--headless', *(['--verbose'] if script == 'prototype/visits_test.gd' else []), '--path', str(fixture), '--script', script], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=90)
         except subprocess.TimeoutExpired as exc:

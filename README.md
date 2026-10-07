@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.12.2 preview** (cloud-test .98-kobi.1 characters and police/park repairs, desktop controls, wider portrait phone, quiet background saves, ranked-total precedence, and seamless exterior ground collision).
+An experimental PC version of **AFewBuds**, with first-person movement connected to the existing game simulation. Version **0.13.0 preview** synchronizes Chapter 4/5, Real Estate, per-property billing, lease release and player-owned equipment preservation with mobile 3D v11. Both versions show newest messages first and share sprint stamina. Desktop controls, native account handling, ranked-total precedence and physical doors/stairs are retained.
 
 ## Play the Windows build
 
@@ -17,7 +17,7 @@ GitHub requires you to be signed in to download artifacts from this repository. 
 | --- | --- |
 | WASD | Walk |
 | Mouse | Look |
-| Shift | Move faster |
+| Shift + forward | Sprint using stamina |
 | E | Use the plant, workstation, shelf, switch, or door under the crosshair |
 | P | Open/close the existing phone |
 | Esc | Close the current panel, or pause/resume |
@@ -57,7 +57,11 @@ The prototype skips the old fixed-view tutorial. It retains the normal starting 
 
 ## Scope and known limitations
 
-This is **Apartment 2.0 groundwork**, not the complete larger-world redesign. Packaging still uses the existing menu/minigame; there is no grab-and-place object system yet. Customers still use the existing peephole flow. NPC pathfinding, new animations, an open city, larger properties, and mobile touch movement are future work. Current worker visuals and gameplay logic are inherited; this does not claim a new navigation system.
+Chapter 4 now ends after inspecting the house, signing a rent/lease-to-own/purchase agreement, relocating, and entering the house. Keeping the apartment keeps its rent active until explicitly released through Real Estate. Each property has separate utility balances; existing debt survives release. Paid equipment remains player-owned. Packaging still uses menus/minigames, and there is no interactive grab-and-place furnishing editor yet.
+
+Sprint uses a shared 100-point stamina pool: 18 points/second drain, 14 points/second recovery after a 0.75-second delay, and a 25-point recovery threshold after exhaustion. The HUD shows sprinting, exhaustion and recovery. Both inbox conversations and individual messages show the newest activity first.
+
+Desktop and mobile 3D releases must remain paired for shared gameplay changes; see `AGENTS.md`. Controls, rendering adapters and account integration remain platform-specific.
 
 The native dealer locker is available through E, with four capacity tiers and transfer controls. The inherited phone and simulation still contain unfinished legacy features. They are not all covered by this prototype's test suite. Close menus with their buttons or Esc; sales and daily closeouts require their explicit choices.
 

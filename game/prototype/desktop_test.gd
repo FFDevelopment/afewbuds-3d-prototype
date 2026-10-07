@@ -68,6 +68,26 @@ func run() -> void:
 	game.fp_player.exhausted=false
 	game.fp_player.stamina=game.fp_player.STAMINA_MAX
 	game._update_fp_stamina_hud()
+	game.fp_player.enabled=true
+	game.fp_player.wants_sprint=true
+	game.fp_player._update_stamina(1.0,true,true)
+	check(is_equal_approx(game.fp_player.stamina,82.0) and game.fp_player.is_sprinting,"Forward sprint drains 18 stamina per second")
+	game.fp_player._update_stamina(5.0,true,true)
+	check(game.fp_player.stamina==0.0 and game.fp_player.exhausted and not game.fp_player.is_sprinting,"Exhaustion stops sprint at zero stamina")
+	game.fp_player._update_stamina(0.5,true,true)
+	check(game.fp_player.stamina==0.0,"Recovery waits through its initial delay")
+	game.fp_player._update_stamina(0.25,true,true)
+	game.fp_player._update_stamina(1.0,true,true)
+	check(game.fp_player.stamina<25.0 and game.fp_player.exhausted and not game.fp_player.is_sprinting,"Holding sprint cannot bypass exhaustion below 25 stamina")
+	game.fp_player._update_stamina(1.0,true,true)
+	game.fp_player._update_stamina(0.1,true,true)
+	check(game.fp_player.is_sprinting and not game.fp_player.exhausted,"Sprint becomes available again after recovery threshold")
+	game.fp_player._update_stamina(0.1,false,true)
+	check(not game.fp_player.is_sprinting,"Sideways or backward movement cannot sprint")
+	game.fp_player.wants_sprint=false
+	game.fp_player.exhausted=false
+	game.fp_player.stamina=game.fp_player.STAMINA_MAX
+	game.fp_player.recovery_delay_left=0.0
 	var yaw:float=game.fp_player.yaw
 	game.fp_player.look(Vector2(10,0))
 	var first:float=absf(game.fp_player.yaw-yaw)

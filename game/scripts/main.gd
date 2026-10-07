@@ -50,9 +50,10 @@ const FRIEND_RECRUIT_LOYALTY: int = 70
 const FRIEND_RECRUIT_PLAYER_SALES: int = 4
 const FRIEND_STAFF_PURCHASE_RATE: float = 0.85
 const FRIEND_STAFF_PURCHASE_CHANCE: float = 0.70
-const HEAT_DECAY_OPEN_PER_GAME_MINUTE: float = 0.0010
-const HEAT_DECAY_QUIET_PER_GAME_MINUTE: float = 0.0040
-const HEAT_DECAY_AWAY_PER_GAME_MINUTE: float = 0.0180
+const HEAT_DECAY_OPEN_PER_GAME_MINUTE: float = 0.0120
+const HEAT_DECAY_QUIET_PER_GAME_MINUTE: float = 0.0160
+const HEAT_DECAY_AWAY_PER_GAME_MINUTE: float = 0.0240
+const HEAT_ROUTINE_GAIN_MULTIPLIER: float = 0.70
 const HEAT_CONTACT_MINIMUM: float = 35.0
 const HEAT_CONTACT_REDUCTION: float = 22.0
 const HEAT_CONTACT_BASE_COST: int = 500
@@ -311,6 +312,7 @@ var advancement_stats: Dictionary = {
 	"reeves_freedom": 0
 }
 var advancement_claimed: Dictionary = {}
+var advancement_choice_state: Dictionary = {}
 var advancement_catalog: Array[Dictionary] = [
 	{"id": "first_roots", "category": "Growing", "tier": 1, "title": "First Roots", "description": "Plant your first seed.", "metric": "plants_planted", "target": 1, "reward_cash": 35, "reward_xp": 10, "reward_rep": 0},
 	{"id": "keep_alive", "category": "Growing", "tier": 1, "title": "Keep It Alive", "description": "Water plants 5 times.", "metric": "waters", "target": 5, "reward_cash": 0, "reward_xp": 20, "reward_rep": 2},
@@ -391,9 +393,9 @@ var advancement_catalog: Array[Dictionary] = [
 	{"id": "heat_contact", "category": "Heat", "tier": 3, "title": "Make the Call", "description": "Use the Reeves contact once to reduce Heat.", "metric": "contact_calls", "target": 1, "reward_cash": 0, "reward_xp": 100, "reward_rep": 3},
 	{"id": "reeves_meeting", "category": "Heat", "tier": 3, "title": "Talk It Out", "description": "Meet Agent Reeves at the door for the first time.", "metric": "reeves_meetings", "target": 1, "reward_cash": 0, "reward_xp": 120, "reward_rep": 4},
 	{"id": "reeves_deal", "category": "Heat", "tier": 3, "title": "Make a Deal", "description": "Agree to Reeves's recurring protection arrangement.", "metric": "reeves_arrangements", "target": 1, "reward_cash": 0, "reward_xp": 150, "reward_rep": 5},
-	{"id": "reeves_payments", "category": "Heat", "tier": 4, "title": "Keep Your End", "description": "Make 3 on-time Reeves payments.", "metric": "reeves_payments", "target": 3, "reward_cash": 0, "reward_xp": 180, "reward_rep": 6},
+	{"id": "reeves_payments", "category": "Heat", "tier": 4, "title": "Keep Your End", "description": "Make 3 on-time Reeves payments.", "metric": "reeves_payments", "target": 3, "choice_group": "reeves_payment_outcome", "choice_value": "pay", "reward_cash": 0, "reward_xp": 180, "reward_rep": 6},
 	{"id": "reeves_negotiate", "category": "Heat", "tier": 4, "title": "Settle Up", "description": "Clear Reeves's remaining protection balance in one payment.", "metric": "reeves_negotiations", "target": 1, "reward_cash": 0, "reward_xp": 180, "reward_rep": 5},
-	{"id": "reeves_miss", "category": "Heat", "tier": 4, "title": "Lose His Protection", "description": "Miss a Reeves payment and trigger enforcement risk.", "metric": "reeves_missed_payments", "target": 1, "reward_cash": 0, "reward_xp": 90, "reward_rep": 0},
+	{"id": "reeves_miss", "category": "Heat", "tier": 4, "title": "Lose His Protection", "description": "Miss a Reeves payment and trigger enforcement risk.", "metric": "reeves_missed_payments", "target": 1, "choice_group": "reeves_payment_outcome", "choice_value": "miss", "reward_cash": 0, "reward_xp": 90, "reward_rep": 0},
 	{"id": "close_call", "category": "Heat", "tier": 4, "title": "Close Call", "description": "Survive a raid-style enforcement event.", "metric": "raids_survived", "target": 1, "reward_cash": 0, "reward_xp": 300, "reward_rep": 8},
 	{"id": "reeves_freedom", "category": "Heat", "tier": 5, "title": "Freedom", "description": "End the Reeves arrangement through any available route.", "metric": "reeves_freedom", "target": 1, "reward_cash": 0, "reward_xp": 400, "reward_rep": 12},
 
@@ -401,7 +403,8 @@ var advancement_catalog: Array[Dictionary] = [
 	{"id": "c4_distribution_network", "category": "Expansion", "tier": 2, "title": "Distribution Network", "description": "Max Dealer Storage and prove the dealer side can move volume.", "state": "chapter_four_distribution_ready", "target": 1, "reward_cash": 0, "reward_xp": 200, "reward_rep": 12},
 	{"id": "c4_crew_operations", "category": "Expansion", "tier": 3, "title": "Crew Operations", "description": "Run AFewBuds with a real crew instead of doing every job yourself.", "state": "chapter_four_crew_ready", "target": 1, "reward_cash": 0, "reward_xp": 250, "reward_rep": 15},
 	{"id": "c4_demand_pressure", "category": "Expansion", "tier": 4, "title": "Demand Outgrows the Space", "description": "Build enough revenue, reputation and client reach that the apartment is holding the business back.", "state": "chapter_four_demand_ready", "target": 1, "reward_cash": 0, "reward_xp": 300, "reward_rep": 20},
-	{"id": "c4_expansion_ready", "category": "Expansion", "tier": 5, "title": "Expansion Ready", "description": "Prove the operation is mature enough to support a larger property.", "state": "chapter_four_complete", "target": 1, "reward_cash": 0, "reward_xp": 500, "reward_rep": 25, "reward_unlock": "PROPERTY OPPORTUNITY"},
+	{"id": "c4_expansion_ready", "category": "Expansion", "tier": 5, "title": "Expansion Ready", "description": "Prove the operation is mature enough to support a larger property.", "state": "chapter_four_operation_ready", "target": 1, "reward_cash": 0, "reward_xp": 500, "reward_rep": 25, "reward_unlock": "PROPERTY OPPORTUNITY"},
+	{"id": "c4_new_base", "category": "Expansion", "tier": 6, "title": "Choose Your Next Base", "description": "Secure the house, relocate AFewBuds and enter the new operation.", "state": "chapter_four_complete", "target": 1, "reward_cash": 0, "reward_xp": 600, "reward_rep": 30, "reward_unlock": "CHAPTER 5 + HOUSE OPERATION"},
 
 	{"id": "lights_out", "category": "Property", "tier": 1, "title": "Lights Out", "description": "Use the apartment wall switch for the first time.", "metric": "lights_toggled", "target": 1, "reward_cash": 25, "reward_xp": 10, "reward_rep": 0},
 	{"id": "mood_lighting", "category": "Property", "tier": 1, "title": "Set the Mood", "description": "Turn the living-room lamp on or off.", "metric": "lamp_toggled", "target": 1, "reward_cash": 25, "reward_xp": 10, "reward_rep": 0},
@@ -1497,6 +1500,8 @@ func _log_heat_event(message: String) -> void:
 func _add_heat(amount: float, cause: String, show_feedback: bool = false) -> void:
 	if amount <= 0.0 or not _story_chapter_two_complete():
 		return
+	if cause in ["Dealer activity", "Door sale", "Customer traffic", "Customer complaint", "Doorstep complaint"]:
+		amount *= HEAT_ROUTINE_GAIN_MULTIPLIER
 	if _reeves_protection_active():
 		amount *= REEVES_PROTECTION_HEAT_MULTIPLIER
 	var old_heat: float = heat
@@ -1536,7 +1541,7 @@ func _update_heat_over_time(elapsed_game_minutes: float) -> void:
 	elif not _has_listed_stock():
 		rate = HEAT_DECAY_QUIET_PER_GAME_MINUTE
 	if dealers_active and _total_dealer_count() > 0 and business_open:
-		rate *= 0.65
+		rate *= 0.80
 	if not main_ceiling_light_on:
 		rate *= 1.12
 	if not floor_lamp_on:
@@ -1571,7 +1576,7 @@ func _trigger_heat_threshold_event(stage: int) -> void:
 func _roll_daily_heat_pressure_event() -> void:
 	if not _story_chapter_two_complete() or heat < 50.0:
 		return
-	var chance: float = clampf(0.18 + heat / 300.0, 0.18, 0.55)
+	var chance: float = clampf(0.12 + heat / 400.0, 0.12, 0.40)
 	if _reeves_protection_active():
 		chance *= 0.35
 	if rng.randf() > chance:
@@ -5086,7 +5091,7 @@ func _simulate_offline_plants(elapsed_seconds: float, worker_care: bool = false)
 func _apply_paused_heat_and_quiet_time(elapsed_seconds: float) -> void:
 	if elapsed_seconds <= 0.0:
 		return
-	var paused_heat_rate: float = 100.0 / (72.0 * 60.0)
+	var paused_heat_rate: float = 100.0 / (180.0 * 60.0)
 	_reduce_heat(paused_heat_rate * elapsed_seconds, "Heat cooled while paused", true)
 	if reeves_arrangement_active and lay_low_active and not business_open:
 		reeves_quiet_pause_seconds += elapsed_seconds
@@ -5836,26 +5841,34 @@ func _current_power_rate_per_game_minute() -> float:
 func _track_power_usage(elapsed_game_minutes: float) -> void:
 	if elapsed_game_minutes <= 0.0:
 		return
+	if neighborhood!=null and neighborhood.location_ops!=null:
+		neighborhood.location_ops.track_power_usage(elapsed_game_minutes)
+		return
 	current_day_power_cost += _current_power_rate_per_game_minute() * elapsed_game_minutes
 
 func _finalize_daily_power_bill(show_feedback: bool) -> void:
+	if neighborhood!=null and neighborhood.location_ops!=null:
+		neighborhood.location_ops.finalize_power_bills(show_feedback)
+		return
 	var bill: int = maxi(0, int(ceil(current_day_power_cost)))
 	last_power_bill = bill
 	power_bill_due = mini(POWER_BILL_MAX_BALANCE, power_bill_due + bill)
 	lifetime_power_cost += bill
 	current_day_power_cost = 0.0
-	if show_feedback and status_label != null:
-		status_label.text = "Utility bill posted: $%d  |  Total power balance due: $%d." % [bill, power_bill_due]
-	if phone_open and phone_current_app in ["home", "business", "bills", "employees", "stats"]:
-		_refresh_phone()
 
 func _charge_water_use(count: int = 1) -> void:
 	if count <= 0:
+		return
+	if neighborhood!=null and neighborhood.location_ops!=null:
+		neighborhood.location_ops.charge_water_use(count)
 		return
 	current_day_water_uses += count
 	current_day_water_cost += WATER_COST_PER_WATERING * float(count)
 
 func _finalize_daily_water_bill(show_feedback: bool) -> void:
+	if neighborhood!=null and neighborhood.location_ops!=null:
+		neighborhood.location_ops.finalize_water_bills(show_feedback)
+		return
 	var bill: int = maxi(0, int(ceil(current_day_water_cost)))
 	last_water_bill = bill
 	if bill > 0:
@@ -5863,42 +5876,24 @@ func _finalize_daily_water_bill(show_feedback: bool) -> void:
 		lifetime_water_cost += bill
 	current_day_water_cost = 0.0
 	current_day_water_uses = 0
-	if show_feedback and status_label != null and bill > 0:
-		status_label.text = "Water bill posted: $%d  |  Total water balance due: $%d." % [bill, water_bill_due]
-	if phone_open and phone_current_app in ["home", "business", "bills", "employees", "stats"]:
-		_refresh_phone()
 
 func _pay_water_bill() -> void:
-	if water_bill_due <= 0:
+	if neighborhood!=null and neighborhood.location_ops!=null:
+		for property in ["apartment","house"]:
+			var due:int=neighborhood.location_ops.property_utility_due(property,"water")
+			if due>0 and cash>=due:
+				neighborhood.location_ops.pay_property_utility(property,"water")
 		return
-	if cash < water_bill_due:
-		status_label.text = "You need $%d to pay the outstanding water bill." % water_bill_due
-		return
-	var paid: int = water_bill_due
-	cash -= paid
-	water_bill_due = 0
-	_increment_advancement_stat("water_bills_paid")
-	_update_cash_ui()
-	status_label.text = "Water bill paid: $%d." % paid
-	_save_game()
-	if phone_open:
-		_refresh_phone()
+	if water_bill_due<=0:return
 
 func _pay_power_bill() -> void:
-	if power_bill_due <= 0:
+	if neighborhood!=null and neighborhood.location_ops!=null:
+		for property in ["apartment","house"]:
+			var due:int=neighborhood.location_ops.property_utility_due(property,"power")
+			if due>0 and cash>=due:
+				neighborhood.location_ops.pay_property_utility(property,"power")
 		return
-	if cash < power_bill_due:
-		status_label.text = "You need $%d to pay the outstanding power bill." % power_bill_due
-		return
-	var paid: int = power_bill_due
-	cash -= paid
-	power_bill_due = 0
-	_increment_advancement_stat("power_bills_paid")
-	_update_cash_ui()
-	status_label.text = "Power bill paid: $%d." % paid
-	_save_game()
-	if phone_open:
-		_refresh_phone()
+	if power_bill_due<=0:return
 
 func _staff_daily_payroll() -> int:
 	var total: int = 0
@@ -6643,7 +6638,7 @@ func _refresh_phone() -> void:
 		phone_refresh_pending = true
 		return
 	phone_refresh_pending = false
-	var restore_y: int = phone_scroll.scroll_vertical
+	var restore_y: int = 0 if phone_current_app == "texts" else phone_scroll.scroll_vertical
 	phone_refresh_revision += 1
 	for old_child: Node in phone_list.get_children():
 		phone_list.remove_child(old_child)
@@ -6666,6 +6661,9 @@ func _refresh_phone() -> void:
 		"leaderboard":
 			phone_title.text = "Leaderboard"
 			_build_leaderboard_app()
+		"realestate":
+			phone_title.text = "Real Estate"
+			_build_real_estate_app()
 		"settings":
 			phone_title.text = "Settings"
 			_build_settings_app()
@@ -6679,13 +6677,13 @@ func _refresh_phone() -> void:
 			phone_title.text = "Bills"
 			_build_bills_app()
 		"employees":
-			phone_title.text = "Apartment · Employees"
+			phone_title.text = ("%s · Employees" % (neighborhood.location_ops.active_property().capitalize() if neighborhood!=null and neighborhood.location_ops!=null else "Operation"))
 			_build_employees_app()
 		"upgrades":
-			phone_title.text = "Apartment · Equipment"
+			phone_title.text = ("%s · Equipment" % (neighborhood.location_ops.active_property().capitalize() if neighborhood!=null and neighborhood.location_ops!=null else "Operation"))
 			_build_upgrades_app()
 		"products":
-			phone_title.text = "Apartment · Inventory"
+			phone_title.text = ("%s · Inventory" % (neighborhood.location_ops.active_property().capitalize() if neighborhood!=null and neighborhood.location_ops!=null else "Operation"))
 			_build_products_app()
 		"seeds":
 			phone_title.text = "Seeds"
@@ -6703,7 +6701,7 @@ func _refresh_phone() -> void:
 			phone_title.text = "Stats"
 			_build_stats_app()
 		"genetics":
-			phone_title.text = "Apartment · Genetics"
+			phone_title.text = ("%s · Genetics" % (neighborhood.location_ops.active_property().capitalize() if neighborhood!=null and neighborhood.location_ops!=null else "Operation"))
 			_build_genetics_app()
 		"advancements":
 			phone_title.text = "Rewards"
@@ -6760,25 +6758,25 @@ func _cancel_phone_gesture() -> void:
 			scroll.cancel_touch()
 
 func _build_budshop_app() -> void:
-	var card := PanelContainer.new()
+	var card:=PanelContainer.new()
 	card.add_theme_stylebox_override("panel",_style_box(Color("152029"),Color("33434f"),16,1))
 	phone_list.add_child(card)
-	var box := VBoxContainer.new()
+	var box:=VBoxContainer.new()
 	card.add_child(box)
-	var status := Label.new()
-	status.text="APARTMENT\nStorefront: %s" % ("LAYING LOW" if lay_low_active else ("OPEN" if business_open else "AWAY"))
+	var property_name:String="Operation"
+	if neighborhood!=null and neighborhood.location_ops!=null:
+		property_name=neighborhood.location_ops.active_property().capitalize()
+	var status:=Label.new()
+	status.text="%s\nStorefront: %s" % [property_name.to_upper(),"LAYING LOW" if lay_low_active else ("OPEN" if business_open else "AWAY")]
 	status.add_theme_font_size_override("font_size",20)
 	status.modulate=Color("8ed6a3") if business_open and not lay_low_active else Color("e1b07a")
 	box.add_child(status)
-	var note := Label.new()
-	note.text="Manage this operation at its apartment computer. Text assigned crew through Contacts for remote commands."
+	var note:=Label.new()
+	note.text="Manage the active operation at its property computer. Property leases, ownership and access are in Real Estate."
 	note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(note)
-	var house := Label.new()
-	house.text="House: not acquired."
-	phone_list.add_child(house)
-	var grid: GridContainer=_phone_category_grid()
-	_add_phone_app_tile(grid,"","Bills","Rent, utilities & balances","bills")
+	var grid:GridContainer=_phone_category_grid()
+	_add_phone_app_tile(grid,"","Bills","Property utilities & balances","bills")
 	_add_phone_app_tile(grid,"","Heat","%s | %d/100" % [_heat_stage_name(),int(round(heat))],"heat")
 	_add_phone_app_tile(grid,"","Stats","Progress & revenue","stats")
 
@@ -6814,12 +6812,22 @@ func _build_phone_home() -> void:
 	phone_list.add_child(summary)
 	var grid: GridContainer = _phone_category_grid()
 	_add_phone_app_tile(grid, "", "Illegal Businesses", "Storefront status, bills & stats", "budshop")
+	_add_phone_app_tile(grid, "", "Real Estate", "Properties, leases & payments", "realestate")
 	_add_phone_app_tile(grid, "", "Store", "Seed orders & market info", "shop")
 	_add_phone_app_tile(grid, "", "Contacts", "Clients, crew & messages", "clients")
 	_add_phone_app_tile(grid, "", "Messages", ("%d unread" % phone_text_unread) if phone_text_unread > 0 else "Crew & story messages", "texts")
 	_add_phone_app_tile(grid, "", "Tasks & Rewards", "Chapters, goals & rewards", "task")
 	_add_phone_app_tile(grid, "", "Leaderboard", "Weekly & lifetime rankings", "leaderboard")
 	_add_phone_app_tile(grid, "", "Settings", "Help & system controls", "settings")
+
+func _build_real_estate_app() -> void:
+	if neighborhood!=null and neighborhood.location_ops!=null:
+		neighborhood.location_ops.real_estate_ui(phone_list)
+		return
+	var fallback:=Label.new()
+	fallback.text="Real Estate data is unavailable."
+	fallback.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	phone_list.add_child(fallback)
 
 func _build_account_app() -> void:
 	var title: Label = Label.new()
@@ -7302,86 +7310,45 @@ Plant slots: %d   |   Tent equipment level: %d" % [grow_tent_count, plant_slots.
 		box.add_child(buy)
 
 func _build_business_app() -> void:
-	var property_note := Label.new()
-	property_note.text="APARTMENT · Active operation\nUse Bills here or open the complete apartment Business interface at its computer.\nHOUSE · Property opportunity; not yet acquired."
+	var active_name:String="Operation"
+	var property_due:int=0
+	var utility_due:int=power_bill_due+water_bill_due
+	if neighborhood!=null and neighborhood.location_ops!=null:
+		active_name=neighborhood.location_ops.active_property().capitalize()
+		property_due=neighborhood.location_ops.balance()
+		utility_due=neighborhood.location_ops.utility_total_due()
+	var property_note:=Label.new()
+	property_note.text="%s · Active operation\nUse Real Estate for property ownership/leases and Bills for balances." % active_name.to_upper()
 	property_note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	phone_list.add_child(property_note)
-	var summary: Label = Label.new()
-	summary.text = "GROWER LEVEL %d   |   XP %d / %d\nBrand Level %d   |   Reputation %d\nStorefront: %s" % [grower_level, grower_xp, _xp_needed_for_next_level(), brand_level, reputation, "OPEN" if business_open else "AWAY"]
-	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	summary.add_theme_font_size_override("font_size", 19)
+	var summary:=Label.new()
+	summary.text="GROWER LEVEL %d   |   XP %d / %d\nBrand Level %d   |   Reputation %d\nStorefront: %s" % [grower_level,grower_xp,_xp_needed_for_next_level(),brand_level,reputation,"OPEN" if business_open else "AWAY"]
+	summary.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	summary.add_theme_font_size_override("font_size",19)
 	phone_list.add_child(summary)
-	var grid: GridContainer = _phone_category_grid()
-	_add_phone_app_tile(grid, "", "Bills", "$%d outstanding" % (power_bill_due + water_bill_due + dealer_balance_due + (neighborhood.location_ops.balance() if neighborhood!=null and neighborhood.location_ops!=null else 0)), "bills")
-	if neighborhood!=null and neighborhood.location_ops!=null and neighborhood.location_ops.rendering_management:neighborhood.location_ops.business_extras()
+	var grid:GridContainer=_phone_category_grid()
+	_add_phone_app_tile(grid,"","Bills","$%d outstanding" % (property_due+utility_due+dealer_balance_due),"bills")
+	if neighborhood!=null and neighborhood.location_ops!=null and neighborhood.location_ops.rendering_management:
+		neighborhood.location_ops.business_extras()
 
 func _build_bills_app() -> void:
-	if neighborhood!=null and neighborhood.location_ops!=null:neighborhood.location_ops.rent_ui(phone_list)
-	var intro: Label = Label.new()
-	intro.text = "Outstanding bills: $%d\nElectricity and water are property utilities. Today's wages and dealer cash are settled at daily closeout." % (power_bill_due + water_bill_due + dealer_balance_due + (neighborhood.location_ops.balance() if neighborhood!=null and neighborhood.location_ops!=null else 0))
-	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	phone_list.add_child(intro)
-
-	var electric_card: PanelContainer = PanelContainer.new()
-	phone_list.add_child(electric_card)
-	var electric_box: VBoxContainer = VBoxContainer.new()
-	electric_card.add_child(electric_box)
-	var electric_title: Label = Label.new()
-	electric_title.text = "ELECTRICITY"
-	electric_title.add_theme_font_size_override("font_size", 20)
-	electric_box.add_child(electric_title)
-	var electric_detail: Label = Label.new()
-	var ventilation_status: String = "NOT INSTALLED" if not ventilation_installed else ("ON" if ventilation_on else "OFF")
-	electric_detail.text = "Estimated today: $%d  |  Last bill: $%d  |  Balance due: $%d\nHome lights: %s  |  Lamp: %s\nGrow-room light: %s  |  Grow lights: %s  |  Ventilation: %s\n%d tent(s) powered\nGrow lights OFF = about %d%% normal growth. Ventilation unavailable/OFF = about %d%% normal growth." % [int(ceil(current_day_power_cost)), last_power_bill, power_bill_due, _on_off(main_ceiling_light_on), _on_off(floor_lamp_on), _on_off(grow_room_light_on), _on_off(grow_lights_on), ventilation_status, grow_tent_count, int(round(GROW_LIGHTS_OFF_GROWTH_MULTIPLIER * 100.0)), int(round(VENTILATION_INACTIVE_GROWTH_MULTIPLIER * 100.0))]
-	electric_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	electric_box.add_child(electric_detail)
-	if power_bill_due > 0:
-		var pay_power: Button = Button.new()
-		pay_power.text = "PAY ELECTRIC BILL  |  $%d" % power_bill_due
-		pay_power.disabled = cash < power_bill_due
-		pay_power.custom_minimum_size.y = 50
-		pay_power.pressed.connect(_pay_power_bill)
-		electric_box.add_child(pay_power)
-
-	var water_card: PanelContainer = PanelContainer.new()
-	phone_list.add_child(water_card)
-	var water_box: VBoxContainer = VBoxContainer.new()
-	water_card.add_child(water_box)
-	var water_title: Label = Label.new()
-	water_title.text = "WATER / PLUMBING"
-	water_title.add_theme_font_size_override("font_size", 20)
-	water_box.add_child(water_title)
-	var water_detail: Label = Label.new()
-	water_detail.text = "Estimated today: $%d  |  Waterings today: %d\nLast bill: $%d  |  Balance due: $%d\nWater comes from the property plumbing automatically. Manual watering, Auto Water Kit and production-worker care each add $%d per watering." % [int(ceil(current_day_water_cost)), current_day_water_uses, last_water_bill, water_bill_due, int(WATER_COST_PER_WATERING)]
-	water_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	water_box.add_child(water_detail)
-	if water_bill_due > 0:
-		var pay_water: Button = Button.new()
-		pay_water.text = "PAY WATER BILL  |  $%d" % water_bill_due
-		pay_water.disabled = cash < water_bill_due
-		pay_water.custom_minimum_size.y = 50
-		pay_water.pressed.connect(_pay_water_bill)
-		water_box.add_child(pay_water)
-
-	var dealer_card: PanelContainer = PanelContainer.new()
+	if neighborhood!=null and neighborhood.location_ops!=null:
+		neighborhood.location_ops.property_bills_ui(phone_list)
+	var dealer_card:=PanelContainer.new()
 	phone_list.add_child(dealer_card)
-	var dealer_box: VBoxContainer = VBoxContainer.new()
+	var dealer_box:=VBoxContainer.new()
 	dealer_card.add_child(dealer_box)
-	var dealer_detail: Label = Label.new()
-	dealer_detail.text = "DEALER BALANCE\nOutstanding: $%d\nCash held for nightly drop-off: $%d" % [dealer_balance_due, dealer_cash_held]
-	dealer_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var dealer_detail:=Label.new()
+	dealer_detail.text="DEALER BALANCE\nOutstanding: $%d\nCash held for nightly drop-off: $%d" % [dealer_balance_due,dealer_cash_held]
+	dealer_detail.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	dealer_box.add_child(dealer_detail)
-	if dealer_balance_due > 0:
-		var pay_dealers: Button = Button.new()
-		pay_dealers.text = "PAY DEALER BALANCE  |  $%d" % dealer_balance_due
-		pay_dealers.disabled = cash < dealer_balance_due
-		pay_dealers.custom_minimum_size.y = 50
+	if dealer_balance_due>0:
+		var pay_dealers:=Button.new()
+		pay_dealers.text="PAY DEALER BALANCE  |  $%d" % dealer_balance_due
+		pay_dealers.disabled=cash<dealer_balance_due
+		pay_dealers.custom_minimum_size.y=50
 		pay_dealers.pressed.connect(_pay_dealer_balance)
 		dealer_box.add_child(pay_dealers)
-	else:
-		var clear: Label = Label.new()
-		clear.text = "No outstanding dealer balance."
-		dealer_box.add_child(clear)
 
 func _build_employees_app() -> void:
 	var staff_header: Label = Label.new()
@@ -8135,6 +8102,8 @@ func _advancement_value(entry: Dictionary) -> int:
 		return 1 if _story_chapter_four_crew_complete() else 0
 	if state_name == "chapter_four_demand_ready":
 		return 1 if _story_chapter_four_demand_complete() else 0
+	if state_name == "chapter_four_operation_ready":
+		return 1 if _story_chapter_four_operation_complete() else 0
 	if state_name == "chapter_four_complete":
 		return 1 if _story_chapter_four_complete() else 0
 	return 0
@@ -8182,6 +8151,55 @@ func _bootstrap_advancement_stats_from_state() -> void:
 		if relationship_variant is Dictionary:
 			prior_staff_purchases += int((relationship_variant as Dictionary).get("staff_purchases", 0))
 	advancement_stats["staff_purchases"] = maxi(prior_staff_purchases, int(advancement_stats.get("staff_purchases", 0)))
+
+func _advancement_choice_group(advancement_id: String) -> String:
+	for candidate: Dictionary in advancement_catalog:
+		if str(candidate.get("id", "")) == advancement_id:
+			return str(candidate.get("choice_group", ""))
+	return ""
+
+func _advancement_choice_value(advancement_id: String) -> String:
+	for candidate: Dictionary in advancement_catalog:
+		if str(candidate.get("id", "")) == advancement_id:
+			return str(candidate.get("choice_value", ""))
+	return ""
+
+func _advancement_is_retired(entry: Dictionary) -> bool:
+	var advancement_id: String = str(entry.get("id", ""))
+	if bool(advancement_claimed.get(advancement_id, false)):
+		return false
+	var group: String = str(entry.get("choice_group", ""))
+	var value: String = str(entry.get("choice_value", ""))
+	if group.is_empty() or value.is_empty():
+		return false
+	var selected: String = str(advancement_choice_state.get(group, ""))
+	return selected not in ["", "legacy_both", value]
+
+func _lock_advancement_choice(advancement_id: String) -> void:
+	var group: String = _advancement_choice_group(advancement_id)
+	var value: String = _advancement_choice_value(advancement_id)
+	if group.is_empty() or value.is_empty() or advancement_choice_state.has(group):
+		return
+	advancement_choice_state[group] = value
+
+func _migrate_advancement_choices() -> void:
+	if advancement_choice_state.has("reeves_payment_outcome"):
+		return
+	var paid: bool = bool(advancement_claimed.get("reeves_payments", false)) or int(advancement_stats.get("reeves_payments", 0)) > 0
+	var missed: bool = bool(advancement_claimed.get("reeves_miss", false)) or int(advancement_stats.get("reeves_missed_payments", 0)) > 0
+	if paid and missed:
+		advancement_choice_state["reeves_payment_outcome"] = "legacy_both"
+	elif missed:
+		advancement_choice_state["reeves_payment_outcome"] = "miss"
+	elif paid:
+		advancement_choice_state["reeves_payment_outcome"] = "pay"
+
+func _advancement_active_count() -> int:
+	var count: int = 0
+	for entry: Dictionary in advancement_catalog:
+		if not _advancement_is_retired(entry):
+			count += 1
+	return count
 
 func _advancement_ready_count() -> int:
 	var ready_count: int = 0
@@ -8318,7 +8336,7 @@ func _story_chapter_four_operation_complete() -> bool:
 		and int(advancement_stats.get("grams_stored", 0)) >= 250
 
 func _story_chapter_four_complete() -> bool:
-	return _story_chapter_four_operation_complete()
+	return _story_chapter_four_operation_complete() 		and bool(property_opportunity_state.get("relocated", false)) 		and bool(property_opportunity_state.get("first_entry", false))
 
 func _chapter_four_target_story_stage() -> int:
 	if not _story_chapter_three_complete():
@@ -8332,8 +8350,10 @@ func _chapter_four_target_story_stage() -> int:
 		target = 4
 	if _story_chapter_four_demand_complete():
 		target = 5
-	if _story_chapter_four_complete():
+	if _story_chapter_four_operation_complete():
 		target = 6
+	if _story_chapter_four_complete():
+		target = 7
 	return target
 
 func _chapter_four_append_story_text(body: String) -> void:
@@ -8355,7 +8375,7 @@ func _chapter_four_append_story_text(body: String) -> void:
 func _sync_chapter_four_story() -> bool:
 	var target_stage: int = _chapter_four_target_story_stage()
 	if target_stage <= chapter_four_story_stage:
-		if _story_chapter_four_complete() and not property_offer_unlocked:
+		if _story_chapter_four_operation_complete() and not property_offer_unlocked:
 			property_offer_unlocked = true
 			return true
 		return false
@@ -8377,7 +8397,9 @@ func _sync_chapter_four_story() -> bool:
 				_chapter_four_append_story_text("The numbers do not lie. Too many customers, too much product, too much traffic for one apartment. Finish proving the operation can handle a real move.")
 			6:
 				property_offer_unlocked = true
-				_chapter_four_append_story_text("I got a line on a house that can actually fit this operation. You can rent it, lease it to own, or buy it outright. This is the next move.")
+				_chapter_four_append_story_text("I got a line on a house that can actually fit this operation. You can rent it, lease it to own, or buy it outright. Go inspect it and decide how you want to secure it.")
+			7:
+				_chapter_four_append_story_text("You made the move. The house is the AFewBuds operation now. Chapter 4 is done. Chapter 5 starts here — build something bigger.")
 	return changed
 
 func _story_checkmark(done: bool, text_value: String) -> String:
@@ -8411,7 +8433,7 @@ func _build_story_progress_section() -> void:
 	elif not chapter_four_done:
 		chapter_title.text = "STORY\nCHAPTER 4 - OUTGROWING THE APARTMENT"
 	else:
-		chapter_title.text = "STORY\nCHAPTER 4 COMPLETE\nEXPANSION OPPORTUNITY UNLOCKED"
+		chapter_title.text = "STORY\nCHAPTER 5 - BUILDING AN OPERATION"
 	chapter_title.custom_minimum_size.x = 0.0
 	chapter_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	chapter_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -8460,7 +8482,11 @@ func _build_story_progress_section() -> void:
 			_story_checkmark(_story_chapter_four_distribution_complete(), "Distribution Network - Dealer Storage IV + 20 dealer sales"),
 			_story_checkmark(_story_chapter_four_crew_complete(), "Crew Operations - 3 staff + 50 production-worker tasks"),
 			_story_checkmark(_story_chapter_four_demand_complete(), "Demand Outgrows the Space - $15,000 revenue + 175 reputation + 12 known customers"),
-			_story_checkmark(_story_chapter_four_operation_complete(), "Proven Operation - Grower 10 + 3 hybrid batches + 250g moved into storage")
+			_story_checkmark(_story_chapter_four_operation_complete(), "Proven Operation - Grower 10 + 3 hybrid batches + 250g moved into storage"),
+			_story_checkmark(bool(property_opportunity_state.get("inspection_complete", false)), "Inspect the house - tour all 6 rooms"),
+			_story_checkmark(bool(property_opportunity_state.get("agreement_signed", false)), "Choose your next base - sign Rent, Lease to Own or Purchase"),
+			_story_checkmark(bool(property_opportunity_state.get("relocated", false)), "Move Operation - confirm relocation to the house"),
+			_story_checkmark(bool(property_opportunity_state.get("first_entry", false)), "Start Chapter 5 - enter the new house operation")
 		])
 		objectives.text += "\n\nFINALE: prove the apartment can no longer support the operation and unlock your first house opportunity."
 	else:
@@ -8522,7 +8548,7 @@ func _advancement_story_label() -> String:
 		return "CHAPTER 3 - GETTING NOTICED"
 	if not _story_chapter_four_complete():
 		return "CHAPTER 4 - OUTGROWING THE APARTMENT"
-	return "CHAPTER 4 COMPLETE  |  EXPANSION OPPORTUNITY UNLOCKED"
+	return "CHAPTER 5 - BUILDING AN OPERATION"
 
 func _add_advancement_roadmap_milestone(parent: VBoxContainer, entry: Dictionary, current_tier: int) -> void:
 	var advancement_id: String = str(entry.get("id", ""))
@@ -8646,7 +8672,7 @@ func _build_advancements_app() -> void:
 	summary_box.add_child(story)
 
 	var summary: Label = Label.new()
-	summary.text = "%d / %d milestones claimed   |   %d reward%s ready" % [claimed_count, advancement_catalog.size(), ready_count, "" if ready_count == 1 else "s"]
+	summary.text = "%d / %d milestones claimed   |   %d reward%s ready" % [claimed_count, _advancement_active_count(), ready_count, "" if ready_count == 1 else "s"]
 	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	summary.modulate = Color("d7c28a") if ready_count > 0 else Color("9fb0ba")
@@ -8654,7 +8680,7 @@ func _build_advancements_app() -> void:
 
 	var overall: ProgressBar = ProgressBar.new()
 	overall.min_value = 0
-	overall.max_value = maxi(1, advancement_catalog.size())
+	overall.max_value = maxi(1, _advancement_active_count())
 	overall.value = claimed_count
 	overall.show_percentage = false
 	overall.custom_minimum_size = Vector2(0, 16)
@@ -8848,6 +8874,10 @@ func _claim_all_advancements() -> void:
 func _increment_advancement_stat(metric_name: String, amount: int = 1) -> void:
 	if metric_name.is_empty() or amount <= 0:
 		return
+	if metric_name == "reeves_payments":
+		_lock_advancement_choice("reeves_payments")
+	elif metric_name == "reeves_missed_payments":
+		_lock_advancement_choice("reeves_miss")
 	advancement_stats[metric_name] = int(advancement_stats.get(metric_name, 0)) + amount
 
 func _debug_trigger_reeves() -> void:
@@ -8864,7 +8894,7 @@ func _debug_trigger_reeves() -> void:
 
 func _build_heat_app() -> void:
 	var intro: Label = Label.new()
-	intro.text = "Heat measures how much attention your operation is drawing. Fast sales, dealers, customer traffic and complaints raise it. Quiet time lowers it."
+	intro.text = "Heat measures how much attention your operation is drawing. Routine sales and traffic build attention more gradually now. Staying in-game and going quiet cools Heat faster than logging off."
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	phone_list.add_child(intro)
 
@@ -8901,7 +8931,7 @@ Last change: %s" % [int(round(heat_peak)), int(floor(heat_reduced_total)), last_
 	phone_list.add_child(guide)
 
 	var shutdown_note := Label.new()
-	shutdown_note.text="Lay low at the property computer or text assigned crew through Contacts."
+	shutdown_note.text="Lay low at the property computer or text assigned crew through Contacts. Active in-game cooldown is intentionally faster than offline cooldown."
 	shutdown_note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	phone_list.add_child(shutdown_note)
 
@@ -9019,7 +9049,7 @@ func _acknowledge_enforcement_report() -> void:
 func _build_stats_app() -> void:
 	var stored: int = _total_stored_stock()
 	var stats: Label = Label.new()
-	stats.text = "CAREER\nRank: %s\nMilestones: %d / %d\nLifetime revenue: $%d\nCurrent cash: $%d\nReputation: %d\nBrand Level: %d\nHeat: %d / 100  |  %s\nPeak Heat: %d\nStored sellable inventory: %dg\nGrow Shelf Lv %d  |  Seeds %d/%d  |  Fertilizer %d/%d\nLifetime utilities: $%d electric  |  $%d water\nAdvancement rewards ready: %d" % [_advancement_career_rank(), _advancement_claimed_count(), advancement_catalog.size(), lifetime_revenue, cash, reputation, brand_level, int(round(heat)), _heat_stage_name(), int(round(heat_peak)), stored, supply_shelf_level, _total_seed_inventory(), _supply_seed_capacity(), fertilizer_units, _supply_fertilizer_capacity(), lifetime_power_cost, lifetime_water_cost, _advancement_ready_count()]
+	stats.text = "CAREER\nRank: %s\nMilestones: %d / %d\nLifetime revenue: $%d\nCurrent cash: $%d\nReputation: %d\nBrand Level: %d\nHeat: %d / 100  |  %s\nPeak Heat: %d\nStored sellable inventory: %dg\nGrow Shelf Lv %d  |  Seeds %d/%d  |  Fertilizer %d/%d\nLifetime utilities: $%d electric  |  $%d water\nAdvancement rewards ready: %d" % [_advancement_career_rank(), _advancement_claimed_count(), _advancement_active_count(), lifetime_revenue, cash, reputation, brand_level, int(round(heat)), _heat_stage_name(), int(round(heat_peak)), stored, supply_shelf_level, _total_seed_inventory(), _supply_seed_capacity(), fertilizer_units, _supply_fertilizer_capacity(), lifetime_power_cost, lifetime_water_cost, _advancement_ready_count()]
 	stats.add_theme_font_size_override("font_size", 19)
 	stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	phone_list.add_child(stats)
@@ -9532,6 +9562,7 @@ func _save_game() -> void:
 		"last_enforcement_report": last_enforcement_report,
 		"advancement_stats": advancement_stats,
 		"advancement_claimed": advancement_claimed,
+		"advancement_choice_state": advancement_choice_state,
 		"chapter_four_story_stage": chapter_four_story_stage,
 		"property_offer_unlocked": property_offer_unlocked,
 		"property_opportunity_state": property_opportunity_state,
@@ -9800,7 +9831,11 @@ func _load_game() -> void:
 	var loaded_advancement_claimed: Variant = data.get("advancement_claimed", advancement_claimed)
 	if loaded_advancement_claimed is Dictionary:
 		advancement_claimed = loaded_advancement_claimed as Dictionary
-	chapter_four_story_stage = clampi(int(data.get("chapter_four_story_stage", chapter_four_story_stage)), 0, 6)
+	var loaded_advancement_choices: Variant = data.get("advancement_choice_state", {})
+	if loaded_advancement_choices is Dictionary:
+		advancement_choice_state = (loaded_advancement_choices as Dictionary).duplicate(true)
+	_migrate_advancement_choices()
+	chapter_four_story_stage = clampi(int(data.get("chapter_four_story_stage", chapter_four_story_stage)), 0, 7)
 	property_offer_unlocked = bool(data.get("property_offer_unlocked", property_offer_unlocked))
 	var saved_property: Variant=data.get("property_opportunity_state", {})
 	if saved_property is Dictionary: property_opportunity_state=saved_property.duplicate(true)
@@ -11289,7 +11324,7 @@ func _build_help_app() -> void:
 		label.add_theme_font_size_override("font_size", 19)
 		phone_list.add_child(label)
 	var controls: Label = Label.new()
-	controls.text = "PHONE LAYOUT\nOrder seeds on the phone, collect them at Central Market checkout, then deposit carried supplies at your apartment computer. Seeds and fertilizer can be ordered on the phone for Central Market pickup; equipment is bought at its checkout. Paid equipment waits for computer installation. Property computers manage inventory, listings, genetics, staff and production. Phone -> Illegal Businesses -> Bills or apartment computer -> Bills includes apartment rent: $600 every 14 game days, with a three-day grace period. The back arrow returns to the parent category.\n\nCONTROLS\nSwipe phone, packing-bench and storage lists anywhere on a card or button; lift without swiping to tap. Tap the actual room switches or lamp to toggle them. Use room switches or the property computer for lights and power. Small finger movements stay taps; swipe farther to look around. Swipe the room to look; tap a station to use it. While bagging, keep the same finger on the bud until you drop it. During trimming, keep hold of the scissors.\n\nPAUSING\nSwitching apps/tabs, closing the game, or pressing PAUSE stops the day, visitors, story, wages and sales. Only existing plants keep growing and consume water and applied fertilizer; dry plants lose health. A plant that finishes before dying stays harvestable. A hired, ON-DUTY production worker can water and fertilize those plants using your stored fertilizer. No supplies are bought; watering continues when fertilizer runs out and adds to your Water Bill. An off-duty/fired worker or raid lockdown gives no care. No new seeds, harvesting, trimming, bagging or selling occur while away; equipment auto-refill remains live-only. The first-day guide fully protects plants. Press RESUME when you return. Daily closeout keeps its day/time frozen until START DAY. Storefront AWAY is different: it closes sales while you are still playing.\n\nREWARDS\nRewards over $100 have harder goals or extra requirements. Complete every displayed requirement before claiming. Already-claimed rewards remain yours."
+	controls.text = "PHONE LAYOUT\nOrder seeds on the phone, collect them at Central Market checkout, then deposit carried supplies at your apartment computer. Seeds and fertilizer can be ordered on the phone for Central Market pickup; equipment is bought at its checkout. Paid equipment waits for computer installation. Property computers manage inventory, listings, genetics, staff and production. Phone -> Real Estate manages every property separately. Moving to the house keeps the apartment lease active by default, so its $600/14-day rent continues until you explicitly release that lease. Electric and water are tracked per property and accrue only where utilities are actually being used. Released properties disappear from normal operation management and can be rented again later through Real Estate. House Rent and Lease-to-Own use 7-day payment cycles. The back arrow returns to the parent category.\n\nCONTROLS\nSwipe phone, packing-bench and storage lists anywhere on a card or button; lift without swiping to tap. Tap the actual room switches or lamp to toggle them. Use room switches or the property computer for lights and power. Small finger movements stay taps; swipe farther to look around. Swipe the room to look; tap a station to use it. While bagging, keep the same finger on the bud until you drop it. During trimming, keep hold of the scissors.\n\nPAUSING\nSwitching apps/tabs, closing the game, or pressing PAUSE stops the day, visitors, story, wages and sales. Only existing plants keep growing and consume water and applied fertilizer; dry plants lose health. A plant that finishes before dying stays harvestable. A hired, ON-DUTY production worker can water and fertilize those plants using your stored fertilizer. No supplies are bought; watering continues when fertilizer runs out and adds to your Water Bill. An off-duty/fired worker or raid lockdown gives no care. No new seeds, harvesting, trimming, bagging or selling occur while away; equipment auto-refill remains live-only. Offline Heat cooling is intentionally slower than staying in-game and going quiet. The first-day guide fully protects plants. Press RESUME when you return. Daily closeout keeps its day/time frozen until START DAY. Storefront AWAY is different: it closes sales while you are still playing.\n\nREWARDS\nRewards over $100 have harder goals or extra requirements. Complete every displayed requirement before claiming. Already-claimed rewards remain yours."
 	controls.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	phone_list.add_child(controls)
 	var pause_button: Button = Button.new()
@@ -11299,6 +11334,8 @@ func _build_help_app() -> void:
 	phone_list.add_child(pause_button)
 
 func _advancement_is_ready(entry: Dictionary) -> bool:
+	if _advancement_is_retired(entry):
+		return false
 	if _advancement_value(entry) < int(entry.get("target", 1)):
 		return false
 	for requirement_variant: Variant in entry.get("requires", []):

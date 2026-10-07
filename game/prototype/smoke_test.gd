@@ -326,6 +326,11 @@ func check_neighborhood() -> void:
 	await frames()
 	game._use_target()
 	await create_timer(0.5).timeout
+	# Door animation runs on physics ticks; a wall-clock timer may finish
+	# before enough ticks have elapsed during asset loading on a busy runner.
+	for door_frame in range(60):
+		if not outside.transitioning:break
+		await physics_frame
 	check(outside.door_open, "E opens hinged front door from inside")
 	game.fp_player.position = Vector3(0, 0.08, 4.5)
 	var passage_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, 3.8))
