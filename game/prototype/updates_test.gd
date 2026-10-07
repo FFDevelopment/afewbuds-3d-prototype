@@ -14,6 +14,7 @@ func ready_game() -> void:
 	game=load("res://prototype/apartment.tscn").instantiate()
 	root.add_child(game)
 	await process_frame
+	game.inventory_system.guide.skip()
 	game._resume_gameplay()
 	game.set_process(false)
 	game.fp_player.set_physics_process(false)

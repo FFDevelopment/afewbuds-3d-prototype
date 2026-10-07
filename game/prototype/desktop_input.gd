@@ -2,7 +2,7 @@ extends Node
 ## Device preferences are never included in the shared career save.
 const PATH := "user://desktop_preferences.json"
 const DEFAULTS := {"forward":KEY_W,"backward":KEY_S,"left":KEY_A,"right":KEY_D,"sprint":KEY_SHIFT,"interact":KEY_E,"phone":KEY_P,"backpack":KEY_I,"visitor":KEY_R,"tour":KEY_T,"save":KEY_F5}
-const PAD_DEFAULTS := {"interact":JOY_BUTTON_A,"phone":JOY_BUTTON_Y,"backpack":JOY_BUTTON_DPAD_UP,"visitor":JOY_BUTTON_X,"tour":JOY_BUTTON_RIGHT_SHOULDER,"sprint":JOY_BUTTON_LEFT_STICK,"save":JOY_BUTTON_BACK}
+const PAD_DEFAULTS := {"interact":JOY_BUTTON_A,"phone":JOY_BUTTON_DPAD_UP,"backpack":JOY_BUTTON_DPAD_RIGHT,"visitor":JOY_BUTTON_X,"tour":JOY_BUTTON_RIGHT_SHOULDER,"sprint":JOY_BUTTON_LEFT_STICK,"save":JOY_BUTTON_BACK}
 var pad_bindings:Dictionary=PAD_DEFAULTS.duplicate()
 var rebind_device:="keyboard"
 var focus_key:=""
@@ -31,6 +31,10 @@ func _ready() -> void:
 		for action in DEFAULTS:
 			var key:=int(data.get("bindings",{}).get(action,DEFAULTS[action]))
 			if key>0 and key!=KEY_ESCAPE:bindings[action]=key
+		var previous_pad:Dictionary=data.get("pad_bindings",{})
+		if int(previous_pad.get("phone",-1))==JOY_BUTTON_Y and int(previous_pad.get("backpack",-1))==JOY_BUTTON_DPAD_UP:
+			previous_pad["phone"]=JOY_BUTTON_DPAD_UP;previous_pad["backpack"]=JOY_BUTTON_DPAD_RIGHT
+			data["pad_bindings"]=previous_pad
 		for action in PAD_DEFAULTS:
 			var button:int=int(data.get("pad_bindings",{}).get(action,PAD_DEFAULTS[action]))
 			if button>=0 and button<JOY_BUTTON_MAX and button not in [JOY_BUTTON_B,JOY_BUTTON_START]:pad_bindings[action]=button

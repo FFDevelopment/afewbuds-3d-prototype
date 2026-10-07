@@ -26,8 +26,7 @@ var controller_work_held:bool=false
 
 func _load_game() -> void:
 	super._load_game()
-	# The original guided tutorial assumes fixed cameras. This test starts with
-	# the same ready/growing/empty pots, with that tutorial marked complete.
+	# The shared first-day guide replaces the legacy fixed-camera lesson.
 	tutorial_seen = true
 	tutorial_active = false
 
@@ -63,8 +62,8 @@ func _ready() -> void:
 	current_view = "fp_walk"
 	fp_player.sync_camera()
 	_refresh_navigation_ui()
-	if not session_paused:
-		_pause_gameplay("FIRST-PERSON NEIGHBORHOOD TEST\n\nWASD to walk · Mouse to look · Shift to sprint (uses stamina)\nE to use a station or open/close the front door · P for phone\nEsc to pause · F5 to save\n\nOpen the front door and walk outside, then close it behind you. R at the door checks for visitors. Walk through the interior opening into the grow room. Harvest the ready Purple Dream plant, then take it to the packaging bench.\n\nSigned-in careers sync with AFewBuds. Save and close one version before switching. Guests save locally.")
+	if not session_paused and not tutorial_panel.visible:
+		_pause_gameplay("WELCOME TO BONGCHESTER\n\nWASD to walk · Mouse to look · Shift to sprint (uses stamina)\nE to use a station or open/close the front door · P for phone\nEsc to pause · F5 to save\n\nOpen the front door and walk outside, then close it behind you. R at the door checks for visitors. Walk through the interior opening into the grow room. Harvest the ready Purple Dream plant, then take it to the packaging bench.\n\nYour progress saves automatically.")
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 func _process(delta: float) -> void:
@@ -95,7 +94,7 @@ func _process(delta: float) -> void:
 	_controller_work_tick(delta,DesktopInput.stick(false))
 	if DesktopInput.controller_active:
 		if trim_panel.visible and trim_harvest_amount>0:trim_instruction.text="Hold A / Cross and move the left stick to trim."
-		if bag_minigame_panel.visible and bag_current_units<bag_target_units:bag_instruction.text="Hold A / Cross and move the left stick. Release over the bag to add 1g."
+		if bag_minigame_panel.visible and bag_current_units<bag_target_units:bag_instruction.text="Hold A / Cross and move the left stick. Release over the bag to add up to %dg." % _packing_drop_size()
 	fp_info.visible = not modal
 	fp_info.text = "%s\n%s   ·   %s   ·   $%d" % [Districts.heading(fp_player.position), neighborhood.location_label(fp_player.position) if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
 	fp_hint.text = "L3 click while moving forward: toggle sprint · Right stick: look · A: interact · Y: phone · Start: pause" if DesktopInput.controller_active else "%s/%s/%s/%s Walk · Shift + forward Sprint · %s Interact · %s Phone · Esc Pause · %s Save" % [DesktopInput.label("forward"),DesktopInput.label("left"),DesktopInput.label("backward"),DesktopInput.label("right"),DesktopInput.label("interact"),DesktopInput.label("phone"),DesktopInput.label("save")]

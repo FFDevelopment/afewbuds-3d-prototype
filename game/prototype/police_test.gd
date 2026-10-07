@@ -15,6 +15,7 @@ func run() -> void:
 	game=load("res://prototype/apartment.tscn").instantiate();root.add_child(game);await frames(8)
 	station=game.neighborhood.police_station
 	check(station.doors.size()==14 and station.rooms.size()==15,"Two-floor station has 14 working doors and 15 rooms")
+	game.inventory_system.guide.skip()
 	game._resume_gameplay();game.fp_player.enabled=false
 	var player:CharacterBody3D=game.fp_player
 	player.position=Vector3(135,.1,17)

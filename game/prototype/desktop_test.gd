@@ -15,6 +15,7 @@ func run() -> void:
 	var game=load("res://prototype/apartment.tscn").instantiate()
 	root.add_child(game)
 	await frames(12)
+	game.inventory_system.guide.skip();game._pause_gameplay()
 
 	var districts=load("res://scripts/districts.gd")
 	for sample in [[Vector3(0,0,0),"Roachwood"],[Vector3(40,0,0),"Roachwood"],[Vector3(72.99,0,0),"Roachwood"],[Vector3(73,0,0),"Half Baked Heights"],[Vector3(138.99,0,0),"Half Baked Heights"],[Vector3(139,0,0),"Paranoia Point"],[Vector3(175,6,0),"Paranoia Point"]]:
@@ -100,7 +101,7 @@ func run() -> void:
 	controls.mouse_sensitivity=2;yaw=game.fp_player.yaw;game.fp_player.look(Vector2(10,0))
 	check(is_equal_approx(absf(game.fp_player.yaw-yaw),first*2),"Camera sensitivity changes actual rotation")
 	controls.mouse_sensitivity=1
-	var joy:=InputEventJoypadButton.new();joy.button_index=JOY_BUTTON_Y;joy.pressed=true
+	var joy:=InputEventJoypadButton.new();joy.button_index=JOY_BUTTON_DPAD_UP;joy.pressed=true
 	game._input(joy);await frames()
 	check(game.phone_open and not game.fp_player.enabled,"Controller phone action opens modal and stops movement")
 	for dimensions in [Vector2i(1280,720),Vector2i(1280,800),Vector2i(1920,1080),Vector2i(2560,1080)]:

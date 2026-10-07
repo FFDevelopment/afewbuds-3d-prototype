@@ -504,15 +504,15 @@ var seed_catalog: Dictionary = {
 	"Golden Ember": {"unlock": 6, "cost": 70, "price": 36, "grade": "S", "profile": "gold", "harvest": 8, "description": "Higher-tier genetics with strong value and balanced output."},
 	"Cherry Glow": {"unlock": 7, "cost": 85, "price": 39, "grade": "S", "profile": "cherry", "harvest": 7, "description": "Deep red-accent genetics that open a new premium customer lane."},
 	"Neon Berry": {"unlock": 8, "cost": 95, "price": 43, "grade": "S", "profile": "berry", "harvest": 7, "description": "Rare colorful genetics that attract higher-paying clients."},
-	"Moon Cake": {"unlock": 9, "cost": 110, "price": 47, "grade": "S", "profile": "dessert", "harvest": 6, "description": "Dense fictional dessert-profile genetics for established clients."},
+	"Moon Cake": {"unlock": 9, "cost": 110, "price": 47, "grade": "S", "profile": "dessert", "harvest": 6, "description": "Dense dessert-profile genetics for established clients."},
 	"Midnight Crown": {"unlock": 10, "cost": 130, "price": 52, "grade": "S+", "profile": "luxury", "harvest": 6, "description": "Late-game prestige genetics for premium orders."},
 	"Black Cherry": {"unlock": 11, "cost": 150, "price": 58, "grade": "S+", "profile": "darkfruit", "harvest": 6, "description": "Dark-colored premium genetics with strong brand prestige."},
-	"Aurora Reserve": {"unlock": 12, "cost": 175, "price": 64, "grade": "S+", "profile": "reserve", "harvest": 6, "description": "Top-shelf fictional reserve genetics for the highest business tier."},
+	"Aurora Reserve": {"unlock": 12, "cost": 175, "price": 64, "grade": "S+", "profile": "reserve", "harvest": 6, "description": "Top-shelf reserve genetics for the highest business tier."},
 	"Solar Frost": {"unlock": 14, "cost": 210, "price": 70, "grade": "S+", "profile": "solar", "harvest": 5, "description": "Late-career prestige genetics intended for reserve-level customers."},
-	"Citrus Velvet": {"unlock": 99, "cost": 0, "price": 34, "grade": "S", "profile": "citrus", "harvest": 8, "recipe_only": true, "description": "A fictional crossbreed unlocked through Story rewards."},
-	"Cherry Frost": {"unlock": 99, "cost": 0, "price": 46, "grade": "S+", "profile": "cherry", "harvest": 6, "recipe_only": true, "description": "A fictional cold-fruit crossbreed unlocked through progression."},
-	"Ember Berry": {"unlock": 99, "cost": 0, "price": 54, "grade": "S+", "profile": "berry", "harvest": 6, "recipe_only": true, "description": "A fictional gold-and-berry crossbreed unlocked through progression."},
-	"Crown Cake": {"unlock": 99, "cost": 0, "price": 63, "grade": "S+", "profile": "luxury", "harvest": 5, "recipe_only": true, "description": "A fictional prestige crossbreed reserved for late-career genetics work."}
+	"Citrus Velvet": {"unlock": 99, "cost": 0, "price": 34, "grade": "S", "profile": "citrus", "harvest": 8, "recipe_only": true, "description": "A crossbreed unlocked through Story rewards."},
+	"Cherry Frost": {"unlock": 99, "cost": 0, "price": 46, "grade": "S+", "profile": "cherry", "harvest": 6, "recipe_only": true, "description": "A cold-fruit crossbreed unlocked through progression."},
+	"Ember Berry": {"unlock": 99, "cost": 0, "price": 54, "grade": "S+", "profile": "berry", "harvest": 6, "recipe_only": true, "description": "A gold-and-berry crossbreed unlocked through progression."},
+	"Crown Cake": {"unlock": 99, "cost": 0, "price": 63, "grade": "S+", "profile": "luxury", "harvest": 5, "recipe_only": true, "description": "A prestige crossbreed reserved for late-career genetics work."}
 }
 
 var supply_catalog: Dictionary = {
@@ -522,8 +522,8 @@ var supply_catalog: Dictionary = {
 	"Storage Shelving II": {"unlock": 2, "cost": 220, "description": "Add more shelving and increase storage capacity."},
 	"Grow Tent Slot 2": {"unlock": 3, "cost": 480, "description": "Install a second grow tent in Grow Room expansion bay 2 and add 3 plant slots."},
 	"Grow Room Ventilation": {"unlock": 2, "cost": 350, "description": "Install the grow-room ventilation system. Plants grow slowly when ventilation is unavailable or switched off."},
-	"Bagging Bench II": {"unlock": 3, "cost": 275, "description": "Better packaging adds value to every sale."},
-	"Bagging Bench III": {"unlock": 6, "cost": 850, "description": "Industrial production workstation. Enables continuous manual bagging with variable 1-4g bags until the selected strain is fully packaged."},
+	"Bagging Bench II": {"unlock": 3, "cost": 275, "description": "Pack up to 2g per drop in 6g batches."},
+	"Bagging Bench III": {"unlock": 6, "cost": 850, "description": "Pack up to 4g per drop in 12g batches and continue automatically with the next bag."},
 	"Tent Upgrade II": {"unlock": 3, "cost": 320, "description": "Improve output from all installed grow tents."},
 	"Storage Shelving III": {"unlock": 5, "cost": 650, "description": "Expand storage to 160g with a second shelving bank."},
 	"AFB Storage Vault": {"unlock": 7, "cost": 1800, "description": "Replace all storage shelves with the AFB steel-and-green vault. 400g TOTAL sellable storage. Requires Storage Shelving III. Existing stock, reservations and listings stay unchanged."},
@@ -1595,7 +1595,7 @@ func _roll_daily_heat_pressure_event() -> void:
 		message = "Several clients mention an unmarked car circling the block."
 	elif heat >= 75.0:
 		extra_heat = 3.0
-		message = "A fictional investigator was asking questions nearby."
+		message = "An investigator was asking questions nearby."
 	_increment_advancement_stat("pressure_events")
 	_log_heat_event(message)
 	_add_heat(extra_heat, "Daily pressure event", false)
@@ -3408,7 +3408,12 @@ func _build_tutorial_panel() -> void:
 	hud.add_child(tutorial_panel)
 	var root: VBoxContainer = VBoxContainer.new()
 	root.add_theme_constant_override("separation", 16)
-	tutorial_panel.add_child(root)
+	var intro_scroll:=PhoneTouchScroll.new()
+	intro_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
+	intro_scroll.follow_focus=true
+	root.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	tutorial_panel.add_child(intro_scroll)
+	intro_scroll.add_child(root)
 	var brand_row: HBoxContainer = HBoxContainer.new()
 	brand_row.add_theme_constant_override("separation", 12)
 	root.add_child(brand_row)
@@ -3418,7 +3423,11 @@ func _build_tutorial_panel() -> void:
 	title.add_theme_font_size_override("font_size", 30)
 	brand_row.add_child(title)
 	var body: Label = Label.new()
-	body.text = "Learn one thing at a time: harvest, plant, water, fertilize, buy supplies, then trim, bag, store and list your product.\n\nThe clock, customers and plant timers stay PAUSED while you learn. SHOW ME takes you to the right place; you perform each action yourself.\n\nThis lesson is protected even while away. After the lesson, only existing crops grow while away; your day and visitors still wait for RESUME."
+	body.text = "Welcome to Bongchester. Learn movement, your phone and backpack, market orders, growing, packing and selling.
+
+Follow the on-screen guide and do each action yourself. Time and plants are protected until the sale lesson. Controls match your device and current bindings.
+
+You can skip any step or resume from Phone > Help."
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_theme_font_size_override("font_size", 20)
 	root.add_child(body)
@@ -3440,14 +3449,7 @@ func _show_tutorial() -> void:
 	_sync_simulation_pause()
 
 func _dismiss_tutorial() -> void:
-	tutorial_seen = true
-	tutorial_active = true
-	if tutorial_panel != null:
-		tutorial_panel.visible = false
-	_sync_simulation_pause()
-	_refresh_tutorial_coach()
-	_tutorial_focus_step()
-	_save_game()
+	if inventory_system!=null and inventory_system.guide!=null:inventory_system.guide.start()
 
 func _build_sale_panel() -> void:
 	sale_panel = PanelContainer.new()
@@ -3729,7 +3731,7 @@ func _refresh_direct_plant_panel() -> void:
 	if stage < 0:
 		title.text = "Pot %d  |  Empty" % (selected_plant_slot + 1)
 		var hint: Label = Label.new()
-		hint.text = "Choose an owned seed. Planting happens here in the world instead of from the full grow menu."
+		hint.text = "Choose a seed from your backpack or grow shelf."
 		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		plant_direct_box.add_child(hint)
 		var seed_row: GridContainer = GridContainer.new()
@@ -3739,16 +3741,16 @@ func _refresh_direct_plant_panel() -> void:
 		plant_direct_box.add_child(seed_row)
 		var owned_seed_names: Array[String] = []
 		for seed_name: String in SEED_ORDER:
-			if int(seed_inventory.get(seed_name, 0)) > 0:
+			if _usable_seed_count(seed_name) > 0:
 				owned_seed_names.append(seed_name)
 		for seed_variant: Variant in seed_inventory.keys():
 			var extra_seed_name: String = str(seed_variant)
-			if int(seed_inventory.get(extra_seed_name, 0)) > 0 and not owned_seed_names.has(extra_seed_name):
+			if _usable_seed_count(extra_seed_name) > 0 and not owned_seed_names.has(extra_seed_name):
 				owned_seed_names.append(extra_seed_name)
 
 		var shown: int = 0
 		for seed_name: String in owned_seed_names:
-			var seed_count: int = int(seed_inventory.get(seed_name, 0))
+			var seed_count: int = _usable_seed_count(seed_name)
 			if seed_count <= 0:
 				continue
 			var seed_button: Button = Button.new()
@@ -3760,7 +3762,7 @@ func _refresh_direct_plant_panel() -> void:
 			shown += 1
 		if shown == 0:
 			var none: Label = Label.new()
-			none.text = "No seeds owned. Buy unlocked seeds from the phone."
+			none.text = "No seeds available. Collect seed orders at Central Market."
 			plant_direct_box.add_child(none)
 		return
 
@@ -3773,7 +3775,7 @@ func _refresh_direct_plant_panel() -> void:
 	var stage_name: String = STAGES[clampi(stage, 0, STAGES.size() - 1)]
 	title.text = "%s  |  Pot %d" % [strain_name, selected_plant_slot + 1]
 	var stats: Label = Label.new()
-	stats.text = "Stage %s   |   Growth %.0f%%\nWater %.0f%%   |   Health %.0f%%   |   Boost %.0f%%\nFertilizer stock: %d uses" % [stage_name, growth, water, health, fertilizer, fertilizer_units]
+	stats.text = "Stage %s   |   Growth %.0f%%\nWater %.0f%%   |   Health %.0f%%   |   Boost %.0f%%\nFertilizer available: %d" % [stage_name, growth, water, health, fertilizer, _usable_fertilizer_count()]
 	stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	plant_direct_box.add_child(stats)
 
@@ -3800,13 +3802,13 @@ func _refresh_direct_plant_panel() -> void:
 	water_button.pressed.connect(_direct_water_selected)
 	actions.add_child(water_button)
 	var feed_button: Button = Button.new()
-	feed_button.text = "FERTILIZE (%d)" % fertilizer_units
+	feed_button.text = "FERTILIZE (%d)" % _usable_fertilizer_count()
 	feed_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	feed_button.custom_minimum_size.y = 50
-	feed_button.disabled = fertilizer_units <= 0 or fertilizer >= 80.0 or stage >= STAGES.size() - 1
+	feed_button.disabled = _usable_fertilizer_count() <= 0 or fertilizer >= 80.0 or stage >= STAGES.size() - 1
 	feed_button.pressed.connect(_direct_fertilize_selected)
 	actions.add_child(feed_button)
-	if fertilizer_units <= 2 and not tutorial_active:
+	if _usable_fertilizer_count() <= 2 and not tutorial_active:
 		var restock: Button = Button.new()
 		restock.text = "BUY FERTILIZER  |  5 USES / $45"
 		restock.custom_minimum_size.y = 48
@@ -4336,10 +4338,7 @@ func _start_bag_minigame(strain_name: String) -> void:
 	bag_active_strain = strain_name
 	bag_available_units = amount
 	bag_current_units = 0
-	if bagging_level >= 3 and not tutorial_active:
-		bag_target_units = rng.randi_range(1, mini(4, amount))
-	else:
-		bag_target_units = mini(3, amount)
+	bag_target_units = mini(_packing_batch_size(), amount)
 	bag_dragging = false
 	bag_bud_token.position = bag_token_home
 	bag_bud_token.visible = true
@@ -4356,7 +4355,7 @@ func _finish_bud_drag() -> void:
 	if bag_bud_token == null or bag_target_panel == null:
 		return
 	if bag_bud_token.get_global_rect().intersects(bag_target_panel.get_global_rect()):
-		bag_current_units += 1
+		bag_current_units += _packing_drop_size()
 		bag_current_units = mini(bag_current_units, bag_target_units)
 		_refresh_bag_weight()
 		if bag_current_units >= bag_target_units:
@@ -4370,7 +4369,7 @@ func _finish_bud_drag() -> void:
 
 func _refresh_bag_weight() -> void:
 	bag_weight_label.text = "%s   |   Scale  %.1fg / %.1fg" % [bag_active_strain, float(bag_current_units), float(bag_target_units)]
-	bag_instruction.text = "Drag buds into the open bag. Each drop adds one game unit to the scale." if bag_current_units < bag_target_units else "Target weight reached. Seal the bag."
+	bag_instruction.text = "Drag product into the bag. Each drop adds up to %dg." % _packing_drop_size() if bag_current_units < bag_target_units else "Target weight reached. Seal the bag."
 
 func _seal_current_bag() -> void:
 	if bag_active_strain.is_empty() or bag_current_units < bag_target_units:
@@ -4390,7 +4389,7 @@ func _seal_current_bag() -> void:
 	if bagging_level >= 3 and not tutorial_active and remaining > 0:
 		bag_available_units = remaining
 		bag_current_units = 0
-		bag_target_units = rng.randi_range(1, mini(4, remaining))
+		bag_target_units = mini(_packing_batch_size(), remaining)
 		bag_dragging = false
 		bag_bud_token.position = bag_token_home
 		bag_bud_token.visible = true
@@ -4846,7 +4845,7 @@ func _close_grow_panel() -> void:
 func _refresh_grow_panel() -> void:
 	_clear_children(grow_list)
 	var supply: Label = Label.new()
-	supply.text = "Fertilizer supply: %d" % fertilizer_units
+	supply.text = "Fertilizer supply: %d" % _usable_fertilizer_count()
 	supply.add_theme_font_size_override("font_size", 18)
 	grow_list.add_child(supply)
 	for slot_index in range(plant_slots.size()):
@@ -4867,7 +4866,7 @@ func _refresh_grow_panel() -> void:
 			seed_label.text = "Choose a seed to plant:"
 			row.add_child(seed_label)
 			for seed_name in SEED_ORDER:
-				var seed_count: int = int(seed_inventory.get(seed_name, 0))
+				var seed_count: int = _usable_seed_count(seed_name)
 				if seed_count <= 0:
 					continue
 				var seed_button: Button = Button.new()
@@ -4914,7 +4913,7 @@ func _refresh_grow_panel() -> void:
 			feed_button.text = "FERTILIZE"
 			feed_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			feed_button.custom_minimum_size.y = 48
-			feed_button.disabled = fertilizer_units <= 0 or fertilizer >= 80.0 or stage >= STAGES.size() - 1
+			feed_button.disabled = _usable_fertilizer_count() <= 0 or fertilizer >= 80.0 or stage >= STAGES.size() - 1
 			feed_button.pressed.connect(_fertilize_plant.bind(slot_index))
 			actions.add_child(feed_button)
 
@@ -4930,17 +4929,17 @@ func _refresh_grow_panel() -> void:
 				hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 				row.add_child(hint)
 
-func _plant_seed(slot_index: int, strain_name: String) -> void:
+func _plant_seed(slot_index: int, strain_name: String, use_backpack: bool = true) -> void:
 	if not _tutorial_can_do("plant"):
 		return
 	if slot_index >= 0 and slot_index < plant_slots.size() and int(plant_slots[slot_index].get("stage", -1)) >= 0:
 		return
 	if slot_index < 0 or slot_index >= plant_slots.size():
 		return
-	var count: int = int(seed_inventory.get(strain_name, 0))
+	var count: int = _usable_seed_count(strain_name) if use_backpack else int(seed_inventory.get(strain_name, 0))
 	if count <= 0:
 		return
-	seed_inventory[strain_name] = count - 1
+	if not _consume_seed(strain_name, use_backpack):return
 	plant_slots[slot_index] = {"strain": strain_name, "stage": 0, "growth": 0.0, "water": 72.0, "health": 100.0, "fertilizer": 0.0, "dead": false}
 	_increment_advancement_stat("plants_planted")
 	_tutorial_record("plant", slot_index)
@@ -4977,7 +4976,7 @@ func _fertilize_plant(slot_index: int) -> void:
 		return
 	if not _tutorial_can_do("fertilize"):
 		return
-	if slot_index < 0 or slot_index >= plant_slots.size() or fertilizer_units <= 0:
+	if slot_index < 0 or slot_index >= plant_slots.size() or _usable_fertilizer_count() <= 0:
 		return
 	var slot: Dictionary = plant_slots[slot_index]
 	if int(slot.get("stage", -1)) < 0 or int(slot.get("stage", -1)) >= 3 or bool(slot.get("dead", false)) or float(slot.get("fertilizer", 0.0)) >= 80.0:
@@ -4986,7 +4985,7 @@ func _fertilize_plant(slot_index: int) -> void:
 	fertilizer = clampf(fertilizer + 45.0, 0.0, 100.0)
 	slot["fertilizer"] = fertilizer
 	plant_slots[slot_index] = slot
-	fertilizer_units -= 1
+	if not _consume_fertilizer():return
 	_increment_advancement_stat("fertilizes")
 	_update_cash_ui()
 	_tutorial_record("fertilize", slot_index)
@@ -5054,7 +5053,7 @@ func _update_plant_over_time(slot_index: int, elapsed_seconds: float) -> void:
 	_update_plant_visual(slot_index)
 
 func _offline_crops_enabled() -> bool:
-	return not tutorial_active and (tutorial_panel == null or not tutorial_panel.visible)
+	return not _guide_protects_plants() and not tutorial_active and (tutorial_panel == null or not tutorial_panel.visible)
 
 func _offline_worker_care_enabled() -> bool:
 	return packing_employee_hired and packing_employee_active and game_day >= raid_lockdown_until_day and _offline_crops_enabled()
@@ -5598,7 +5597,7 @@ func _execute_production_worker_action() -> void:
 			_harvest_plant(slot_index)
 		"plant":
 			if not strain_name.is_empty():
-				_plant_seed(slot_index, strain_name)
+				_plant_seed(slot_index, strain_name, false)
 		"trim":
 			var available_trim: int = int(untrimmed_inventory.get(strain_name, 0))
 			var trim_amount: int = mini(PRODUCTION_WORKER_BATCH_SIZE, available_trim)
@@ -6113,6 +6112,7 @@ func _dealer_sell_one(show_feedback: bool, assigned_dealer_name: String = "", do
 	last_dealer_customer_name = str(chosen_customer.get("name", ""))
 	dealer_customers_served_today[last_dealer_customer_name] = sale_dealer_name
 	_increment_advancement_stat("dealer_sales")
+	if inventory_system!=null and inventory_system.guide!=null:inventory_system.guide.record("sale")
 	_increment_advancement_stat("sales")
 	_add_heat(1.8 + float(qty) * 0.45, "Dealer activity", false)
 	var relationship: Dictionary = (customer_relationships.get(last_dealer_customer_name,{}) as Dictionary).duplicate(true)
@@ -7092,7 +7092,7 @@ func _build_seed_shop_app() -> void:
 		unlock_text.modulate = Color("8ed6a3") if unlocked else Color("9ba3aa")
 		row.add_child(unlock_text)
 		var detail: Label = Label.new()
-		detail.text = "%s\nFinished base value: $%d/g   |   Grade %s" % [str(info.get("description", "Fictional game genetics.")), int(info.get("price", 14)), str(info.get("grade", "B"))]
+		detail.text = "%s\nFinished base value: $%d/g   |   Grade %s" % [str(info.get("description", "Strain genetics.")), int(info.get("price", 14)), str(info.get("grade", "B"))]
 		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		row.add_child(detail)
 		var buy: Button = Button.new()
@@ -7221,7 +7221,7 @@ func _build_upgrades_app() -> void:
 	equipment.text = "CURRENT EQUIPMENT
 Grow tents %d / 3   |   Tent Lv %d   |   Plant slots %d
 Bagging Lv %d   |   Storage Lv %d (%dg)
-Supply Shelf Lv %d   |   Seeds %d/%d   |   Fertilizer %d/%d" % [grow_tent_count, tent_level, plant_slots.size(), bagging_level, storage_level, _storage_capacity(), supply_shelf_level, _total_seed_inventory(), _supply_seed_capacity(), fertilizer_units, _supply_fertilizer_capacity()]
+Supply Shelf Lv %d" % [grow_tent_count, tent_level, plant_slots.size(), bagging_level, storage_level, _storage_capacity(), supply_shelf_level]
 	equipment.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	phone_list.add_child(equipment)
 
@@ -7264,7 +7264,7 @@ Plant slots: %d   |   Tent equipment level: %d" % [grow_tent_count, plant_slots.
 	var bagging_next: String = ""
 	if bagging_level <= 1: bagging_next = "Bagging Bench II"
 	elif bagging_level == 2: bagging_next = "Bagging Bench III"
-	var bagging_detail: String = "Current: Bench %s\nLevel III perk: continuous 1-4g manual bagging until the selected strain is fully packaged." % _roman(bagging_level)
+	var bagging_detail: String = "Current: Bench %s\nBench II: 2g per drop, 6g batches. Bench III: 4g per drop, 12g batches and continuous packing." % _roman(bagging_level)
 	_add_upgrade_family_card(phone_list, "BAGGING BENCH", bagging_detail, bagging_next)
 
 	_add_dealer_locker_family_card(phone_list)
@@ -7989,7 +7989,7 @@ func _genetics_recipe_unlocked(recipe: Dictionary) -> bool:
 
 func _build_genetics_app() -> void:
 	var intro: Label = Label.new()
-	intro.text = "GENETICS LAB - combine two parent seeds to create fictional hybrid seeds. Reward recipes unlock here after you claim the matching Story / Rewards task; they are never sold in Shop > Seeds."
+	intro.text = "GENETICS LAB - combine two parent seeds to create hybrid seeds. Reward recipes unlock here after you claim the matching Story / Rewards task; they are never sold in Shop > Seeds."
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	phone_list.add_child(intro)
 	for recipe: Dictionary in _genetics_recipe_catalog():
@@ -9356,7 +9356,7 @@ func _effective_price(product_name: String) -> int:
 		return 0
 	var data: Dictionary = products[product_name]
 	var base_price: int = int(data.get("price", 10))
-	var equipment_bonus: int = maxi(0, bagging_level - 1)
+	var equipment_bonus: int = 0
 	var brand_bonus: int = maxi(0, brand_level - 1)
 	return base_price + equipment_bonus + brand_bonus
 
@@ -10529,18 +10529,20 @@ func _viable_customers() -> Array[Dictionary]:
 	return result
 
 func _player_available_amount(product_name: String) -> int:
-	return _available_amount(product_name)
+	return (_available_amount(product_name) if bool(products.get(product_name,{}).get("listed",false)) else 0) + _carried_amount("product|"+product_name)
 
 func _player_product_sellable(product_name: String) -> bool:
 	if not products.has(product_name): return false
 	var data: Dictionary = products[product_name]
-	return bool(data.get("listed", false)) and _available_amount(product_name) > 0
+	return (bool(data.get("listed", false)) or _carried_amount("product|"+product_name)>0) and _player_available_amount(product_name)>0
 
 func _consume_player_sale_stock(product_name: String, qty: int) -> bool:
-	if qty <= 0 or not products.has(product_name) or _available_amount(product_name) < qty: return false
-	var data: Dictionary = products[product_name]
-	data["stock"] = maxi(0, int(data.get("stock",0)) - qty)
-	products[product_name] = data
+	if qty<=0 or not products.has(product_name) or _player_available_amount(product_name)<qty:return false
+	var carried:int=mini(qty,_carried_amount("product|"+product_name))
+	if carried>0:_consume_carried("product|"+product_name,carried)
+	var data:Dictionary=products[product_name]
+	data["stock"]=int(data.get("stock",0))-(qty-carried)
+	products[product_name]=data
 	return true
 
 func _open_customer_sale() -> void:
@@ -10581,7 +10583,7 @@ func _open_customer_sale() -> void:
 			"Tyler": request_quote = "You got any head sets? ...and %dg of %s?" % [qty, product_name]
 			"Mahto": request_quote = "I got a lot going on. Just give me %dg of %s." % [qty, product_name]
 			"Mike": request_quote = "Man, after everything with my back, just give me %dg of %s and keep it simple." % [qty, product_name]
-		line = "\"%s\"\n\n%s is packaged and available from normal storage.\nTotal: $%d" % [request_quote, product_name, total]
+		line = "\"%s\"\n\n%s is packaged and ready to sell.\nTotal: $%d" % [request_quote, product_name, total]
 	else:
 		var missing_quote: String = "You got any %s? Looking for %dg." % [product_name, qty]
 		match customer_name_raw:
@@ -10593,7 +10595,7 @@ func _open_customer_sale() -> void:
 			"Tyler": missing_quote = "No %s? You got any head sets at least?" % product_name
 			"Mahto": missing_quote = "No %s? Man, I already got enough problems." % product_name
 			"Mike": missing_quote = "No %s? Figures. The one time I need something easy, it is never easy." % product_name
-		line = "\"%s\"\n\nThat strain is not available from business normal storage. Offer something else or decline." % missing_quote
+		line = "\"%s\"\n\nThat strain is not available from your backpack or storage. Offer something else or decline." % missing_quote
 	var sale_name: String = _customer_display_name(current_customer)
 	sale_title.text = "%s   |   %s" % [sale_name, str(current_customer.get("tier", "Local")) if _customer_is_known(current_customer) else "Unidentified"]
 	_apply_customer_art(sale_customer_art, current_customer, "door_art")
@@ -10612,7 +10614,7 @@ func _sell_requested() -> void:
 		return
 	var data: Dictionary = products[product_name]
 	if not _player_product_sellable(product_name) or _player_available_amount(product_name) < qty:
-		sale_body.text += "\n\nThat product isn't available in business normal storage."
+		sale_body.text += "\n\nThat product isn't available in your backpack or storage."
 		return
 	_complete_sale(product_name, qty)
 
@@ -10668,7 +10670,7 @@ func _show_substitutes() -> void:
 			options.append(product_name)
 	if options.is_empty():
 		var empty: Label = Label.new()
-		empty.text = "No substitute has enough stock in normal storage."
+		empty.text = "No alternative has enough packaged stock."
 		substitute_box.add_child(empty)
 		return
 	var label: Label = Label.new()
@@ -10727,6 +10729,7 @@ func _complete_sale(product_name: String, qty: int) -> void:
 	cash += total
 	lifetime_revenue += total
 	_record_daily_sale(product_name, qty, total, "player")
+	if inventory_system!=null and inventory_system.guide!=null:inventory_system.guide.record("sale")
 	_increment_advancement_stat("sales")
 	_add_heat(1.2 + float(maxi(0, qty - 1)) * 0.65, "Door sale", false)
 	if _is_night_time():
@@ -10794,7 +10797,7 @@ func _clear_children(parent: Node) -> void:
 
 
 func _simulation_blocked() -> bool:
-	return reset_confirmation_open or reset_in_progress or session_paused or daily_report_pending or tutorial_active or (tutorial_panel != null and tutorial_panel.visible)
+	return _guide_protects_plants() or reset_confirmation_open or reset_in_progress or session_paused or daily_report_pending or tutorial_active or (tutorial_panel != null and tutorial_panel.visible)
 
 func _sync_simulation_pause() -> void:
 	var blocked: bool = _simulation_blocked()
@@ -11210,6 +11213,7 @@ func _tutorial_can_do(action: String) -> bool:
 	return false
 
 func _tutorial_record(action: String, slot_index: int = -1, strain_name: String = "") -> void:
+	if inventory_system!=null and inventory_system.guide!=null:inventory_system.guide.record(action)
 	if not tutorial_active or tutorial_step >= TUTORIAL_ACTIONS.size() or TUTORIAL_ACTIONS[tutorial_step] != action:
 		return
 	if action == "harvest":
@@ -11264,16 +11268,7 @@ func _tutorial_focus_step() -> void:
 	_refresh_tutorial_coach()
 
 func _skip_tutorial() -> void:
-	tutorial_active = false
-	tutorial_seen = true
-	if tutorial_panel != null:
-		tutorial_panel.visible = false
-	_sync_simulation_pause()
-	_refresh_tutorial_coach()
-	_set_world_controls_visible(not _any_modal_open())
-	status_label.text = "Your day is running. PHONE > HELP explains the basics whenever you need them."
-	_save_game()
-	_schedule_next_customer(true)
+	if inventory_system!=null and inventory_system.guide!=null:inventory_system.guide.skip()
 
 func _open_fertilizer_shop() -> void:
 	if session_paused or daily_report_pending:
@@ -11338,37 +11333,7 @@ func _resume_packing_lesson() -> void:
 	_save_game()
 
 func _build_help_app() -> void:
-	var intro: Label = Label.new()
-	intro.text = "AFEWBUDS  |  BUILD %s\nOne action at a time. Your day and visitors wait for RESUME. Existing crops grow while away; an on-duty production worker can water and fertilize them." % BUILD_VERSION
-	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	phone_list.add_child(intro)
-	if tutorial_active:
-		var lesson: Button = Button.new()
-		lesson.text = "CONTINUE FIRST-DAY GUIDE"
-		lesson.custom_minimum_size.y = 54
-		lesson.pressed.connect(_tutorial_focus_step)
-		phone_list.add_child(lesson)
-	elif tutorial_seen and tutorial_step >= 6 and tutorial_step < TUTORIAL_ACTIONS.size():
-		var resume_lesson: Button = Button.new()
-		resume_lesson.text = "RESUME PACKING LESSON"
-		resume_lesson.custom_minimum_size.y = 54
-		resume_lesson.pressed.connect(_resume_packing_lesson)
-		phone_list.add_child(resume_lesson)
-	for index: int in range(TUTORIAL_TITLES.size()):
-		var label: Label = Label.new()
-		label.text = "%d. %s\n%s" % [index + 1, TUTORIAL_TITLES[index], TUTORIAL_HINTS[index].replace("SHOW ME takes you there.", "")]
-		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		label.add_theme_font_size_override("font_size", 19)
-		phone_list.add_child(label)
-	var controls: Label = Label.new()
-	controls.text = "PHONE LAYOUT\nOrder seeds on the phone, collect them at Central Market checkout, then store carried supplies at your grow shelf using Add Stock. Seeds and fertilizer can be ordered on the phone for Central Market pickup; equipment is bought at its checkout. Paid equipment must be collected into your backpack before computer installation. Property computers manage inventory, listings, genetics, staff and production. Phone -> Real Estate manages every property separately. Moving to the house keeps the apartment lease active by default, so its $600/14-day rent continues until you explicitly release that lease. Electric and water are tracked per property and accrue only where utilities are actually being used. Released properties disappear from normal operation management and can be rented again later through Real Estate. House Rent and Lease-to-Own use 7-day payment cycles. The back arrow returns to the parent category.\n\nCONTROLS\nSwipe phone, packing-bench and storage lists anywhere on a card or button; lift without swiping to tap. Tap the actual room switches or lamp to toggle them. Use room switches or the property computer for lights and power. Small finger movements stay taps; swipe farther to look around. Swipe the room to look; tap a station to use it. While bagging, keep the same finger on the bud until you drop it. During trimming, keep hold of the scissors.\n\nPAUSING\nSwitching apps/tabs, closing the game, or pressing PAUSE stops the day, visitors, story, wages and sales. Only existing plants keep growing and consume water and applied fertilizer; dry plants lose health. A plant that finishes before dying stays harvestable. A hired, ON-DUTY production worker can water and fertilize those plants using your stored fertilizer. No supplies are bought; watering continues when fertilizer runs out and adds to your Water Bill. An off-duty/fired worker or raid lockdown gives no care. No new seeds, harvesting, trimming, bagging or selling occur while away; equipment auto-refill remains live-only. Offline Heat cooling is intentionally slower than staying in-game and going quiet. The first-day guide fully protects plants. Press RESUME when you return. Daily closeout keeps its day/time frozen until START DAY. Storefront AWAY is different: it closes sales while you are still playing.\n\nREWARDS\nRewards over $100 have harder goals or extra requirements. Complete every displayed requirement before claiming. Already-claimed rewards remain yours."
-	controls.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	phone_list.add_child(controls)
-	var pause_button: Button = Button.new()
-	pause_button.text = "PAUSE GAME"
-	pause_button.custom_minimum_size.y = 56
-	pause_button.pressed.connect(_pause_gameplay.bind("Manually paused. Resume whenever you are ready."))
-	phone_list.add_child(pause_button)
+	if inventory_system!=null and inventory_system.guide!=null:inventory_system.guide.populate_help(phone_list)
 
 func _advancement_is_ready(entry: Dictionary) -> bool:
 	if _advancement_is_retired(entry):
@@ -12015,3 +11980,36 @@ func _inventory_take_packed(strain_name:String) -> void:
 	bagging_panel.hide()
 	inventory_system.open_container("packing")
 	inventory_system.select_item(inventory_system.container_id,"product|"+strain_name)
+
+func _carried_amount(item:String) -> int:
+	if inventory_system==null:return 0
+	return maxi(0,int(inventory_system.contents("backpack").get(item,0)))
+func _consume_carried(item:String,amount:int) -> bool:
+	if amount<=0 or _carried_amount(item)<amount:return false
+	inventory_system.set_amount("backpack",item,_carried_amount(item)-amount)
+	inventory_system.revision+=1
+	return true
+func _usable_seed_count(strain:String) -> int:
+	return maxi(0,int(seed_inventory.get(strain,0)))+_carried_amount("seed|"+strain)
+func _usable_fertilizer_count() -> int:
+	return maxi(0,fertilizer_units)+_carried_amount("fertilizer")
+func _consume_seed(strain:String,use_backpack:bool=true) -> bool:
+	if use_backpack and _consume_carried("seed|"+strain,1):return true
+	if int(seed_inventory.get(strain,0))<=0:return false
+	seed_inventory[strain]=int(seed_inventory[strain])-1
+	if inventory_system!=null:inventory_system.revision+=1
+	return true
+func _consume_fertilizer() -> bool:
+	if _consume_carried("fertilizer",1):return true
+	if fertilizer_units<=0:return false
+	fertilizer_units-=1
+	if inventory_system!=null:inventory_system.revision+=1
+	return true
+func _packing_drop_size() -> int:
+	return 1 if tutorial_active else [1,2,4][clampi(bagging_level-1,0,2)]
+func _packing_batch_size() -> int:
+	return 3 if tutorial_active else [3,6,12][clampi(bagging_level-1,0,2)]
+
+func _guide_protects_plants() -> bool:
+	var guide:Dictionary=location_state.get("first_day_guide",{})
+	return bool(guide.get("active",false)) and int(guide.get("step",0))<15

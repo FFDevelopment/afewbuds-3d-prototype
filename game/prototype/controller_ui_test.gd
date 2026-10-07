@@ -48,17 +48,21 @@ func run():
  check(inv.phone_button!=null and inv.phone_button.position.y>inv.backpack_button.position.y,"Phone shortcut appears below Backpack")
  var joy:=InputEventJoypadButton.new();joy.button_index=JOY_BUTTON_DPAD_UP;joy.pressed=true
  game._input(joy)
- check(inv.is_open(),"Default D-pad Up opens Backpack")
+ check(game.phone_open,"Default D-pad Up opens Phone")
+ game._toggle_phone()
+ joy.button_index=JOY_BUTTON_DPAD_RIGHT
+ game._input(joy)
+ check(inv.is_open(),"Default D-pad Right opens Backpack")
  inv.close()
  check(controls.assign_binding("backpack","controller",JOY_BUTTON_RIGHT_STICK),"Backpack controller action can be rebound")
- joy.button_index=JOY_BUTTON_DPAD_UP
+ joy.button_index=JOY_BUTTON_DPAD_RIGHT
  check(not controls.pressed(joy,"backpack"),"Old Backpack binding is released")
  joy.button_index=JOY_BUTTON_RIGHT_STICK;game._input(joy)
  check(inv.is_open(),"Rebound controller button opens Backpack")
  var saved:Dictionary=JSON.parse_string(FileAccess.get_file_as_string(controls.PATH))
  check(int(saved.pad_bindings.backpack)==JOY_BUTTON_RIGHT_STICK,"Controller binding persists in device preferences")
  check(not controls.assign_binding("backpack","controller",JOY_BUTTON_B),"Menu Back button stays reserved")
- check(not controls.assign_binding("backpack","controller",JOY_BUTTON_Y),"Duplicate controller bindings are rejected")
+ check(not controls.assign_binding("backpack","controller",JOY_BUTTON_DPAD_UP),"Duplicate controller bindings are rejected")
  game.location_state.carried_seeds={"Purple Dream":2};inv.render()
  for i in 4:await process_frame
  controls.ensure_focus();var card:Control=root.gui_get_focus_owner()

@@ -3,7 +3,7 @@ signal sync_changed(message: String)
 # Existing public AFewBuds API configuration; no admin/service-role credentials.
 const BASE := "https://nlrrnhdcjrnfuftyoaqn.supabase.co"
 const API_KEY := "sb_publishable_f8LrZYozO8h2xAvn90L-gw_dZiaUwTY"
-const CONNECTION_NOTE := "Sign in to copy your existing career. Inventory preview progress stays on this device; live career saves are unchanged."
+const CONNECTION_NOTE := "Sign in to continue your career. Progress in this build is saved on this device."
 const ACTIVE := "user://afewbuds_3d_prototype_save.json"
 const SESSION := "user://account_session.json"
 var inventory_preview := true
@@ -201,7 +201,7 @@ func queue_save(raw: Dictionary) -> void:
 		write_json(cache_path(),{"save":save,"inventory_preview":true,"dirty":false})
 		var preview_pose:Dictionary=raw.get("runtime",{}).get("prototype_player",{})
 		if not preview_pose.is_empty():write_json(settings_path(),preview_pose)
-		set_status("Inventory preview saved locally. Live career unchanged.")
+		set_status("Progress saved on this device.")
 		return
 	var pose: Dictionary = raw.get("runtime", {}).get("prototype_player", {})
 	if not pose.is_empty(): write_json(settings_path(), pose)

@@ -40,8 +40,9 @@ func run() -> void:
 	root.add_child(game)
 	await frames()
 	check(game.fp_ready and game.fp_player != null, "apartment and player initialize")
-	check(game.session_paused, "instructions pause simulation on launch")
+	check(game._simulation_blocked(), "instructions pause simulation on launch")
 	check(game.fp_collisions.size() > 30, "physical room and furniture colliders exist")
+	game.inventory_system.guide.skip()
 	game._resume_gameplay()
 	await frames()
 	await check_neighborhood()
@@ -203,7 +204,7 @@ func run() -> void:
 	var batches := 0
 	while game.bag_minigame_panel.visible and batches < 20:
 		var remaining: int = game.trimmed_inventory["Purple Dream"]
-		check(game.bag_target_units >= 1 and game.bag_target_units <= mini(4, remaining), "continuous target fits 1–4g and remaining product")
+		check(game.bag_target_units == mini(12, remaining), "continuous target uses a 12g batch capped by remaining product")
 		game.bag_current_units = game.bag_target_units
 		game._seal_current_bag()
 		batches += 1
