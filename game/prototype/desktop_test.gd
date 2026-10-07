@@ -60,7 +60,7 @@ func run() -> void:
 	game.fp_player.stamina=55
 	game.fp_player.is_sprinting=true
 	game._update_fp_stamina_hud()
-	check(game.fp_stamina_bar.visible and game.fp_stamina_bar.value==55 and game.fp_stamina_label.text=="SPRINT","Desktop stamina HUD reflects sprint state")
+	check(game.fp_stamina_bar.visible and game.fp_stamina_bar.value==55 and game.fp_stamina_label.text=="SPRINTING","Desktop stamina HUD reflects sprint state")
 	game.fp_player.is_sprinting=false
 	game.fp_player.exhausted=true
 	game._update_fp_stamina_hud()
