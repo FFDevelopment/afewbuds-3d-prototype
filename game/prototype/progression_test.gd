@@ -109,7 +109,7 @@ func run() -> void:
 	game.camera.look_at(Vector3(35,1.4,3.0))
 	game.fp_player.position=Vector3(35,0.08,4.8)
 	game.neighborhood.use_interior_door(house_door)
-	await create_timer(.5).timeout
+	await frames(36) # Door animation advances on physics ticks.
 	check(house_door.opened and not op.is_open(),"Relocated house entrance opens normally instead of reopening property preview")
 	game.camera.global_position=Vector3(30,1.64,0)
 	op.update(0.0)
