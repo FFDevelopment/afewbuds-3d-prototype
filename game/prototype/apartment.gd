@@ -239,6 +239,9 @@ func _phone_safe_quit() -> void:
 	if not AFBCloud.pending.is_empty() or AFBCloud.blocked:
 		menu.quit_failed("Saved on this device, but cloud sync needs attention. Please retry before quitting.")
 		return
+	if not await AFBCloud.release_play():
+		menu.quit_failed("Could not close the cloud session. Please retry.")
+		return
 	menu.quit_saved()
 
 func _any_modal_open() -> bool:
@@ -268,7 +271,7 @@ func _on_cloud_status(message: String) -> void:
 		elif not fp_sync_warning.is_empty() and not message.begins_with("Saving "):
 			if status_label.text == fp_sync_warning:status_label.text = ""
 			fp_sync_warning = ""
-	if AFBCloud.blocked and not session_paused: _pause_gameplay()
+	if AFBCloud.blocked and inventory_system!=null:inventory_system.session_menu.on_cloud_event("replaced")
 
 func _close_active_panel() -> bool:
 	if inventory_system!=null and inventory_system.is_open():

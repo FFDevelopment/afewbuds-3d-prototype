@@ -33,7 +33,7 @@ const DRY_HEALTH_LOSS_PER_SECOND: float = 0.55
 const HEALTH_RECOVERY_PER_SECOND: float = 0.06
 const FERTILIZER_DECAY_PER_SECOND: float = 0.10
 const FERTILIZER_GROWTH_BONUS: float = 0.35
-const SAVE_PATH: String = "user://afewbuds_3d_prototype_save.json"
+var SAVE_PATH: String = AFBCloud.ACTIVE
 const AUTO_TICK_SECONDS: float = 5.0
 const AUTO_SALE_SECONDS: float = 24.0
 const PACKER_HIRE_COST: int = 850
@@ -11006,7 +11006,7 @@ func _pause_gameplay(reason: String = "Paused. Resume whenever you are ready.", 
 	_save_game()
 
 func _resume_gameplay() -> void:
-	if inventory_system!=null and inventory_system.session_menu!=null and inventory_system.session_menu.quitting:return
+	if inventory_system!=null and inventory_system.session_menu!=null and (inventory_system.session_menu.quitting or inventory_system.session_menu.cloud_locked):return
 	if not session_paused:
 		return
 	if web_lifecycle != null and bool(web_lifecycle.hidden):

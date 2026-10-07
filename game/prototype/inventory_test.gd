@@ -16,14 +16,15 @@ func run():
  var desktop:bool=ResourceLoader.exists("res://prototype/apartment.tscn")
  if desktop:
   var cloud=root.get_node("AFBCloud")
-  check(cloud.inventory_preview,"Desktop preview defaults to isolated saves")
+  check(not cloud.inventory_preview,"Desktop enables shared cloud careers by default")
+  cloud.inventory_preview=true
   cloud.launched=true;cloud.session={"account_id":"inventory-fixture","username":"Preview","session_token":"not-a-real-token"}
   cloud.baseline={"cash":80,"lifetime_revenue":36130}
   cloud.queue_save({"cash":70,"lifetime_revenue":36130})
   check(cloud.pending.is_empty() and cloud.read_json(cloud.cache_path()).get("inventory_preview",false),"Desktop preview saves locally without queuing uploads")
   check((await cloud.request_rpc("afb_set_save",{})).has("error"),"Desktop preview blocks live save endpoint")
   check((await cloud.request_rpc("afb_leaderboard_report",{})).has("error"),"Desktop preview blocks leaderboard reporting")
-  cloud.session={};cloud.launched=false
+  cloud.session={};cloud.launched=false;cloud.inventory_preview=false
  game=load("res://prototype/apartment.tscn" if desktop else "res://scenes/main.tscn").instantiate();root.add_child(game)
  await frames(12)
  game.set_process(false);game.neighborhood.set_process(false)

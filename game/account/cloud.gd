@@ -1,12 +1,20 @@
 extends Node
 signal sync_changed(message: String)
+signal session_event(state: String)
+var play_id: String = ""
+var revision: int = 0
+var handoff_pending := false
+var heartbeat_busy := false
+var last_contact := 0
+var heartbeat_elapsed := 0.0
 # Existing public AFewBuds API configuration; no admin/service-role credentials.
 const BASE := "https://nlrrnhdcjrnfuftyoaqn.supabase.co"
 const API_KEY := "sb_publishable_f8LrZYozO8h2xAvn90L-gw_dZiaUwTY"
-const CONNECTION_NOTE := "Sign in to continue your career. Progress in this build is saved on this device."
-const ACTIVE := "user://afewbuds_3d_prototype_save.json"
+const CONNECTION_NOTE := "Sign in to continue your career. Your cloud career is shared between mobile and desktop."
+const LEGACY_ACTIVE := "user://afewbuds_3d_prototype_save.json"
+var ACTIVE:String="user://play_runtime_"+str(OS.get_process_id())+".json"
 const SESSION := "user://account_session.json"
-var inventory_preview := true
+var inventory_preview := false
 var service_url := BASE
 var session: Dictionary = {}
 var remote_signature := ""
@@ -126,7 +134,8 @@ func restore_session() -> Dictionary:
 	return saved
 
 func cache_path() -> String:
-	return "user://career_" + career_key + ".json"
+	if career_key=="guest":return "user://career_guest.json"
+	return "user://" + ("career_" if inventory_preview else "shared_career_") + career_key + ".json"
 
 func settings_path() -> String:
 	return "user://desktop_" + career_key + ".json"
@@ -134,7 +143,8 @@ func settings_path() -> String:
 func prepare(guest: bool = false, use_cloud: bool = false) -> Dictionary:
 	# Preserve the old prototype guest career before any account can replace ACTIVE.
 	if not FileAccess.file_exists("user://guest_migrated.json"):
-		var original := read_json(ACTIVE)
+		var original := read_json(LEGACY_ACTIVE)
+		if original.is_empty():original=read_json(ACTIVE)
 		if not original.is_empty(): write_json("user://career_guest.json", {"save": original, "remote_signature": "", "dirty": false})
 		write_json("user://guest_migrated.json", {"done": true})
 	blocked = false
@@ -150,7 +160,18 @@ func prepare(guest: bool = false, use_cloud: bool = false) -> Dictionary:
 		remote_signature = ""
 	else:
 		career_key = str(session.account_id).sha256_text().substr(0, 24)
-		var remote := await request_rpc("afb_get_save", {"p_session_token": session.session_token})
+		var remote:Dictionary
+		if inventory_preview:remote=await request_rpc("afb_get_save", {"p_session_token": session.session_token})
+		else:
+			if play_id.is_empty():play_id=new_play_id()
+			handoff_pending=false
+			for attempt in 45:
+				remote=await request_rpc("afb_begin_play", {"p_session_token":session.session_token,"p_play_id":play_id})
+				if remote.get("state","")!="waiting":break
+				set_status("Closing the other play session and loading its latest save...")
+				await get_tree().create_timer(0.5).timeout
+			if remote.get("state","")!="active":return {"error":remote.get("error","Another device switch is still finishing. Please try again.")}
+			revision=int(remote.get("revision",0));last_contact=Time.get_ticks_msec()
 		if remote.has("error"): return remote
 		var cloud: Dictionary = remote.get("save_json", {}) if remote.get("exists", false) else {}
 		if int(cloud.get("save_schema", 0)) > 2: return {"error": "This career needs a newer desktop build. Please update."}
@@ -229,19 +250,20 @@ func flush() -> void:
 			set_status("Saved locally. Cloud unavailable — retry with F5.", true)
 			break
 		var latest_save: Dictionary = latest.get("save_json", {}) if latest.get("exists", false) else {}
-		if fingerprint(latest_save) != remote_signature:
+		if fingerprint(latest_save) != remote_signature and fingerprint(latest_save)!=fingerprint(outgoing):
 			blocked = true
 			if pending.is_empty(): pending = outgoing
 			set_status("Cloud changed in another version. Saved locally; return to sign-in to load cloud.", true)
 			break
 		set_status("Saving to AFewBuds cloud…")
-		var result := await request_rpc("afb_set_save", {"p_session_token": session.session_token, "p_save_json": outgoing})
+		var result := await request_rpc("afb_save_career", {"p_session_token": session.session_token,"p_play_id":play_id,"p_revision":revision,"p_save_json": outgoing})
 		if epoch != generation: break
 		if result.has("error") or not result.get("ok", false):
 			if pending.is_empty(): pending = outgoing
-			blocked = str(result.get("reason", "")) in ["save_conflict", "client_update_required", "save_schema_newer", "cloud_newer"]
+			blocked = str(result.get("reason", "")) in ["save_conflict", "client_update_required", "save_schema_newer", "cloud_newer","session_replaced","session_invalid"]
 			set_status("Cloud conflict — saved locally. Return to sign-in to load the newer career." if blocked else "Saved locally. Cloud unavailable — retry with F5.", true)
 			break
+		revision=int(result.get("revision",revision+1));last_contact=Time.get_ticks_msec()
 		remote_signature = fingerprint(outgoing)
 		write_json(cache_path(), {"save": baseline, "remote_signature": remote_signature, "dirty": not pending.is_empty()})
 		set_status("Cloud saved — " + str(session.username))
@@ -252,6 +274,7 @@ func flush() -> void:
 	busy = false
 
 func sign_out() -> void:
+	play_id="";handoff_pending=false
 	leaderboard_error = ""
 	generation += 1
 	launched = false
@@ -259,3 +282,36 @@ func sign_out() -> void:
 	pending = {}
 	blocked = false
 	if FileAccess.file_exists(SESSION): DirAccess.remove_absolute(ProjectSettings.globalize_path(SESSION))
+
+func new_play_id() -> String:
+	var h:String=Crypto.new().generate_random_bytes(16).hex_encode()
+	return h.substr(0,8)+"-"+h.substr(8,4)+"-"+h.substr(12,4)+"-"+h.substr(16,4)+"-"+h.substr(20,12)
+func _process(delta:float) -> void:
+	if inventory_preview or not launched or session.is_empty() or blocked or handoff_pending:return
+	heartbeat_elapsed+=delta
+	if Time.get_ticks_msec()-last_contact>15000:session_event.emit("offline")
+	if heartbeat_elapsed>=5.0 and not heartbeat_busy:
+		heartbeat_elapsed=0.0;heartbeat()
+func heartbeat() -> void:
+	if heartbeat_busy:return
+	heartbeat_busy=true
+	var epoch:=generation
+	var result:=await request_rpc("afb_play_heartbeat",{"p_session_token":session.session_token,"p_play_id":play_id})
+	heartbeat_busy=false
+	if epoch!=generation:return
+	if result.has("error"):return
+	last_contact=Time.get_ticks_msec()
+	var state:String=str(result.get("state","replaced"))
+	if state=="handoff":handoff_pending=true
+	if state=="replaced":blocked=true;launched=false
+	session_event.emit(state)
+func release_play() -> bool:
+	if inventory_preview or session.is_empty():return true
+	var result:=await request_rpc("afb_release_play",{"p_session_token":session.session_token,"p_play_id":play_id})
+	return bool(result.get("ok",false))
+func finish_handoff() -> void:
+	await flush()
+	while busy:await get_tree().process_frame
+	if pending.is_empty():await release_play()
+	sign_out()
+	session_event.emit("replaced")
