@@ -152,6 +152,10 @@ func refresh_rankings() -> void:
 		await AFBCloud.flush()
 		while AFBCloud.busy:await get_tree().process_frame
 	var result: Dictionary=await AFBCloud.request_rpc("afb_leaderboard_get",{"p_metric":selected_metric,"p_range":selected_period,"p_limit":25,"p_session_token":AFBCloud.session.get("session_token")})
+	var profile:Dictionary={}
+	if not AFBCloud.session.is_empty():
+		profile=await AFBCloud.request_rpc("afb_leaderboard_profile",{"p_account_id":AFBCloud.session.account_id})
+		if str(profile.get("account_id",""))!=str(AFBCloud.session.account_id):profile={}
 	working=false
 	if selected_metric!=metric or selected_period!=period or rankings_again:
 		rankings_again=false
@@ -162,11 +166,17 @@ func refresh_rankings() -> void:
 		notice.text=str(result.error)
 		return
 	var me: Variant=own_ranking(result,AFBCloud.session)
+	# Career cards use the same public profile RPC as cloud-test. A missing
+	# ranked row must not be described as an account with no career stats.
+	if selected_period=="lifetime" and not profile.is_empty():
+		var field_name:String={"revenue":"lifetime_revenue","hybrids":"hybrids_created","raids":"raids_survived","days":"days_played"}.get(selected_metric,selected_metric)
+		if profile.has(field_name) and (me==null or me.get("value")!=profile[field_name]):me={"value":profile[field_name],"account_id":profile.account_id}
 	notice.text=("THIS WEEK" if selected_period=="weekly" else "LIFETIME")+" · "+selected_metric.replace("_"," ").capitalize()
 	if me is Dictionary:
-		notice.text+="\n"+str(AFBCloud.session.get("username","Your account"))+" — your rank: #%s — %s" % [me.get("rank","—"),ranking_value(me,selected_metric)]
+		notice.text+="\n"+str(AFBCloud.session.get("username","Your account"))+" — "+("rank #%s — " % me.rank if me.has("rank") else "total: ")+ranking_value(me,selected_metric)
 	elif AFBCloud.session.is_empty():notice.text+="\nSign in to see your own rank."
-	else:notice.text+="\nYour account is not ranked for this period yet."
+	else:notice.text+="\n"+str(AFBCloud.session.get("username","Your account"))+": no ranked row returned for this period."
+	if not profile.is_empty():notice.text+="\nShared career: $%d lifetime revenue · %d sales · %d harvests" % [int(profile.get("lifetime_revenue",0)),int(profile.get("sales",0)),int(profile.get("harvests",0))]
 	if not AFBCloud.leaderboard_error.is_empty():notice.text+="\nCareer saved, but leaderboard reporting failed: "+AFBCloud.leaderboard_error
 	if AFBCloud.blocked or not AFBCloud.pending.is_empty():notice.text+="\nDesktop progress is not synced yet. "+AFBCloud.last_status
 	for row in result.get("top",[]):

@@ -93,9 +93,11 @@ func _input(event: InputEvent) -> void:
 		mouse_button(MOUSE_BUTTON_LEFT,event.pressed)
 		get_viewport().set_input_as_handled()
 
+# Cursor coordinates are already viewport-local. Applying window stretch again
+# offsets clicks at non-default resolutions. Keep motion and clicks in this space.
 func mouse_button(button: int, pressed: bool) -> void:
 	var event:=InputEventMouseButton.new();event.device=-9;event.button_index=button;event.pressed=pressed;event.position=cursor;event.global_position=cursor
-	Input.parse_input_event(event)
+	get_viewport().push_input(event, true)
 
 func _process(delta: float) -> void:
 	if Input.mouse_mode==Input.MOUSE_MODE_CAPTURED:
@@ -108,7 +110,7 @@ func _process(delta: float) -> void:
 		cursor=(cursor+axis*650*delta).clamp(Vector2.ZERO,get_viewport().get_visible_rect().size-Vector2.ONE)
 		get_viewport().warp_mouse(cursor)
 		var event:=InputEventMouseMotion.new();event.device=-9;event.position=cursor;event.global_position=cursor;event.relative=cursor-previous;event.button_mask=MOUSE_BUTTON_MASK_LEFT if dragging else 0
-		Input.parse_input_event(event)
+		get_viewport().push_input(event, true)
 	scroll_timer-=delta
 	if absf(stick(true).y)>.35 and scroll_timer<=0:
 		cursor=get_viewport().get_mouse_position();mouse_button(MOUSE_BUTTON_WHEEL_DOWN if stick(true).y>0 else MOUSE_BUTTON_WHEEL_UP,true);scroll_timer=.09

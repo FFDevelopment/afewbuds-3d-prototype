@@ -18,6 +18,7 @@ var fp_collisions: Array[Dictionary] = []
 var fp_collision_timer := 0.0
 var fp_station_opening := false
 var fp_open_epoch := 0
+var fp_sync_warning := ""
 
 func _load_game() -> void:
 	super._load_game()
@@ -40,7 +41,7 @@ func _ready() -> void:
 	camera.fov = 76.0
 	var saved: Dictionary = AFBCloud.read_json(AFBCloud.settings_path()) if AFBCloud.launched else restored_runtime.get("prototype_player", {})
 	if not saved.is_empty():
-		fp_player.position = Vector3(clampf(float(saved.get("x", 0)), -31.5, 136.5), 0.12, clampf(float(saved.get("z", 1.2)), -35.5, 38.5))
+		fp_player.position = Vector3(clampf(float(saved.get("x", 0)), -31.5, 200.5), clampf(float(saved.get("y", 0.12)),0.0,3.8), clampf(float(saved.get("z", 1.2)), -35.5, 38.5))
 		fp_player.yaw = float(saved.get("yaw", 0))
 		fp_player.pitch = clampf(float(saved.get("pitch", 0)), -1.35, 1.35)
 	# Reject invalid/interior-wall positions from stale desktop settings.
@@ -87,7 +88,7 @@ func _process(delta: float) -> void:
 	fp_prompt.visible = not modal
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
-	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.11.0 PREVIEW\n%s   ·   %s   ·   $%d" % [neighborhood.location_label(fp_player.position) if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
+	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.12.0 PREVIEW\n%s   ·   %s   ·   $%d" % [neighborhood.location_label(fp_player.position) if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
 	fp_hint.text = "Left stick: walk · Right stick: look · A: interact · Y: phone · Start: pause" if DesktopInput.controller_active else "%s/%s/%s/%s Walk · %s Interact · %s Phone · Esc Pause · %s Save" % [DesktopInput.label("forward"),DesktopInput.label("left"),DesktopInput.label("backward"),DesktopInput.label("right"),DesktopInput.label("interact"),DesktopInput.label("phone"),DesktopInput.label("save")]
 	_hide_old_navigation()
 
@@ -183,7 +184,7 @@ func _quick_turn_to_door() -> void:
 func _capture_runtime_state() -> Dictionary:
 	var data: Dictionary = super._capture_runtime_state()
 	if fp_player != null:
-		data["prototype_player"] = {"x": fp_player.position.x, "z": fp_player.position.z, "yaw": fp_player.yaw, "pitch": fp_player.pitch}
+		data["prototype_player"] = {"x": fp_player.position.x, "y": fp_player.position.y, "z": fp_player.position.z, "yaw": fp_player.yaw, "pitch": fp_player.pitch}
 	return data
 
 func _reset_beta_save() -> void:
@@ -238,7 +239,13 @@ func _open_account_overlay(rankings: bool) -> void:
 	else: account_overlay.show_account()
 
 func _on_cloud_status(message: String) -> void:
-	if is_instance_valid(status_label): status_label.text = message
+	if is_instance_valid(status_label):
+		if AFBCloud.sync_warning:
+			status_label.text = message
+			fp_sync_warning = message
+		elif not fp_sync_warning.is_empty() and not message.begins_with("Saving "):
+			if status_label.text == fp_sync_warning:status_label.text = ""
+			fp_sync_warning = ""
 	if AFBCloud.blocked and not session_paused: _pause_gameplay()
 
 func _close_active_panel() -> bool:
@@ -374,8 +381,9 @@ func _update_target() -> void:
 	fp_target = _target_from_ray(camera.global_position, -camera.global_basis.z)
 	fp_prompt.text = ""
 	fp_control = neighborhood.house_controls.nearby() if fp_target == null else ""
+	if fp_target==null and fp_control.is_empty():fp_control=neighborhood.bench_seating.target()
 	if not fp_control.is_empty():
-		fp_prompt.text = "[ " + DesktopInput.label("interact") + " ]   " + neighborhood.house_controls.title(fp_control)
+		fp_prompt.text = "[ " + DesktopInput.label("interact") + " ]   " + (("Stand up" if neighborhood.bench_seating.seated>=0 else "Sit on bench") if fp_control.begins_with("bench_") else neighborhood.house_controls.title(fp_control))
 	if fp_target != null:
 		var label_text := ""
 		if fp_target.has_meta("plant_slot"):
@@ -393,7 +401,8 @@ func _update_target() -> void:
 func _use_target() -> void:
 	_update_target() # Revalidate reach and line of sight at the actual key press.
 	if not fp_control.is_empty():
-		neighborhood.house_controls.use(fp_control)
+		if fp_control.begins_with("bench_"):neighborhood.bench_seating.use(fp_control)
+		else:neighborhood.house_controls.use(fp_control)
 		return
 	if fp_target == null:
 		return
@@ -429,7 +438,7 @@ func _setup_desktop_panels() -> void:
 	# Phone gets a portrait shell; workstation panels keep their wider layout.
 	var screen: Vector2 = get_viewport().get_visible_rect().size
 	var phone_height: float = minf(740.0, screen.y - 112.0)
-	var phone_width: float = phone_height * 0.49
+	var phone_width: float = phone_height * 0.64
 	phone_panel.set_anchors_preset(Control.PRESET_CENTER)
 	phone_panel.offset_left = -phone_width / 2.0
 	phone_panel.offset_right = phone_width / 2.0
@@ -474,7 +483,7 @@ func _constrain_portrait_phone_content(node: Node) -> void:
 			elif control is Button:
 				var button := control as Button
 				button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-				if button.has_meta("phone_app"):button.add_theme_font_size_override("font_size",14)
+				if button.has_meta("phone_app"):button.add_theme_font_size_override("font_size",16)
 		_constrain_portrait_phone_content(child)
 
 func _build_fp_hud() -> void:

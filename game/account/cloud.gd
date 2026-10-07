@@ -17,6 +17,7 @@ var blocked := false
 var launched := false
 var generation := 0
 var leaderboard_error := ""
+var sync_warning := false
 var last_status := "Local guest save"
 var remember := false
 
@@ -82,7 +83,8 @@ func request_json(path: String, payload: Dictionary) -> Dictionary:
 func fingerprint(save: Dictionary) -> String:
 	return JSON.stringify(save, "", true, true).sha256_text()
 
-func set_status(message: String) -> void:
+func set_status(message: String, attention: bool = false) -> void:
+	sync_warning = attention
 	last_status = message
 	sync_changed.emit(message)
 
@@ -198,13 +200,13 @@ func flush() -> void:
 		if epoch != generation: break
 		if latest.has("error"):
 			if pending.is_empty(): pending = outgoing
-			set_status("Saved locally. Cloud unavailable — retry with F5.")
+			set_status("Saved locally. Cloud unavailable — retry with F5.", true)
 			break
 		var latest_save: Dictionary = latest.get("save_json", {}) if latest.get("exists", false) else {}
 		if fingerprint(latest_save) != remote_signature:
 			blocked = true
 			if pending.is_empty(): pending = outgoing
-			set_status("Cloud changed in another version. Saved locally; return to sign-in to load cloud.")
+			set_status("Cloud changed in another version. Saved locally; return to sign-in to load cloud.", true)
 			break
 		set_status("Saving to AFewBuds cloud…")
 		var result := await request_rpc("afb_set_save", {"p_session_token": session.session_token, "p_save_json": outgoing})
@@ -212,7 +214,7 @@ func flush() -> void:
 		if result.has("error") or not result.get("ok", false):
 			if pending.is_empty(): pending = outgoing
 			blocked = str(result.get("reason", "")) in ["save_conflict", "client_update_required", "save_schema_newer", "cloud_newer"]
-			set_status("Cloud conflict — saved locally. Return to sign-in to load the newer career." if blocked else "Saved locally. Cloud unavailable — retry with F5.")
+			set_status("Cloud conflict — saved locally. Return to sign-in to load the newer career." if blocked else "Saved locally. Cloud unavailable — retry with F5.", true)
 			break
 		remote_signature = fingerprint(outgoing)
 		write_json(cache_path(), {"save": baseline, "remote_signature": remote_signature, "dirty": not pending.is_empty()})
@@ -220,7 +222,7 @@ func flush() -> void:
 		var report := await request_rpc("afb_leaderboard_report", {"p_session_token": session.session_token})
 		if epoch != generation: break
 		leaderboard_error = str(report.get("error", ""))
-		if not leaderboard_error.is_empty():set_status("Career saved. Leaderboard report failed — retry saving.")
+		if not leaderboard_error.is_empty():set_status("Career saved. Leaderboard report failed — retry saving.", true)
 	busy = false
 
 func sign_out() -> void:

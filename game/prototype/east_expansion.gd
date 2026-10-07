@@ -1,7 +1,7 @@
 extends RefCounted
 ## An additive outdoor district, east of the original x=73 boundary.
 ## Existing hub, buildings and interiors are owned by neighborhood.gd unchanged.
-const EAST_LIMIT:=137.0
+const EAST_LIMIT:=201.0
 const PARK:=Rect2(118,-14,16,20)
 const TREE_BED_SIZE:=1.5
 # One list drives trunks, soil and the holes cut in all paving/grass surfaces.
@@ -37,6 +37,7 @@ func bench(at:Vector3, facing:float) -> void:
 	footprint=Transform3D(basis,at)*footprint
 	w._obstacle(at.x,at.z,footprint.size.x,footprint.size.z)
 	landmarks.append({"kind":"bench","at":at,"seat_top":.468})
+	w.bench_seating.add(at,facing,.468)
 
 func garage(x:float) -> void:
 	var at:=Vector3(x,0,-13.0)
@@ -56,7 +57,7 @@ func build(world:Node3D) -> void:
 	slab("RearAlley",79,143,-21,-17,-.18,.30,"555a57",3)
 	for span in [Vector2(-42,-21),Vector2(-17,12),Vector2(22,45)]:
 		slab("SideStreet",108,114,span.x,span.y,-.18,.30,"505452",3)
-	for span in [Vector2(79,108),Vector2(114,143)]:
+	for span in [Vector2(79,108),Vector2(114,139)]:
 		walk(span.x,span.y,6.1,12)
 		walk(span.x,span.y,22,26)
 		walk(span.x,span.y,-24,-21)

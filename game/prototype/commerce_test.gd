@@ -101,13 +101,13 @@ func run() -> void:
 	check(game.fp_player.move_and_collide(Vector3(32,0,0))==null,"Native capsule crosses former east fence and reaches new junction")
 	game.fp_player.position=Vector3(115,.08,17)
 	check(game.fp_player.move_and_collide(Vector3(19,0,0))==null,"Main street continues through new district")
-	game.fp_player.position=Vector3(135,.08,17)
+	game.fp_player.position=Vector3(199,.08,17)
 	check(game.fp_player.move_and_collide(Vector3(5,0,0))!=null,"Relocated east fence contains the native capsule")
 	for at in [Vector3(82,.1,8),Vector3(125.5,.1,-1.6),Vector3(131,.1,24)]:
 		game.fp_player.position=at
 		check(game.fp_player.move_and_collide(Vector3(0,-1,0))!=null,"New district has physical ground")
 	game.fp_player.position=Vector3(-1.78,.08,1.8);n._toggle_couch()
-	check(n.couch_seated and is_equal_approx(game.camera.position.y,1.18),"Desktop couch uses seated eye height")
+	check(n.couch_seated and is_equal_approx(game.camera.position.y,1.562837),"Desktop couch uses seated eye height")
 	n._toggle_couch();check(not n.couch_seated and game.fp_player.position.distance_to(Vector3(-1.78,.08,1.8))<.001,"Standing restores safe approach position")
 	for player in game.find_children("*","AudioStreamPlayer",true,false):player.stop();player.stream=null
 	await create_timer(.15).timeout

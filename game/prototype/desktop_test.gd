@@ -15,6 +15,14 @@ func run() -> void:
 	var game=load("res://prototype/apartment.tscn").instantiate()
 	root.add_child(game)
 	await frames(12)
+	game.status_label.text="Gameplay message"
+	cloud.set_status("Saving to AFewBuds cloud…")
+	cloud.set_status("Cloud saved — QA")
+	check(game.status_label.text=="Gameplay message" and cloud.last_status=="Cloud saved — QA","Background sync stays recorded without replacing gameplay text")
+	cloud.set_status("Cloud unavailable",true)
+	check(game.status_label.text=="Cloud unavailable","Sync failures remain visible")
+	cloud.set_status("Cloud saved — QA")
+	check(game.status_label.text.is_empty(),"Recovered sync clears its old warning")
 	controls.show_settings()
 	await frames()
 	check(is_instance_valid(controls.settings) and game.session_paused,"Settings preserve simulation pause")
@@ -56,11 +64,20 @@ func run() -> void:
 		for app in ["home","advancements","settings","products","shop","contacts"]:
 			game._open_phone_app(app);await frames()
 			var rect:Rect2=game.phone_panel.get_global_rect()
-			check(rect.size.y>rect.size.x*1.8,"Portrait aspect at %s in %s" % [dimensions,app])
+			check(rect.size.y>rect.size.x*1.5,"Portrait aspect at %s in %s" % [dimensions,app])
 			check(rect.position.x>=0 and rect.end.x<=root.get_visible_rect().size.x and rect.end.y<=root.get_visible_rect().size.y,"Phone fits %s in %s" % [dimensions,app])
 			if "--capture-desktop" in OS.get_cmdline_user_args() and app=="home":
 				await RenderingServer.frame_post_draw
 				root.get_texture().get_image().save_png("/tmp/afb-desktop/phone-%dx%d.png" % [dimensions.x,dimensions.y])
+		if DisplayServer.get_name()!="headless":
+			for spot in [Vector2(.5,.5),Vector2(.12,.25),Vector2(.88,.75)]:
+				game._open_phone_app("home");await frames()
+				var tile:Control=game.phone_list.get_child(1).get_child(1)
+				var point:Vector2=tile.get_global_rect().position+tile.size*spot
+				root.warp_mouse(point);await frames(2)
+				click.pressed=true;controls._input(click);await frames(2)
+				click.pressed=false;controls._input(click);await frames(2)
+				check(game.phone_current_app=="shop","A selects visible category at %s / %s" % [dimensions,spot])
 	controls.show_settings();await frames()
 	if "--capture-desktop" in OS.get_cmdline_user_args():
 		await RenderingServer.frame_post_draw

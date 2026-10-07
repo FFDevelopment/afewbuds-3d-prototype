@@ -8,7 +8,7 @@ var door_open_angle := PI/2.0
 var door_open := false
 var door_pass_through:=false
 var door_tween: Tween
-const MAP_RECT := Rect2(-32, -36, 169, 75)
+const MAP_RECT := Rect2(-32, -36, 233, 75)
 const ROAD_RECTS := [Rect2(-32,12,105,10), Rect2(-32,-21,105,4), Rect2(-15,-36,6,75), Rect2(48,-36,6,75)]
 var building_bounds: Array[AABB] = []
 var grass_bounds: Array[Rect2] = []
@@ -28,10 +28,13 @@ const TreeLayout=preload("res://prototype/east_expansion.gd")
 var window_layout_records:Array[Dictionary]=[]
 var location_ops: RefCounted
 var collision_timer:=0.0
+var police_station:Node3D
+var bench_seating=preload("res://prototype/bench_seating.gd").new()
 var couch_seated:=false
 var couch_stand:=Vector3.ZERO
 
 func setup(owner_node: Node3D) -> void:
+	bench_seating.setup(self)
 	super.setup(owner_node)
 	position = BLOCK_OFFSET
 	weather = load("res://prototype/weather.gd").new()
@@ -363,6 +366,8 @@ func _build_block() -> void:
 	fence(Vector3(-32,0,-36),Vector3(-32,0,39))
 	# The east fence moves outward; all core geometry stays in place.
 	load("res://prototype/east_expansion.gd").new().build(self)
+	load("res://prototype/police_district.gd").new().build(self)
+	police_station=load("res://prototype/police_station.gd").new();police_station.name="PoliceStation";add_child(police_station);police_station.build(self)
 	_label("APARTMENTS",Vector3(0,3.45,6.16),0.006)
 	_car(18,-6.5,"7d8686",true)
 	_car(-1,20.7,"415b50")
@@ -450,6 +455,7 @@ func _interact() -> void:
 	property_opportunity.show_details()
 
 func location_label(pos: Vector3) -> String:
+	if police_station!=null and police_station.covers(pos):return police_station.room_title(pos+Vector3.UP*2.16)
 	if Rect2(12,-2,10,8).has_point(Vector2(pos.x,pos.z)): return "CENTRAL MARKET"
 	if Rect2(25,-14,20,17).has_point(Vector2(pos.x,pos.z)): return "HOUSE TOUR"
 	return "NEIGHBORHOOD"
@@ -563,7 +569,7 @@ func _toggle_couch() -> void:
 	else:
 		couch_stand=host.fp_player.position
 		couch_seated=true
-		host.fp_player.position=Vector3(-1.785,1.18-host.fp_player.EYE_HEIGHT,3.035)
+		host.fp_player.position=bench_seating.eyes(Vector3(-1.785,0,3.035),0,ScalePolicy.SEAT_HEIGHT)-Vector3.UP*host.fp_player.EYE_HEIGHT
 		host.fp_player.yaw=0;host.fp_player.pitch=0
 	host.fp_player.sync_camera()
 

@@ -30,7 +30,9 @@ class FixtureAPI(BaseHTTPRequestHandler):
             time.sleep(.08)
             weekly = payload.get('p_range') == 'weekly'
             me = {'rank': 31, 'username': 'fixture', 'account_id': 'fixture-id', 'value': 1250 if weekly else 98765}
-            data = {'metric': payload.get('p_metric'), 'range': payload.get('p_range'), 'top': [{'rank': 1, 'username': 'other', 'account_id': 'other-id', 'value': 999999}], 'me': me if payload.get('p_session_token') == 'fixture-session' else None}
+            data = {'metric': payload.get('p_metric'), 'range': payload.get('p_range'), 'top': [{'rank': 1, 'username': 'other', 'account_id': 'other-id', 'value': 999999}], 'me': me if payload.get('p_session_token') == 'fixture-session' and payload.get('p_metric') != 'sales' else None}
+        elif self.path == '/rest/v1/rpc/afb_leaderboard_profile':
+            data = {'account_id':'fixture-id','username':'fixture','lifetime_revenue':98765,'sales':321,'harvests':42}
         elif self.path == '/rest/v1/rpc/afb_login'  and valid_key and payload.get('p_password') == 'fixture-password':
             data = [{'value': {'account_id': 'fixture-id', 'username': 'fixture', 'session_token': 'fixture-session'}}]
         elif self.path == '/rest/v1/rpc/afb_validate_session' and payload.get('p_session_token') == 'fixture-session':
@@ -53,7 +55,7 @@ with tempfile.TemporaryDirectory(prefix='afb-prototype-test-') as temp:
             (fixture / entry.name).symlink_to(entry, target_is_directory=entry.is_dir())
     (fixture / 'project.godot').write_text((game / 'project.godot').read_text().replace('custom_user_dir_name="AFewBuds-3D-Prototype"', 'custom_user_dir_name="AFewBuds-3D-Prototype-QA"'))
     env = dict(os.environ, XDG_DATA_HOME=str(fixture / 'userdata'), AFB_TEST_HTTP_PORT=str(server.server_port))
-    for script, marker in [('prototype/smoke_test.gd', 'PROTOTYPE_TEST_RESULT: PASS'), ('prototype/desktop_test.gd', 'DESKTOP_TEST_RESULT: PASS'), ('prototype/doors_test.gd', 'DOORS_TEST_RESULT: PASS'), ('prototype/property_test.gd', 'PROPERTY_TEST_RESULT: PASS'), ('prototype/updates_test.gd', 'UPDATES_TEST_RESULT: PASS'), ('prototype/visits_test.gd', 'VISITS_TEST_RESULT: PASS'), ('prototype/commerce_test.gd', 'COMMERCE_TEST_RESULT: PASS'), ('prototype/crew_test.gd', 'CREW_TEST_RESULT: PASS'), ('prototype/assets_test.gd', 'ASSETS_TEST_RESULT: PASS'), ('account/cloud_test.gd', 'CLOUD_TEST_RESULT: PASS'), ('account/http_test.gd', 'HTTP_TEST_RESULT: PASS')]:
+    for script, marker in [('prototype/smoke_test.gd', 'PROTOTYPE_TEST_RESULT: PASS'), ('prototype/desktop_test.gd', 'DESKTOP_TEST_RESULT: PASS'), ('prototype/police_test.gd', 'POLICE_TEST_RESULT: PASS'), ('prototype/doors_test.gd', 'DOORS_TEST_RESULT: PASS'), ('prototype/property_test.gd', 'PROPERTY_TEST_RESULT: PASS'), ('prototype/updates_test.gd', 'UPDATES_TEST_RESULT: PASS'), ('prototype/visits_test.gd', 'VISITS_TEST_RESULT: PASS'), ('prototype/commerce_test.gd', 'COMMERCE_TEST_RESULT: PASS'), ('prototype/crew_test.gd', 'CREW_TEST_RESULT: PASS'), ('prototype/assets_test.gd', 'ASSETS_TEST_RESULT: PASS'), ('account/cloud_test.gd', 'CLOUD_TEST_RESULT: PASS'), ('account/http_test.gd', 'HTTP_TEST_RESULT: PASS')]:
         if len(sys.argv)>2 and Path(script).stem not in sys.argv[2:]:continue
         run = subprocess.run([godot, '--headless', *(['--verbose'] if script == 'prototype/visits_test.gd' else []), '--path', str(fixture), '--script', script], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=90)
         print(run.stdout)

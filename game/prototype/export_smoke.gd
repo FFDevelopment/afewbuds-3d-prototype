@@ -11,6 +11,8 @@ func run() -> void:
 		valid=valid and model.find_children("*","Skeleton3D",true,false).size()==1
 		model.free()
 	valid=valid and game.neighborhood.has_meta("east_landmarks")
+	valid=valid and game.neighborhood.police_station.doors.size()==14 and game.neighborhood.police_station.has_node("StationStructure")
+	valid=valid and game.neighborhood.bench_seating.benches.size()==3
 	game.queue_free()
 	await get_tree().process_frame
 	print("EXPORTED_WORLD_RESULT: PASS" if valid else "EXPORTED_WORLD_RESULT: FAIL")

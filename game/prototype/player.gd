@@ -27,6 +27,9 @@ func look(relative: Vector2) -> void:
 	sync_camera()
 
 func _physics_process(delta: float) -> void:
+	if get_parent().neighborhood.bench_seating.seated>=0:
+		if enabled and Input.get_vector("fp_left","fp_right","fp_forward","fp_backward").length()>.05:get_parent().neighborhood.bench_seating.stand()
+		if get_parent().neighborhood.bench_seating.seated>=0:sync_camera();return
 	if get_parent().neighborhood.couch_seated:
 		if enabled and Input.get_vector("fp_left","fp_right","fp_forward","fp_backward").length() > 0.05:
 			get_parent().neighborhood._toggle_couch()

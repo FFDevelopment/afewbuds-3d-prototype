@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.11.0 preview** (cloud-test .96-east.2 gameplay with desktop controls and a portrait phone).
+An experimental PC version of the **actual AFewBuds apartment**, with first-person movement connected to the existing game simulation. Version **0.12.0 preview** (cloud-test .97-police.2 map, desktop controls, wider portrait phone, and quiet background saves).
 
 ## Play the Windows build
 
@@ -31,7 +31,7 @@ Press **Escape → Controls & Display Settings** for key rebinding, mouse/contro
 
 Controller: left stick walks, right stick looks, A/Cross interacts, Y/Triangle opens the phone, X/Square checks visitors, L3 sprints, and Start pauses. In menus, left stick moves the pointer, A/Cross clicks or holds to drag, right stick scrolls, and B/Circle returns. Keyboard input is still needed for account credentials and key rebinding. Hardware/controller mapping needs a Windows playtest.
 
-The phone uses a roughly 1:2 portrait shell, with wrapping app content and a compact dock. Leaderboards show the signed-in username and select your exact account-ID row from the server. Report failures are visible instead of silently ignored. A live signed-in check is still required for the reported zero-stat issue; public server totals were nonzero during investigation.
+The phone uses a wider 0.64:1 portrait shell, with wrapping app content and a compact dock. Leaderboards show the signed-in username and select your exact account-ID row from the server. Report failures are visible instead of silently ignored. The shared career card also uses cloud-test’s public profile endpoint; if the own ranked row is missing or inconsistent, lifetime totals come directly from that account’s server profile. Weekly ranking values remain weekly, with lifetime career totals labeled separately. A signed-in playtest is still needed to confirm the reported discrepancy on your computer.
 
 ## First test route
 
@@ -245,3 +245,13 @@ The player eye height is 2.16 and walking speed is 3.4 to match the new scale.
 Doors open away and allow safe pass-through while moving, restoring collision
 once clear. The leaderboard pins your own server total and handles filter
 changes and pending sync correctly. See `docs/CLOUDTEST_96_SYNC.md`.
+
+0.11.1: widened the portrait phone and fixed controller pointer coordinates being scaled twice at non-default window sizes. Category hit tests cover centers and both sides at 720p, 800p, 1080p and ultrawide.
+
+Routine background cloud saves no longer replace the gameplay status text. Manual save confirmations, cloud conflicts and failed-sync warnings remain visible; saving and shared progress are unchanged.
+
+## 0.12 police district
+
+Cloud-test map source: `a77bb9eb81d9ec0320e3c78373e99fe61ebfd0cf` / `.97-police.2`. Walk east beyond the preserved park to reach the two-floor station, rear patrol parking, public parking, crossing road and four opposite houses. The station has 14 usable doors, including two cell doors, and continuous physical stairs. Native colliders replace the web camera collision checks. These are explorable interiors; upstream has not added police NPCs, arrests or evidence gameplay.
+
+All three park benches can be used with Interact; move to stand. Bench and couch eyes now match the shared seated rig. The east fence is at x=201; upstairs desktop positions are saved locally with height.

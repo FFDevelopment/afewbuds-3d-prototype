@@ -16,6 +16,8 @@ Not acceptance criteria for 0.1: physical grab/place, new NPC navigation, mobile
 
 - Escape → Controls & Display Settings: change a key, check the old key stops working, restart and check persistence.
 - Try mouse and controller sensitivity and invert Y; verify camera stops when menus open.
-- Try 720p, 1080p, ultrawide, resizing, and fullscreen. Phone should remain approximately twice as tall as wide in every app.
+- Try 720p, 1080p, ultrawide, resizing, and fullscreen. Phone should remain taller than wide, with roomier category tiles in every app.
 - Controller: walk/look, use a door, open phone, move menu pointer, click and drag product at the bench, scroll, return with B and pause with Start. Disconnect while dragging; release must not stick.
 - On the leaderboard, confirm the displayed username and compare weekly/lifetime values against the regular version. If totals still disagree, record username, selected metric/period, and any report/sync warning. Do not reset your career.
+
+- At each resolution, aim at the center and both sides of the Store tile and press A. All points inside the visible button must open Store without searching for an offset hitbox.
