@@ -26,12 +26,6 @@ func aim(player_pos: Vector3, target: Vector3) -> void:
 	game.fp_player.pitch = game.camera.rotation.x
 	game.fp_player.sync_camera()
 
-func check_clear_route(from: Vector3, to: Vector3, label_text: String) -> void:
-	game.fp_player.position = from
-	game.fp_player.velocity = Vector3.ZERO
-	var hit: KinematicCollision3D = game.fp_player.move_and_collide(to-from)
-	check(hit == null, label_text)
-
 func run() -> void:
 	# QA never writes the player's normal prototype save.
 	check("QA" in OS.get_user_data_dir(), "QA save directory isolated")
@@ -361,29 +355,22 @@ func check_neighborhood() -> void:
 	game.fp_player.position = Vector3(5, 0.08, 9)
 	var street_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, 14))
 	check(street_hit == null and game.fp_player.position.z > 22, "sidewalk and street are continuously walkable")
-	# Seam audit: every representative outdoor surface transition must behave
-	# like one floor even though road, paving, lawn, paint and curb meshes retain
-	# their small visual height offsets.
-	check(game.has_node("PrototypeNeighborhoodGround"), "one continuous neighborhood collision floor is installed")
+	# Seam audit: every low exterior surface is visual-only. One flat physics
+	# floor owns walking support, so visual road/sidewalk/parking/curb height
+	# differences cannot create capsule-snaring lips anywhere on the map.
+	var ground:=game.get_node_or_null("PrototypeNeighborhoodGround") as StaticBody3D
+	check(ground!=null, "one continuous neighborhood collision floor is installed")
+	var ground_shape:CollisionShape3D=ground.get_child(0) if ground!=null and ground.get_child_count()>0 else null
+	var ground_box:BoxShape3D=ground_shape.shape if ground_shape!=null and ground_shape.shape is BoxShape3D else null
+	check(ground_box!=null and is_equal_approx(ground_box.size.x,outside.MAP_RECT.size.x) and is_equal_approx(ground_box.size.z,outside.MAP_RECT.size.y), "continuous floor covers the full playable map")
 	var visual_ground_count:=0
 	var visual_ground_has_collision:=false
-	for node in game.neighborhood.find_children("*","MeshInstance3D",true,false):
+	for node in outside.find_children("*","MeshInstance3D",true,false):
 		if node.get_meta("exterior_ground_visual",false):
 			visual_ground_count+=1
 			visual_ground_has_collision=visual_ground_has_collision or node.has_node("PrototypeCollision")
-	check(visual_ground_count>40 and not visual_ground_has_collision, "roads sidewalks parking curbs and paint remain render-only")
-	for route in [
-		[Vector3(8.5,.08,-6.0),Vector3(23.0,.08,-6.0),"apartment sidewalk to shop parking seam"],
-		[Vector3(20.0,.08,-24.0),Vector3(20.0,.08,-14.4),"rear sidewalk and alley seams"],
-		[Vector3(80.0,.08,8.0),Vector3(80.0,.08,25.0),"east sidewalk street and far sidewalk seams"],
-		[Vector3(111.0,.08,-34.0),Vector3(111.0,.08,37.0),"east side street intersection seams"],
-		[Vector3(125.5,.08,-14.2),Vector3(125.5,.08,7.8),"park north-south path joins"],
-		[Vector3(117.2,.08,-1.6),Vector3(134.8,.08,-1.6),"park west-east path joins"],
-		[Vector3(136.0,.08,17.0),Vector3(151.0,.08,17.0),"east district to police district street join"],
-		[Vector3(188.5,.08,-13.0),Vector3(188.5,.08,11.5),"public parking driveway and sidewalk seam"],
-		[Vector3(161.5,.08,-32.0),Vector3(161.5,.08,-20.0),"patrol parking driveway and rear sidewalk seam"]
-	]:
-		check_clear_route(route[0],route[1],route[2])
+	check(visual_ground_count>40, "whole-map audit finds all road sidewalk parking curb lawn and paint meshes")
+	check(not visual_ground_has_collision, "no exterior ground visual owns a separate collision lip")
 	game.fp_player.position = Vector3(51,0.08,37)
 	var boundary_hit: KinematicCollision3D = game.fp_player.move_and_collide(Vector3(0, 0, 5))
 	check(boundary_hit != null and game.fp_player.position.z < 39.1, "far fence contains player")
