@@ -48,6 +48,7 @@ func _ready() -> void:
 	if fp_player.position.z > -10.4 and fp_player.position.z < 6.1 and absf(fp_player.position.x) > 4.5 and absf(fp_player.position.x) < 5.4:
 		fp_player.position = Vector3(0, 0.12, 1.2)
 	_add_physical_collisions(self)
+	_add_neighborhood_ground_collision()
 	_add_prop_collisions()
 	_add_station_targets()
 	_setup_desktop_panels()
@@ -307,6 +308,22 @@ func _add_physical_collisions(root: Node) -> void:
 				child.add_child(body)
 				fp_collisions.append({"mesh": child, "shape": shape})
 		_add_physical_collisions(child)
+
+func _add_neighborhood_ground_collision() -> void:
+	if has_node("PrototypeNeighborhoodGround"):
+		return
+	var body:=StaticBody3D.new()
+	body.name="PrototypeNeighborhoodGround"
+	body.collision_layer=1
+	body.collision_mask=4
+	var shape:=CollisionShape3D.new()
+	var box:=BoxShape3D.new()
+	var map_rect:Rect2=neighborhood.MAP_RECT
+	box.size=Vector3(map_rect.size.x,.10,map_rect.size.y)
+	shape.shape=box
+	shape.position=Vector3(map_rect.get_center().x,-.05,map_rect.get_center().y)
+	body.add_child(shape)
+	add_child(body)
 
 func _add_prop_collisions() -> void:
 	var couch := get_node_or_null("AFBLoveseat")
