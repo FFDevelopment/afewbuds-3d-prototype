@@ -575,7 +575,7 @@ func _update_fp_stamina_hud() -> void:
 	fp_stamina_bar.visible = show_bar
 	fp_stamina_label.visible = show_bar
 	if show_bar:
-		fp_stamina_label.text = "SPRINT" if fp_player.is_sprinting else ("EXHAUSTED" if fp_player.exhausted else "STAMINA")
+		fp_stamina_label.text = "SPRINTING" if fp_player.is_sprinting else ("EXHAUSTED" if fp_player.exhausted else "STAMINA")
 
 func _fp_label(pos: Vector2, font_size: int) -> Label:
 	var label := Label.new()
