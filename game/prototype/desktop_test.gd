@@ -51,9 +51,23 @@ func run() -> void:
 	controls.bindings=controls.DEFAULTS.duplicate();controls.install_actions();controls.mouse_sensitivity=1
 	game._resume_gameplay()
 	check(game.fp_player.has_method("drive") and game.fp_player.has_method("stop"),"Desktop player exposes shared drive/stop controller API")
-	check(is_equal_approx(game.fp_player.WALK_SPEED,3.4) and is_equal_approx(game.fp_player.ACCELERATION,15.0) and is_equal_approx(game.fp_player.DECELERATION,20.0),"Desktop movement tuning matches mobile 3D core")
+	check(is_equal_approx(game.fp_player.WALK_SPEED,3.4) and is_equal_approx(game.fp_player.SPRINT_SPEED,5.4) and is_equal_approx(game.fp_player.ACCELERATION,15.0) and is_equal_approx(game.fp_player.DECELERATION,20.0),"Desktop movement and sprint tuning matches mobile 3D core")
+	check(is_equal_approx(game.fp_player.STAMINA_MAX,100.0) and is_equal_approx(game.fp_player.STAMINA_DRAIN,18.0) and is_equal_approx(game.fp_player.STAMINA_RECOVERY,14.0) and is_equal_approx(game.fp_player.STAMINA_REENABLE,25.0),"Desktop stamina tuning matches mobile 3D core")
+	check(InputMap.has_action("fp_sprint"),"Desktop sprint input action remains installed")
 	var capsule:CapsuleShape3D=game.fp_player.get_node("PlayerCapsule").shape
 	check(is_equal_approx(capsule.radius,.26) and is_equal_approx(capsule.height,2.43) and is_equal_approx(game.fp_player.floor_snap_length,.32),"Desktop capsule and floor snap match mobile 3D core")
+	check(game.fp_stamina_bar is ProgressBar and not game.fp_stamina_bar.visible,"Desktop stamina HUD starts unobtrusive at full stamina")
+	game.fp_player.stamina=55
+	game.fp_player.is_sprinting=true
+	game._update_fp_stamina_hud()
+	check(game.fp_stamina_bar.visible and game.fp_stamina_bar.value==55 and game.fp_stamina_label.text=="SPRINT","Desktop stamina HUD reflects sprint state")
+	game.fp_player.is_sprinting=false
+	game.fp_player.exhausted=true
+	game._update_fp_stamina_hud()
+	check(game.fp_stamina_label.text=="EXHAUSTED","Desktop stamina HUD exposes exhaustion state")
+	game.fp_player.exhausted=false
+	game.fp_player.stamina=game.fp_player.STAMINA_MAX
+	game._update_fp_stamina_hud()
 	var yaw:float=game.fp_player.yaw
 	game.fp_player.look(Vector2(10,0))
 	var first:float=absf(game.fp_player.yaw-yaw)

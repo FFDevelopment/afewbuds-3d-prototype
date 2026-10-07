@@ -12,6 +12,8 @@ var fp_crosshair: Label
 var fp_prompt: Label
 var fp_info: Label
 var fp_hint: Label
+var fp_stamina_bar: ProgressBar
+var fp_stamina_label: Label
 var fp_hud: Control
 var fp_was_modal := true
 var fp_collisions: Array[Dictionary] = []
@@ -90,7 +92,8 @@ func _process(delta: float) -> void:
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
 	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.12.0 PREVIEW\n%s   ·   %s   ·   $%d" % [neighborhood.location_label(fp_player.position) if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
-	fp_hint.text = "Left stick: walk · Right stick: look · A: interact · Y: phone · Start: pause" if DesktopInput.controller_active else "%s/%s/%s/%s Walk · %s Interact · %s Phone · Esc Pause · %s Save" % [DesktopInput.label("forward"),DesktopInput.label("left"),DesktopInput.label("backward"),DesktopInput.label("right"),DesktopInput.label("interact"),DesktopInput.label("phone"),DesktopInput.label("save")]
+	fp_hint.text = "Full left-stick forward: sprint · Right stick: look · A: interact · Y: phone · Start: pause" if DesktopInput.controller_active else "%s/%s/%s/%s Walk · Shift + forward Sprint · %s Interact · %s Phone · Esc Pause · %s Save" % [DesktopInput.label("forward"),DesktopInput.label("left"),DesktopInput.label("backward"),DesktopInput.label("right"),DesktopInput.label("interact"),DesktopInput.label("phone"),DesktopInput.label("save")]
+	_update_fp_stamina_hud()
 	_hide_old_navigation()
 
 func _input(event: InputEvent) -> void:
@@ -531,6 +534,48 @@ func _build_fp_hud() -> void:
 	fp_hint.offset_right = -28
 	fp_hint.offset_top = -35
 	fp_hint.offset_bottom = -12
+	fp_stamina_bar = ProgressBar.new()
+	fp_stamina_bar.name = "SprintStamina"
+	fp_stamina_bar.min_value = 0
+	fp_stamina_bar.max_value = 100
+	fp_stamina_bar.value = 100
+	fp_stamina_bar.show_percentage = false
+	fp_stamina_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fp_stamina_bar.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	fp_stamina_bar.offset_left = -120
+	fp_stamina_bar.offset_right = 120
+	fp_stamina_bar.offset_top = -78
+	fp_stamina_bar.offset_bottom = -58
+	var stamina_bg := StyleBoxFlat.new()
+	stamina_bg.bg_color = Color("102019")
+	stamina_bg.border_color = Color("4c7257")
+	stamina_bg.set_border_width_all(2)
+	stamina_bg.set_corner_radius_all(8)
+	var stamina_fill := StyleBoxFlat.new()
+	stamina_fill.bg_color = Color("7fcf88")
+	stamina_fill.set_corner_radius_all(6)
+	fp_stamina_bar.add_theme_stylebox_override("background", stamina_bg)
+	fp_stamina_bar.add_theme_stylebox_override("fill", stamina_fill)
+	fp_hud.add_child(fp_stamina_bar)
+	fp_stamina_label = _fp_label(Vector2.ZERO, 13)
+	fp_stamina_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	fp_stamina_label.offset_left = -120
+	fp_stamina_label.offset_right = 120
+	fp_stamina_label.offset_top = -103
+	fp_stamina_label.offset_bottom = -80
+	fp_stamina_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	fp_stamina_bar.hide()
+	fp_stamina_label.hide()
+
+func _update_fp_stamina_hud() -> void:
+	if fp_stamina_bar == null or fp_stamina_label == null or fp_player == null:
+		return
+	fp_stamina_bar.value = fp_player.stamina
+	var show_bar := fp_player.is_sprinting or fp_player.stamina < fp_player.STAMINA_MAX - .1
+	fp_stamina_bar.visible = show_bar
+	fp_stamina_label.visible = show_bar
+	if show_bar:
+		fp_stamina_label.text = "SPRINT" if fp_player.is_sprinting else ("EXHAUSTED" if fp_player.exhausted else "STAMINA")
 
 func _fp_label(pos: Vector2, font_size: int) -> Label:
 	var label := Label.new()
