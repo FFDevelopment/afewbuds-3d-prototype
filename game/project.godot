@@ -2,7 +2,7 @@ config_version=5
 
 [application]
 config/name="AFewBuds 3D Prototype"
-config/version="0.14.2-inventory.3"
+config/version="0.14.3-inventory.4"
 run/main_scene="res://account/login.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://assets/branding/afb_app_icon.png"
