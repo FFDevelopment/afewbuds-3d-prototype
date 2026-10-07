@@ -25,6 +25,21 @@ class FixtureAPI(BaseHTTPRequestHandler):
                 status, data = 400, {'error': 'fixture_identifier_invalid'}
             else:
                 data = {'ok': True, 'message': 'If that AFewBuds account has a recovery email, a reset link has been sent.'}
+        elif self.path == '/rest/v1/rpc/fixture_save_numbers':
+            # Match the deployed leaderboard SQL: ->> text must be an integer,
+            # so 98765.0 is rejected even though its numeric value is integral.
+            import re
+            save = payload['p_save_json']
+            def counter(value):
+                text = json.dumps(value, separators=(',', ':'))
+                return int(text) if re.fullmatch(r'-?[0-9]+', text) else 0
+            data = {'revenue': counter(save['lifetime_revenue']),
+                    'sales': counter(save['advancement_stats']['sales']),
+                    'harvests': counter(save['advancement_stats']['harvests']),
+                    'fraction': save['runtime']['fraction'],
+                    'array_counter': counter(save['runtime']['items'][0]['count']),
+                    'label': save['runtime']['label'],
+                    'active': save['runtime']['active']}
         elif self.path == '/rest/v1/rpc/afb_leaderboard_get':
             import time
             time.sleep(.08)

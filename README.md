@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of **AFewBuds**, with first-person movement connected to the existing game simulation. Version **0.13.1 preview** synchronizes Chapter 4/5, Real Estate, per-property billing, lease release and player-owned equipment preservation with mobile 3D v12. Both versions show Bongchester / current district in their HUD, show newest messages first and share sprint stamina. Desktop controls, native account handling, ranked-total precedence and physical doors/stairs are retained.
+An experimental PC version of **AFewBuds**, with first-person movement connected to the existing game simulation. Version **0.13.2 preview** synchronizes Chapter 4/5, Real Estate, per-property billing, lease release and player-owned equipment preservation with mobile 3D v12. Both versions show Bongchester / current district in their HUD, show newest messages first and share sprint stamina. Desktop controls, native account handling, ranked-total precedence and physical doors/stairs are retained.
 
 ## Play the Windows build
 
@@ -259,3 +259,5 @@ Routine background cloud saves no longer replace the gameplay status text. Manua
 Cloud-test map source: `a77bb9eb81d9ec0320e3c78373e99fe61ebfd0cf` / `.97-police.2`. Walk east beyond the preserved park to reach the two-floor station, rear patrol parking, public parking, crossing road and four opposite houses. The station has 14 usable doors, including two cell doors, and continuous physical stairs. Native colliders replace the web camera collision checks. These are explorable interiors; upstream has not added police NPCs, arrests or evidence gameplay.
 
 All three park benches can be used with Interact; move to stand. Bench and couch eyes now match the shared seated rig. The east fence is at x=201; upstairs desktop positions are saved locally with height.
+
+Desktop 0.13.2 fixes cloud-save number encoding: reloaded whole-number counters upload as JSON integers, so the shared leaderboard reads them correctly. Fractional gameplay state retains full precision. Save once or open the leaderboard in this build to upload and report the corrected counters. Mobile 3D v12 already uses the compatible web encoding.

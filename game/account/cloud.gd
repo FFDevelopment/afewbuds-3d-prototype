@@ -60,11 +60,27 @@ func request_password_reset(identifier: String) -> Dictionary:
 func request_rpc(method: String, payload: Dictionary) -> Dictionary:
 	return await request_json("/rest/v1/rpc/" + method, payload)
 
+func wire_numbers(value: Variant) -> Variant:
+	# JSON.parse_string loads all JSON numbers as floats. PostgreSQL's existing
+	# leaderboard readers require integer text (123), not decimal text (123.0).
+	# Match the web client's integer encoding without rounding fractional state.
+	if value is float and is_finite(value) and absf(value) <= 9007199254740991.0 and value == floor(value):
+		return int(value)
+	if value is Dictionary:
+		var normalized:Dictionary={}
+		for key in value:normalized[key]=wire_numbers(value[key])
+		return normalized
+	if value is Array:
+		var normalized:Array=[]
+		for item in value:normalized.append(wire_numbers(item))
+		return normalized
+	return value
+
 func request_json(path: String, payload: Dictionary) -> Dictionary:
 	var request := HTTPRequest.new()
 	request.timeout = 20.0
 	add_child(request)
-	var error := request.request(service_url + path, PackedStringArray(["Content-Type: application/json", "apikey: " + API_KEY]), HTTPClient.METHOD_POST, JSON.stringify(payload, "", true, true))
+	var error := request.request(service_url + path, PackedStringArray(["Content-Type: application/json", "apikey: " + API_KEY]), HTTPClient.METHOD_POST, JSON.stringify(wire_numbers(payload), "", true, true))
 	if error != OK:
 		request.queue_free()
 		return {"error": "Could not connect. Please retry."}

@@ -45,3 +45,7 @@ Ports the exact main.gd transformations from cloud-test58 preparation commit `d3
 ## Desktop 0.12.1 preview
 
 Ports police frame/floor joins, parking access and park exit/sidewalk repairs from cloud-test commits `e3997cb8baaf7b839235f585e6f98c677a4fd056` and `6addda9c7fad6316f74ea3c4de1100cef592f606`. Native capsule collision, stairs and E-key door interaction are retained. Kobi model and atlas come from `ec056a58874df82750275bc539c90e1a778a6b1c`; SHA-256, original user-art provenance and shared 56-bone validation are retained in `game/assets/characters/Kobi.receipt.json`. The upstream five character-selection changes are applied to the desktop crew adapter. Matching server ranked rows now take precedence over conflicting career profiles. No backend or save-schema changes.
+
+## Desktop 0.13.2 leaderboard wire-format repair
+
+Reproduced using the real HTTPRequest path after JSON.parse_string: Godot serializes reloaded integral floats as `98765.0`; the existing afb_leaderboard_int / nested_int SQL readers accept only `^-?[0-9]+$`, yielding zero. The web client's JSON.stringify encodes those same values as `98765`. Normalize finite safe integral floats to integer Variants at the desktop HTTP boundary; retain fractional values and preserve save contents. A regression fixture exercises the deployed integer-reading contract on transmitted bytes, including nested counters and arrays. No server schema or mobile gameplay change is required.

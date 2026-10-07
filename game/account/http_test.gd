@@ -18,6 +18,12 @@ func run() -> void:
 	var restored: Dictionary = await client.restore_session()
 	valid = valid and restored.get("username") == "fixture"
 	check(valid,"existing login and session restoration")
+	# Disk/cloud JSON parsing converts counters into floating-point Variants.
+	# Test the actual HTTP bytes rather than a mock that skips serialization.
+	var disk_save:Dictionary=JSON.parse_string('{"lifetime_revenue":98765,"advancement_stats":{"sales":321,"harvests":42},"runtime":{"fraction":0.125,"items":[{"count":17}],"label":"98765.0","active":true}}')
+	var wire:Dictionary=await client.request_rpc("fixture_save_numbers",{"p_save_json":disk_save})
+	check(wire.get("revenue")==98765 and wire.get("sales")==321 and wire.get("harvests")==42,"Actual desktop HTTP save preserves integer leaderboard counters after JSON reload")
+	check(wire.get("array_counter")==17 and wire.get("fraction")==0.125 and wire.get("label")=="98765.0" and wire.get("active")==true,"Wire normalization preserves fractional gameplay values, arrays, strings and booleans")
 	client.sign_out()
 	var long_email := "full.recovery.address.longer.than.twenty@example.com"
 	for identifier in ["fixture",long_email,"unknown-account","  "+long_email+"  ","a".repeat(242)+"@example.com"]:
