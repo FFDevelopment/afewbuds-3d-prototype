@@ -35,7 +35,7 @@ func run() -> void:
 	check(frames_clear,"Window frames clear adjacent walls")
 	var upstairs_decks:Array[AABB]=[]
 	for part in station.parts:
-		if str(part.id) in ["UpperFloorWest","UpperFloorNorth","UpperFloorSouth","TopLanding"]:upstairs_decks.append(part.bounds)
+		if str(part.id) in ["UpperFloorWest","UpperFloorNorth","UpperFloorSouth"]:upstairs_decks.append(part.bounds)
 	var stair_clips:Array[String]=[]
 	var stair_nosings:=0
 	for part in station.parts:
