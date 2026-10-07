@@ -26,7 +26,7 @@ func run() -> void:
 	ops.pickup();check(int(game.location_state.pickup_seeds.get(seed,0))==1,"Remote pickup rejected")
 	game.camera.position=Vector3(14,1.64,5);game.camera.look_at(ops.CHECKOUT)
 	check(ops.target()=="market_checkout","Checkout reachable")
-	ops.pickup();check(int(game.location_state.carried_seeds.get(seed,0))==1 and int(game.seed_inventory.get(seed,0))==owned,"Pickup goes to carried inventory")
+	ops.pickup();game.inventory_system.transfer("market:orders","backpack","seed|"+seed,1);game.inventory_system.close();check(int(game.location_state.carried_seeds.get(seed,0))==1 and int(game.seed_inventory.get(seed,0))==owned,"Pickup goes to carried inventory")
 	var fert: int=game.fertilizer_units;cash=game.cash;ops.fertilizer()
 	check(game.fertilizer_units==fert and int(game.location_state.carried_fertilizer)==5 and game.cash==cash-45,"Market fertilizer carried, not auto-delivered")
 	cash=game.cash;ops.order_fertilizer();check(game.cash==cash-45 and game.fertilizer_units==fert and game.location_state.pickup_fertilizer==5,"Phone fertilizer waits at market after one charge")
@@ -38,6 +38,10 @@ func run() -> void:
 	ops.order_dealer()
 	var dealer_name: String="Dealer Storage "+game._roman(dealer_level+1)
 	check(game.dealer_locker_level==dealer_level and game.location_state.deliveries.has(dealer_name),"Dealer storage waits for installation")
+	# Both paid items must be physically collected before computer installation.
+	game.inventory_system.state.backpack_level=4
+	game.inventory_system.transfer("market:orders","backpack","delivery|"+upgrade,1)
+	game.inventory_system.transfer("market:orders","backpack","delivery|"+dealer_name,1)
 	game.camera.position=Vector3(3,1.64,4.35);game.camera.look_at(ops.APT_PC)
 	check(ops.target()=="apartment_computer","Apartment computer reachable")
 	cash=game.cash;ops.install(upgrade)

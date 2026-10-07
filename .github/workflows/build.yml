@@ -49,6 +49,8 @@ jobs:
           grep -q 'EXPORTED_WORLD_RESULT: PASS' build/exported-world.log
           printf 'AFewBuds Desktop %s\nSource: %s\n' '${{ steps.release.outputs.version }}' '${{ github.sha }}' > build/windows/BUILD_VERSION.txt
           cp build/windows/BUILD_VERSION.txt build/linux/BUILD_VERSION.txt
+          cp INVENTORY_PREVIEW.md build/windows/INVENTORY_PREVIEW.md
+          cp INVENTORY_PREVIEW.md build/linux/INVENTORY_PREVIEW.md
           cp README.md build/windows/README.md
           cp README.md build/linux/README.md
           python tools/package_source.py
