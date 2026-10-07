@@ -12027,4 +12027,4 @@ func _packing_batch_size() -> int:
 
 func _guide_protects_plants() -> bool:
 	var guide:Dictionary=location_state.get("first_day_guide",{})
-	return bool(guide.get("active",false)) and int(guide.get("step",0))<16
+	return bool(guide.get("active",false)) and int(guide.get("step",0))<15
