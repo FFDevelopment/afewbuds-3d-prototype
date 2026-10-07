@@ -106,6 +106,7 @@ func piece(label_text: String, pos: Vector3, size: Vector3, color: String, surfa
 
 func _raw_piece(label_text: String, pos: Vector3, size: Vector3, color: String, surface: int = 0) -> MeshInstance3D:
 	var mesh := _box(pos, size, color)
+	_mark_exterior_ground_visual(mesh,pos,size)
 	mesh.name = label_text
 	var tile: int=-1
 	var tint: String=color
@@ -558,8 +559,21 @@ func use_interior_door(door: Node3D) -> void:
 		return
 	door.toggle(host.fp_player.position)
 
+func _mark_exterior_ground_visual(mesh: MeshInstance3D, at: Vector3, size: Vector3) -> void:
+	# The desktop adapter used to auto-create a solid StaticBody3D for every
+	# sufficiently large BoxMesh. Roads, sidewalks, parking slabs, lawns and
+	# 12 cm curbs therefore became separate floor colliders with snagging lips.
+	# Keep this low exterior geometry visual-only; apartment.gd installs one
+	# continuous flat physics floor underneath the playable neighborhood.
+	var top:=at.y+size.y*.5
+	var bottom:=at.y-size.y*.5
+	if size.y<=.31 and bottom<=.05 and top<=.15:
+		mesh.set_meta("no_collision",true)
+		mesh.set_meta("exterior_ground_visual",true)
+
 func exterior_box(at: Vector3, size: Vector3, color: String, tile: int=-1, glow: float=0.0) -> MeshInstance3D:
 	var part:=_box(at,size,color)
+	_mark_exterior_ground_visual(part,at,size)
 	part.material_override=_material(color,tile,glow)
 	return part
 func _toggle_couch() -> void:
