@@ -1,6 +1,6 @@
 # AFewBuds — first-person apartment prototype
 
-An experimental PC version of **AFewBuds**, with first-person movement connected to the existing game simulation. Version **0.13.0 preview** synchronizes Chapter 4/5, Real Estate, per-property billing, lease release and player-owned equipment preservation with mobile 3D v11. Both versions show newest messages first and share sprint stamina. Desktop controls, native account handling, ranked-total precedence and physical doors/stairs are retained.
+An experimental PC version of **AFewBuds**, with first-person movement connected to the existing game simulation. Version **0.13.1 preview** synchronizes Chapter 4/5, Real Estate, per-property billing, lease release and player-owned equipment preservation with mobile 3D v12. Both versions show Bongchester / current district in their HUD, show newest messages first and share sprint stamina. Desktop controls, native account handling, ranked-total precedence and physical doors/stairs are retained.
 
 ## Play the Windows build
 

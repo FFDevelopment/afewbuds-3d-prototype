@@ -1,5 +1,6 @@
 extends "res://scripts/main.gd"
 ## Adapter over the pinned AFewBuds simulation. Uses the shared simulation with native account integration.
+const Districts = preload("res://scripts/districts.gd")
 const FirstPersonPlayer = preload("res://prototype/player.gd")
 const REACH := 2.6
 const WALL_NAMES := ["FrontWindowLeft", "FrontWindowRight", "FrontWindowBottom", "FrontWindowTop", "FrontWall", "FrontWallL", "FrontWallR", "FrontWallHeader", "RearWall", "LeftWall", "RightWall", "PartitionLeft", "PartitionRight", "PartitionHeader"]
@@ -91,7 +92,7 @@ func _process(delta: float) -> void:
 	fp_prompt.visible = not modal
 	fp_hint.visible = not modal
 	fp_info.visible = not modal
-	fp_info.text = "AFEWBUDS   /   NEIGHBORHOOD 0.12.0 PREVIEW\n%s   ·   %s   ·   $%d" % [neighborhood.location_label(fp_player.position) if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
+	fp_info.text = "%s\n%s   ·   %s   ·   $%d" % [Districts.heading(fp_player.position), neighborhood.location_label(fp_player.position) if current_room == "neighborhood" else ("GROW ROOM" if current_room == "grow" else "LIVING ROOM"), _format_game_clock(), cash]
 	fp_hint.text = "Full left-stick forward: sprint · Right stick: look · A: interact · Y: phone · Start: pause" if DesktopInput.controller_active else "%s/%s/%s/%s Walk · Shift + forward Sprint · %s Interact · %s Phone · Esc Pause · %s Save" % [DesktopInput.label("forward"),DesktopInput.label("left"),DesktopInput.label("backward"),DesktopInput.label("right"),DesktopInput.label("interact"),DesktopInput.label("phone"),DesktopInput.label("save")]
 	_update_fp_stamina_hud()
 	_hide_old_navigation()

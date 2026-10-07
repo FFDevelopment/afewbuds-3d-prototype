@@ -15,6 +15,16 @@ func run() -> void:
 	var game=load("res://prototype/apartment.tscn").instantiate()
 	root.add_child(game)
 	await frames(12)
+
+	var districts=load("res://scripts/districts.gd")
+	for sample in [[Vector3(0,0,0),"Roachwood"],[Vector3(40,0,0),"Roachwood"],[Vector3(72.99,0,0),"Roachwood"],[Vector3(73,0,0),"Half Baked Heights"],[Vector3(138.99,0,0),"Half Baked Heights"],[Vector3(139,0,0),"Paranoia Point"],[Vector3(175,6,0),"Paranoia Point"]]:
+		check(districts.heading(sample[0])=="Bongchester / "+sample[1],"District at "+str(sample[0]))
+	var original_position:Vector3=game.fp_player.position
+	for x in [10.0,90.0,170.0,10.0]:
+		game.fp_player.position=Vector3(x,0,10)
+		game._process(0.0)
+		check(game.fp_info.text.begins_with(districts.heading(game.fp_player.position)+"\n"),"Desktop HUD follows district crossing in either direction")
+	game.fp_player.position=original_position
 	game.status_label.text="Gameplay message"
 	cloud.set_status("Saving to AFewBuds cloud…")
 	cloud.set_status("Cloud saved — QA")
