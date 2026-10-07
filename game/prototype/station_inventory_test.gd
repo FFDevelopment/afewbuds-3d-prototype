@@ -70,8 +70,8 @@ func run():
   var target:=Area3D.new();target.set_meta("interaction_id","station_supply");game.add_child(target);game.fp_target=target;game.fp_prompt.text="OLD PROMPT"
  else:game.neighborhood.action.visible=true
  inv._process(0)
- check(inv.nearby_button.visible,"New station button is available")
- check(game.fp_prompt.text.is_empty() if desktop else not game.neighborhood.action.visible,"Duplicate original station prompt is hidden")
+ check(not inv.nearby_button.visible if desktop else inv.nearby_button.visible,"Platform uses one station prompt")
+ check(game.fp_prompt.text=="OLD PROMPT" if desktop else not game.neighborhood.action.visible,"Desktop retains its door-style prompt; mobile hides its duplicate")
  check(not game.contextual_button.visible,"Legacy contextual station button stays hidden")
  inv.open_container("supply")
  var tabs:Array=[]

@@ -60,6 +60,14 @@ func run():
   check(game.neighborhood.action.has_meta("modern_interaction"),"Mobile native interactions receive shared modern styling")
   check(game.neighborhood.action.anchor_right==1 and inv.nearby_button.anchor_right==1,"Both mobile prompt producers remain bottom-right")
 
+ game.status_label.text="Collected your order."
+ game._tick_status_notification(0)
+ game._tick_status_notification(3.9)
+ check(game.status_label.visible,"Top notification remains visible for nearly four seconds")
+ game._tick_status_notification(0.2)
+ check(not game.status_label.visible and game.status_label.text.is_empty(),"Top notification and bubble disappear after four seconds")
+ game.status_label.text="Collected your order.";game._tick_status_notification(0)
+ check(game.status_label.visible,"A repeated message can appear again after expiry")
  game._resume_gameplay()
  inv.overlay.show()
  var touch_panel:=ScrollContainer.new();inv.overlay.add_child(touch_panel);touch_panel.position=Vector2(30,30);touch_panel.size=Vector2(200,140)

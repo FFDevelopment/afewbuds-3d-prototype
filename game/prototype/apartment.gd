@@ -22,6 +22,8 @@ var fp_collision_timer := 0.0
 var fp_station_opening := false
 var fp_open_epoch := 0
 var fp_sync_warning := ""
+var fp_status_text := ""
+var fp_status_remaining := 0.0
 var controller_work_held:bool=false
 
 func _load_game() -> void:
@@ -89,7 +91,7 @@ func _process(delta: float) -> void:
 	else:
 		fp_target = null
 	fp_crosshair.visible = not modal
-	fp_prompt.visible = not modal and not fp_prompt.text.is_empty() and not (inventory_system!=null and fp_target!=null and inventory_system.native_station_target(str(fp_target.get_meta("interaction_id",""))))
+	fp_prompt.visible = not modal and not fp_prompt.text.is_empty()
 	fp_hint.visible = false
 	_controller_work_tick(delta,DesktopInput.stick(false))
 	if DesktopInput.controller_active:
@@ -100,6 +102,7 @@ func _process(delta: float) -> void:
 	fp_hint.text = "L3 click while moving forward: toggle sprint · Right stick: look · A: interact · D-pad Up: phone · Start: pause" if DesktopInput.controller_active else "%s/%s/%s/%s Walk · Shift + forward Sprint · %s Interact · %s Phone · Esc Pause · %s Save" % [DesktopInput.label("forward"),DesktopInput.label("left"),DesktopInput.label("backward"),DesktopInput.label("right"),DesktopInput.label("interact"),DesktopInput.label("phone"),DesktopInput.label("save")]
 	_update_fp_stamina_hud()
 	_hide_old_navigation()
+	_tick_status_notification(delta)
 
 func _input(event: InputEvent) -> void:
 	if not fp_ready or is_instance_valid(DesktopInput.settings) or not DesktopInput.rebinding.is_empty():
@@ -171,6 +174,17 @@ func _go_to_view(view_name: String, animate: bool = true) -> void:
 	_cancel_camera_view_tween()
 	current_view = "fp_walk"
 	_refresh_navigation_ui()
+
+func _tick_status_notification(delta:float) -> void:
+	if status_label.text!=fp_status_text:
+		fp_status_text=status_label.text
+		fp_status_remaining=4.0 if not fp_status_text.is_empty() else 0.0
+	else:
+		fp_status_remaining=maxf(0.0,fp_status_remaining-delta)
+	if fp_status_remaining<=0.0:
+		status_label.text=""
+		fp_status_text=""
+	status_label.visible=fp_status_remaining>0.0
 
 func _refresh_navigation_ui() -> void:
 	if not fp_ready:

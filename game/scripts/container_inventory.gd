@@ -393,10 +393,9 @@ func native_station_target(target:String) -> bool:
  return target in ["station_workbench","station_storage","storage_vault","station_supply","station_locker"]
 func sync_station_prompt(nearby:String) -> void:
  if host.get("fp_player")!=null:
-  var target:Node=host.get("fp_target")
-  if target!=null and native_station_target(str(target.get_meta("interaction_id",""))) :
-   host.fp_prompt.text=""
-   if not nearby.is_empty():nearby_button.text+="  ["+host.get_node("/root/DesktopInput").label("interact")+"]"
+  # Desktop uses the same ray-target prompt as doors and seating for every station.
+  nearby_button.hide()
+  host.contextual_button.hide()
  else:
   var world:Node=host.neighborhood
   if world.get("action")!=null:
