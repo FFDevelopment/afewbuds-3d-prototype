@@ -23,6 +23,7 @@ var baseline: Dictionary = {}
 var pending: Dictionary = {}
 var busy := false
 var blocked := false
+var block_reason := ""
 var launched := false
 var generation := 0
 var leaderboard_error := ""
@@ -107,7 +108,7 @@ func request_json(path: String, payload: Dictionary) -> Dictionary:
 	return data
 
 func fingerprint(save: Dictionary) -> String:
-	return JSON.stringify(save, "", true, true).sha256_text()
+	return JSON.stringify(wire_numbers(save), "", true, true).sha256_text()
 
 func set_status(message: String, attention: bool = false) -> void:
 	sync_warning = attention
@@ -148,6 +149,7 @@ func prepare(guest: bool = false, use_cloud: bool = false) -> Dictionary:
 		if not original.is_empty(): write_json("user://career_guest.json", {"save": original, "remote_signature": "", "dirty": false})
 		write_json("user://guest_migrated.json", {"done": true})
 	blocked = false
+	block_reason = ""
 	pending = {}
 	generation += 1
 	if guest:
@@ -179,7 +181,7 @@ func prepare(guest: bool = false, use_cloud: bool = false) -> Dictionary:
 		var cached := read_json(cache_path())
 		if inventory_preview and cached.get("inventory_preview",false):cloud=cached.get("save",{});remote_signature=fingerprint(cloud)
 		if cached.get("dirty", false):
-			if str(cached.get("remote_signature", "")) != remote_signature and fingerprint(cached.get("save", {})) != remote_signature and not use_cloud:
+			if str(cached.get("remote_signature", "")) not in [remote_signature, JSON.stringify(cloud, "", true, true).sha256_text()] and fingerprint(cached.get("save", {})) != remote_signature and not use_cloud:
 				return {"conflict": true, "error": "Another version saved this career. Continue from cloud to keep its progress. Your desktop copy will be backed up."}
 			if use_cloud:
 				write_json(cache_path() + ".backup", cached)
@@ -241,26 +243,15 @@ func flush() -> void:
 	while not pending.is_empty() and not blocked:
 		var outgoing := pending.duplicate(true)
 		pending = {}
-		# Existing API has no compare-and-swap endpoint. Check the exact career
-		# last loaded before uploading, and stop on a known external change.
-		var latest := await request_rpc("afb_get_save", {"p_session_token": session.session_token})
-		if epoch != generation: break
-		if latest.has("error"):
-			if pending.is_empty(): pending = outgoing
-			set_status("Saved locally. Cloud unavailable — retry with F5.", true)
-			break
-		var latest_save: Dictionary = latest.get("save_json", {}) if latest.get("exists", false) else {}
-		if fingerprint(latest_save) != remote_signature and fingerprint(latest_save)!=fingerprint(outgoing):
-			blocked = true
-			if pending.is_empty(): pending = outgoing
-			set_status("Cloud changed in another version. Saved locally; return to sign-in to load cloud.", true)
-			break
+		# The server atomically checks play ownership and revision. JSON text
+		# comparisons are not a reliable substitute for that check.
 		set_status("Saving to AFewBuds cloud…")
 		var result := await request_rpc("afb_save_career", {"p_session_token": session.session_token,"p_play_id":play_id,"p_revision":revision,"p_save_json": outgoing})
 		if epoch != generation: break
 		if result.has("error") or not result.get("ok", false):
 			if pending.is_empty(): pending = outgoing
-			blocked = str(result.get("reason", "")) in ["save_conflict", "client_update_required", "save_schema_newer", "cloud_newer","session_replaced","session_invalid"]
+			block_reason = str(result.get("reason", ""))
+			blocked = block_reason in ["save_conflict", "client_update_required", "save_schema_newer", "cloud_newer","session_replaced","session_invalid"]
 			set_status("Cloud conflict — saved locally. Return to sign-in to load the newer career." if blocked else "Saved locally. Cloud unavailable — retry with F5.", true)
 			break
 		revision=int(result.get("revision",revision+1));last_contact=Time.get_ticks_msec()
@@ -281,6 +272,7 @@ func sign_out() -> void:
 	session.clear()
 	pending = {}
 	blocked = false
+	block_reason = ""
 	if FileAccess.file_exists(SESSION): DirAccess.remove_absolute(ProjectSettings.globalize_path(SESSION))
 
 func new_play_id() -> String:
@@ -300,10 +292,11 @@ func heartbeat() -> void:
 	heartbeat_busy=false
 	if epoch!=generation:return
 	if result.has("error"):return
+	var state:String=str(result.get("state",""))
+	if state not in ["active","handoff","replaced"]:return
 	last_contact=Time.get_ticks_msec()
-	var state:String=str(result.get("state","replaced"))
 	if state=="handoff":handoff_pending=true
-	if state=="replaced":blocked=true;launched=false
+	if state=="replaced":blocked=true;block_reason="session_replaced";launched=false
 	session_event.emit(state)
 func release_play() -> bool:
 	if inventory_preview or session.is_empty():return true

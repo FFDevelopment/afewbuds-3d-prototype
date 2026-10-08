@@ -42,8 +42,8 @@ func show_page(next:String) -> void:
   inventory.button("BACK",func():show_page("home"),body)
   inventory.guide.populate_help(body)
  elif page=="session":
-  inventory.label("Saving your career for the other device..." if cloud_state=="handoff" else ("Connection lost. Gameplay is paused while we verify your active session." if cloud_state=="offline" else "This play session has ended. Your account is active on another device."),body,18)
-  if cloud_state=="replaced":inventory.button("RETURN TO SIGN IN",return_to_sign_in,body,true)
+  inventory.label("Saving your career for the other device..." if cloud_state=="handoff" else ("Connection lost. Gameplay is paused while we verify your active session." if cloud_state=="offline" else ("Cloud saves need attention. Your progress is saved on this device. Return to sign-in to review the cloud save." if cloud_state=="save_conflict" else "This play session is no longer valid. Sign in again to continue from your latest cloud save.")),body,18)
+  if cloud_state in ["replaced","save_conflict"]:inventory.button("RETURN TO SIGN IN",return_to_sign_in,body,true)
  scroll.scroll_vertical=0
 func _process(_delta:float) -> void:
  if OS.has_feature("web"):
@@ -77,7 +77,7 @@ func on_cloud_event(state:String) -> void:
  if state=="active":
   if cloud_locked:cloud_locked=false;host.pause_message.text="Connection restored. Resume when ready.";show_page("home")
   return
- if state not in ["handoff","replaced","offline"]:return
+ if state not in ["handoff","replaced","offline","save_conflict"]:return
  cloud_locked=true
  host._pause_gameplay()
  host.pause_overlay.show();show_page("session")

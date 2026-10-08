@@ -41,6 +41,16 @@ func run():
  check(game.session_paused and menu.cloud_locked,"Lost session verification prevents resuming gameplay")
  menu.on_cloud_event("active");game._resume_gameplay()
  check(not game.session_paused and not menu.cloud_locked,"Verified connection permits explicitly resuming")
+ if desktop:
+  var cloud=root.get_node("AFBCloud")
+  cloud.session={"account_id":"fixture", "session_token":"fixture", "username":"QA"}
+  cloud.pending={"cash":123}
+  cloud.blocked=true;cloud.block_reason="save_conflict"
+  game._on_cloud_status("Cloud conflict — saved locally.")
+  check(menu.cloud_state=="save_conflict" and menu.cloud_locked,"Save conflict is distinct from another active session")
+  check(not cloud.session.is_empty() and not cloud.pending.is_empty(),"Save conflict preserves login and pending progress")
+  cloud.session={};cloud.pending={};cloud.blocked=false;cloud.block_reason=""
+  menu.on_cloud_event("active")
  game._pause_gameplay()
  var probe:=ExitProbe.new();root.add_child(probe);inv.session_menu=probe
  game.cash=1234
