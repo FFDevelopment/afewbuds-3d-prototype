@@ -11,9 +11,14 @@ from updater import ASSET, EXE, REPO, API, InstanceLock, AlreadyRunning, Updater
 def archive(tag, extra=None):
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, 'w') as z:
-        z.writestr(EXE, b'MZ' + tag.encode())
-        if 'BUILD_VERSION.txt' not in (extra or {}): z.writestr('BUILD_VERSION.txt', 'AFewBuds Desktop ' + tag[1:] + '\nSource: fixture\n')
-        for name, value in (extra or {}).items(): z.writestr(name, value)
+        def write(name, value):
+            info = zipfile.ZipInfo('fixture', date_time=(2020, 1, 1, 0, 0, 0))
+            # Preserve hostile names literally: Windows ZipInfo normally normalizes backslashes.
+            info.filename = name
+            z.writestr(info, value)
+        write(EXE, b'MZ' + tag.encode())
+        if 'BUILD_VERSION.txt' not in (extra or {}): write('BUILD_VERSION.txt', 'AFewBuds Desktop ' + tag[1:] + '\nSource: fixture\n')
+        for name, value in (extra or {}).items(): write(name, value)
     return buffer.getvalue()
 
 
