@@ -1,10 +1,10 @@
-name: Build inventory preview
+name: Build expansion test
 on:
   push:
     branches: [experiment/container-inventory]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -72,3 +72,20 @@ jobs:
           path: build/AFewBuds-3D-Prototype-Source.zip
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish playable expansion prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version='${{ steps.release.outputs.version }}'
+          printf 'AFewBuds expansion test. Furniture placement, Chapter 5, physical packing, and inside-only apartment peephole. Test progress saves separately on this device; your live career is unchanged. Character models and map expansion are still in development.\n' > build/TEST_NOTES.txt
+          cp build/TEST_NOTES.txt build/windows/TEST_NOTES.txt
+          cd build/windows
+          zip -qr "../AFewBuds-${version}-Windows.zip" .
+          cd ../..
+          if gh release view "v${version}" >/dev/null 2>&1; then
+            gh release upload "v${version}" "build/AFewBuds-${version}-Windows.zip" --clobber
+          else
+            gh release create "v${version}" "build/AFewBuds-${version}-Windows.zip" --target '${{ github.sha }}' --prerelease --title "AFewBuds expansion test ${version}" --notes-file build/TEST_NOTES.txt
+          fi

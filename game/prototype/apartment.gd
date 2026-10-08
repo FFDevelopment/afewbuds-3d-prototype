@@ -138,7 +138,7 @@ func _input(event: InputEvent) -> void:
 			return
 		if DesktopInput.pressed(event,"visitor") and not _any_modal_open() and not daily_report_pending:
 			_update_target()
-			if fp_target != null and str(fp_target.get_meta("interaction_id", "")) == "station_door":
+			if _can_use_apartment_peephole() and fp_target != null and str(fp_target.get_meta("interaction_id", "")) == "station_door":
 				if customer_waiting and peephole_checked:
 					_open_customer_sale()
 				else:
@@ -453,6 +453,7 @@ func _update_target() -> void:
 		else:
 			var id := str(fp_target.get_meta("interaction_id"))
 			label_text = {"station_locker": "Dealer Storage", "station_workbench": "Packaging bench", "station_storage": "Product storage", "storage_vault": "Storage vault", "station_door": ("Close front door" if neighborhood.door_open else "Open front door") + ("   [ " + DesktopInput.label("visitor") + " ] Answer visitor" if customer_waiting else "   [ " + DesktopInput.label("visitor") + " ] Peephole"), "interior_door": "Open / close door", "inspect_house": "Inspect house", "station_system": "Grow-room controls", "station_supply": "Seeds & fertilizer", "main_light_switch": "Main lights", "floor_lamp": "Floor lamp", "grow_room_light_switch": "Grow-room light"}.get(id, id.replace("_", " ").capitalize())
+			if id=="station_door" and not _can_use_apartment_peephole():label_text="Close front door" if neighborhood.door_open else "Open front door"
 			if id == "interior_door" and fp_target.get_meta("door_controller").name == "HouseEntrance" and not neighborhood.get_node("HouseEntrance").opened and not neighborhood.property_opportunity.touring and not bool(property_opportunity_state.get("relocated",false)) and neighborhood.get_node("HouseEntrance").to_local(fp_player.position).z >= 0.0:
 				label_text = "View house details" if property_offer_unlocked else "House not available yet"
 		fp_prompt.text = "[ " + DesktopInput.label("interact") + " ]   " + label_text

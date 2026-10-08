@@ -10,11 +10,11 @@ var heartbeat_elapsed := 0.0
 # Existing public AFewBuds API configuration; no admin/service-role credentials.
 const BASE := "https://nlrrnhdcjrnfuftyoaqn.supabase.co"
 const API_KEY := "sb_publishable_f8LrZYozO8h2xAvn90L-gw_dZiaUwTY"
-const CONNECTION_NOTE := "Sign in to continue your career. Your cloud career is shared between mobile and desktop."
+const CONNECTION_NOTE := "Test career: imports a copy of your cloud save, then saves only on this device."
 const LEGACY_ACTIVE := "user://afewbuds_3d_prototype_save.json"
 var ACTIVE:String="user://play_runtime_"+str(OS.get_process_id())+".json"
-const SESSION := "user://account_session.json"
-var inventory_preview := false
+const SESSION := "user://expansion_session.json"
+var inventory_preview := true
 var service_url := BASE
 var session: Dictionary = {}
 var remote_signature := ""
@@ -67,7 +67,7 @@ func request_password_reset(identifier: String) -> Dictionary:
 	return {"ok": true, "message": RECOVERY_MESSAGE}
 
 func request_rpc(method: String, payload: Dictionary) -> Dictionary:
-	if inventory_preview and method in ["afb_set_save","afb_leaderboard_report"]:return {"error":"Inventory preview cannot write to live careers."}
+	if inventory_preview and method in ["afb_set_save","afb_save_career","afb_begin_play","afb_play_heartbeat","afb_release_play","afb_leaderboard_report"]:return {"error":"Inventory preview cannot write to live careers."}
 	return await request_json("/rest/v1/rpc/" + method, payload)
 
 func wire_numbers(value: Variant) -> Variant:
@@ -135,7 +135,7 @@ func restore_session() -> Dictionary:
 
 func cache_path() -> String:
 	if career_key=="guest":return "user://career_guest.json"
-	return "user://" + ("career_" if inventory_preview else "shared_career_") + career_key + ".json"
+	return "user://" + ("expansion_career_" if inventory_preview else "shared_career_") + career_key + ".json"
 
 func settings_path() -> String:
 	return "user://desktop_" + career_key + ".json"

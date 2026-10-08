@@ -3595,7 +3595,15 @@ func _load_peephole_texture(path: String) -> Texture2D:
 		return load(path) as Texture2D
 	return null
 
+func _can_use_apartment_peephole() -> bool:
+	if camera==null:return false
+	var p:Vector3=camera.global_position
+	return p.x>-4.95 and p.x<4.95 and p.z>-10.2 and p.z<5.65
+
 func _open_peephole() -> void:
+	if not _can_use_apartment_peephole():
+		status_label.text="Use the peephole from inside the apartment."
+		return
 	peephole_checked = true
 	peephole_panel.visible = true
 	_set_world_controls_visible(false)
