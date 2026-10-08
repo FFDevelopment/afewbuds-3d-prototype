@@ -107,6 +107,8 @@ func _process(delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if not fp_ready or is_instance_valid(DesktopInput.settings) or not DesktopInput.rebinding.is_empty():
 		return
+	if inventory_system.furniture.handle_placement_input(event):
+		get_viewport().set_input_as_handled();return
 	if event.is_pressed() and not event.is_echo():
 		if DesktopInput.is_back(event):
 			if not _close_active_panel():
@@ -438,6 +440,7 @@ func _target_from_ray(origin: Vector3, direction: Vector3) -> Area3D:
 	return area if not id.is_empty() else null
 
 func _update_target() -> void:
+	if inventory_system.furniture.is_placing():fp_target=null;return
 	fp_target = _target_from_ray(camera.global_position, -camera.global_basis.z)
 	fp_prompt.text = ""
 	fp_control = neighborhood.house_controls.nearby() if fp_target == null else ""

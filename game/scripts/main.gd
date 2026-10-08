@@ -4835,7 +4835,7 @@ func _context_action() -> void:
 
 func _any_modal_open() -> bool:
 	if inventory_system!=null and inventory_system.packing!=null and inventory_system.packing.is_open():return true
-	if inventory_system!=null and inventory_system.furniture!=null and inventory_system.furniture.is_open():return true
+	if inventory_system!=null and inventory_system.furniture!=null and inventory_system.furniture.blocks_movement():return true
 	if inventory_system!=null and inventory_system.is_open():return true
 	if neighborhood!=null and neighborhood.location_ops!=null and neighborhood.location_ops.is_open():return true
 	if neighborhood!=null and neighborhood.property_opportunity!=null and neighborhood.property_opportunity.is_open(): return true
