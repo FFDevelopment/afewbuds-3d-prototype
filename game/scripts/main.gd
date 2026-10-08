@@ -771,6 +771,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_refresh_door_alert()
 	_sync_packing_bench_visuals()
+	if inventory_system != null and inventory_system.furniture != null and inventory_system.furniture.equipment_world != null:
+		inventory_system.furniture.equipment_world.sync_packing_displays()
 	_update_room_status_panel()
 	_update_supply_shelf_display()
 	var now_msec: int = Time.get_ticks_msec()
@@ -4198,7 +4200,7 @@ func _build_bag_minigame() -> void:
 	bag_minigame_panel = _make_full_panel(34, 132, -34, -72)
 	var root: VBoxContainer = _panel_root(bag_minigame_panel, "BAGGING", _close_bag_minigame)
 	bag_instruction = Label.new()
-	bag_instruction.text = "Drag buds from the tray into the open bag. Fill the target amount, then seal it."
+	bag_instruction.text = "Drag buds from the tray into the bag, weigh them on the scale and seal. Upgraded benches keep the same strain ready for the next bag."
 	bag_instruction.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(bag_instruction)
 	bag_weight_label = Label.new()
@@ -4268,8 +4270,8 @@ func _start_trim_minigame(strain_name: String) -> void:
 	if amount <= 0:
 		return
 	trim_active_strain = strain_name
-	trim_harvest_amount = amount
-	trim_total_units = mini(amount, 10)
+	trim_harvest_amount = amount if _current_packing_bench_tier() >= 2 and not tutorial_active else mini(amount, 10)
+	trim_total_units = mini(trim_harvest_amount, 10)
 	trim_cut_units = 0
 	trim_continue_button.visible = false
 	trim_scissors_picked = false
@@ -4403,9 +4405,11 @@ func _seal_current_bag() -> void:
 	if bag_active_strain.is_empty() or bag_current_units < bag_target_units:
 		return
 	var available: int = int(trimmed_inventory.get(bag_active_strain, 0))
-	var moved: int = mini(available, bag_target_units)
-	if moved <= 0:
+	if available < bag_target_units:
+		status_label.text = "Packing stock changed. Reopen this strain to weigh the available amount."
+		_close_bag_minigame()
 		return
+	var moved: int = bag_target_units
 
 	trimmed_inventory[bag_active_strain] = available - moved
 	_add_inventory(bagged_inventory, bag_active_strain, moved)
@@ -4414,7 +4418,7 @@ func _seal_current_bag() -> void:
 	_save_game()
 
 	var remaining: int = int(trimmed_inventory.get(bag_active_strain, 0))
-	if bagging_level >= 3 and not tutorial_active and remaining > 0:
+	if _current_packing_bench_tier() >= 2 and not tutorial_active and remaining > 0:
 		bag_available_units = remaining
 		bag_current_units = 0
 		bag_target_units = mini(_packing_batch_size(), remaining)
@@ -12147,10 +12151,22 @@ func _consume_fertilizer() -> bool:
 	fertilizer_units-=1
 	if inventory_system!=null:inventory_system.revision+=1
 	return true
+func _current_packing_bench_tier() -> int:
+	if inventory_system != null and inventory_system.furniture != null:
+		var packing_id: String = str(inventory_system.packing_return)
+		if packing_id.is_empty():
+			packing_id = str(inventory_system.operation()) + ":packing"
+		var model: RefCounted = inventory_system.furniture.model
+		var asset: String = model.container_item(packing_id)
+		if not asset.is_empty() and model.state.items.has(asset):
+			var sku: String = str(model.state.items[asset].get("sku", "bench_1"))
+			return maxi(1, int(model.CATALOG.get(sku, {}).get("tier", 1)))
+	return maxi(1, bagging_level)
+
 func _packing_drop_size() -> int:
-	return 1 if tutorial_active else [1,2,4][clampi(bagging_level-1,0,2)]
+	return 1 if tutorial_active else [1,2,4][clampi(_current_packing_bench_tier()-1,0,2)]
 func _packing_batch_size() -> int:
-	return 3 if tutorial_active else [3,6,12][clampi(bagging_level-1,0,2)]
+	return 3 if tutorial_active or _current_packing_bench_tier() < 2 else 7
 
 func _guide_protects_plants() -> bool:
 	var guide:Dictionary=location_state.get("first_day_guide",{})
