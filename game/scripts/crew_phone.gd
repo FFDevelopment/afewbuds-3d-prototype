@@ -280,6 +280,12 @@ func _complete_sit_tracks(avatar: Node3D) -> void:
 			if track_type not in [Animation.TYPE_ROTATION_3D,Animation.TYPE_POSITION_3D,Animation.TYPE_SCALE_3D]:continue
 			if idle.track_get_key_count(track)==0:continue
 			var track_path:NodePath=idle.track_get_path(track)
+			# Use the arms-down idle pose instead of the sit clip's T-pose arm keys.
+			var arm_path:String=str(track_path).to_lower()
+			if arm_path.contains("upperarm") or arm_path.contains("lowerarm") or arm_path.contains("hand_"):
+				for existing in range(completed.get_track_count()-1,-1,-1):
+					if completed.track_get_type(existing)==track_type and completed.track_get_path(existing)==track_path:
+						completed.remove_track(existing)
 			var already:bool=false
 			for existing in range(completed.get_track_count()):
 				if completed.track_get_type(existing)==track_type and completed.track_get_path(existing)==track_path:
