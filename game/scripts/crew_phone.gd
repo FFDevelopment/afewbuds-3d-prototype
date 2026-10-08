@@ -266,6 +266,34 @@ func update(delta: float) -> void:
 		alert(worker,"fertilizer",property_supply_empty(assignment(worker),"fertilizer"),"Fertilizer is out. I'll keep watering existing plants, but you'll need to restock fertilizer at Central Market.")
 
 func malik_instance() -> Node3D:return character_instance("Malik")
+func _complete_sit_tracks(avatar: Node3D) -> void:
+	for player in avatar.find_children("*","AnimationPlayer",true,false):
+		var idle: Animation=player.get_animation("idle")
+		var sit: Animation=player.get_animation("sit")
+		if idle==null or sit==null:continue
+		var lib: AnimationLibrary=player.get_animation_library("")
+		if lib==null:continue
+		var completed: Animation=sit.duplicate(true)
+		var added:int=0
+		for track in range(idle.get_track_count()):
+			var track_type:int=idle.track_get_type(track)
+			if track_type not in [Animation.TYPE_ROTATION_3D,Animation.TYPE_POSITION_3D,Animation.TYPE_SCALE_3D]:continue
+			if idle.track_get_key_count(track)==0:continue
+			var track_path:NodePath=idle.track_get_path(track)
+			var already:bool=false
+			for existing in range(completed.get_track_count()):
+				if completed.track_get_type(existing)==track_type and completed.track_get_path(existing)==track_path:
+					already=true
+					break
+			if already:continue
+			var next:int=completed.add_track(track_type)
+			completed.track_set_path(next,track_path)
+			completed.track_insert_key(next,0.0,idle.track_get_key_value(track,0))
+			added+=1
+		if added>0:
+			lib.remove_animation("sit")
+			lib.add_animation("sit",completed)
+
 func character_instance(name: String) -> Node3D:
 	if name not in ["Malik","Rod","Kobi"]:return Node3D.new()
 	var scene: PackedScene=character_scenes.get(name)
@@ -276,6 +304,7 @@ func character_instance(name: String) -> Node3D:
 		character_scenes[name]=scene
 	var instance: Node3D=scene.instantiate()
 	instance.set_meta("character",name)
+	_complete_sit_tracks(instance)
 	var material:=StandardMaterial3D.new()
 	material.albedo_texture=load("res://assets/characters/"+name+"_BaseColor.png")
 	material.roughness=.83;material.cull_mode=BaseMaterial3D.CULL_DISABLED
