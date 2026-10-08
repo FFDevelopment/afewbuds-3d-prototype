@@ -226,10 +226,26 @@ func update(delta: float) -> void:
 		var relax: bool=not couch.is_empty() and not host.customer_waiting and not world.couch_seated
 		var seat: Vector3=idle_spot(true,false)
 		var before: Vector3=manager_node.position
-		var destination: Vector3=seat if relax else (Vector3(1.45,0,4.45) if host.customer_waiting else idle_spot(true,true))
-		manager_node.position=manager_node.position.move_toward(destination,delta*2.0)
-		var seated: bool=relax and Vector2(manager_node.position.x-seat.x,manager_node.position.z-seat.z).length()<0.1
-		if seated:manager_node.rotation.y=float(couch.get("yaw",0.0))
+		var already_seated: bool=bool(manager_node.get_meta("seated",false))
+		var previous_seat: Vector3=manager_node.get_meta("idle_seat_position",Vector3.ZERO)
+		var same_seat: bool=already_seated and str(manager_node.get_meta("idle_seat_id",""))==str(couch.get("id","")) and previous_seat.distance_to(seat)<0.03
+		var seated: bool=relax and same_seat
+		if not seated:
+			# Movement is horizontal. Never chase the zero-height navigation
+			# target after the sitting pose lowers a character's visual root.
+			manager_node.position.y=0.0
+			var destination: Vector3=seat if relax else (Vector3(1.45,0,4.45) if host.customer_waiting else idle_spot(true,true))
+			manager_node.position=manager_node.position.move_toward(destination,delta*2.0)
+			var arrived: bool=Vector2(manager_node.position.x-seat.x,manager_node.position.z-seat.z).length()<0.12
+			seated=relax and arrived and (not already_seated or same_seat)
+		if seated:
+			manager_node.position.x=seat.x
+			manager_node.position.z=seat.z
+			manager_node.rotation.y=float(couch.get("yaw",0.0))
+			manager_node.set_meta("idle_seat_id",str(couch.get("id","")))
+			manager_node.set_meta("idle_seat_position",seat)
+		else:
+			manager_node.set_meta("idle_seat_id","")
 		seated_pose(manager_node,seated)
 		animate_manager(Vector3(manager_node.position.x-before.x,0,manager_node.position.z-before.z),seated,delta)
 		if host.customer_waiting and not host.customer_answered and not host.customer_departing and can_handle() and not manager_attempted and manager_node.position.distance_to(Vector3(1.45,0,4.45))<0.2 and str(host.current_customer.get("special","")).is_empty():
@@ -323,7 +339,7 @@ func idle_couch() -> Dictionary:
 func idle_spot(manager: bool=false,approach: bool=false) -> Vector3:
 	var couch: Dictionary=idle_couch()
 	if couch.is_empty():
-		# Neutral standing area: no furniture means no sitting in empty space.
+		# No apartment couch means crew stay standing in a clear idle area.
 		return Vector3(0.75 if manager else -0.75,0.0,1.25)
 	var second: bool=manager and host.packing_employee_hired
 	var offset: Vector3=Vector3(0.615 if second else -0.375,0.0,-1.10 if approach else -0.165)
@@ -334,14 +350,22 @@ func update_seating(_delta: float) -> void:
 	if worker!=null and worker.visible:
 		var idle: bool=host.production_worker_pending_action.is_empty() and (not host.packing_employee_active or host.production_worker_task=="Waiting for work" or host.lay_low_active)
 		var couch: Dictionary=idle_couch()
-		var at: Vector3=idle_spot(false,true)
 		var seat: Vector3=idle_spot(false,false)
-		var close_approach: bool=Vector2(worker.position.x-at.x,worker.position.z-at.z).length()<0.15
-		var close_seat: bool=Vector2(worker.position.x-seat.x,worker.position.z-seat.z).length()<0.15
-		var seated: bool=idle and not couch.is_empty() and (close_approach or close_seat)
+		var already_seated: bool=bool(worker.get_meta("seated",false))
+		var previous_seat: Vector3=worker.get_meta("idle_seat_position",Vector3.ZERO)
+		var same_seat: bool=already_seated and str(worker.get_meta("idle_seat_id",""))==str(couch.get("id","")) and previous_seat.distance_to(seat)<0.03
+		var arrived: bool=Vector2(worker.position.x-seat.x,worker.position.z-seat.z).length()<0.15
+		var seated: bool=idle and not couch.is_empty() and not world.couch_seated and arrived and (not already_seated or same_seat)
 		if seated:
-			worker.position=seat
+			# Hold the cushion position. Navigation must not pull us back
+			# toward the table/front-of-couch approach point.
+			worker.position.x=seat.x
+			worker.position.z=seat.z
 			worker.rotation.y=float(couch.get("yaw",0.0))
+			worker.set_meta("idle_seat_id",str(couch.get("id","")))
+			worker.set_meta("idle_seat_position",seat)
+		else:
+			worker.set_meta("idle_seat_id","")
 		worker.set_meta("seated",seated)
 		if malik_worker!=null:seated_pose(malik_worker,seated)
 		else:
@@ -349,7 +373,6 @@ func update_seating(_delta: float) -> void:
 				var leg: Node3D=worker.get_node_or_null(part)
 				if leg!=null:leg.rotation.x=-PI/2 if seated else 0.0
 			worker.position.y=-0.57 if seated else 0.0
-
 func packaged_stock() -> int:
 	if host.inventory_system!=null:return int(host.inventory_system.at_property("apartment",packaged_stock_local))
 	return packaged_stock_local()
