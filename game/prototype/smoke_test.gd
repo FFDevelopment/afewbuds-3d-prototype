@@ -125,14 +125,18 @@ func run() -> void:
 	await frames()
 	check(not game.fp_player.enabled, "dealer storage locks walking")
 	game.cash = 10000
-	game.dealer_locker_level = 0
-	game.neighborhood.location_ops.installing=true
-	game._buy_dealer_locker_upgrade()
-	game.neighborhood.location_ops.installing=false
-	check(game.dealer_locker_level == 1 and game._dealer_locker_capacity() == 100 and game.cash == 10000, "paid locker installation does not charge twice and holds 100g")
+	var equipment=game.inventory_system.furniture
+	var model=equipment.model
+	var locker:String=model.own("dealer_1")
+	check(not locker.is_empty() and game.cash==9700,"Locker purchase charges once")
+	check(model.place(locker,"apartment",Vector3(3.9,0,-2.2),90),"Owned locker places")
+	equipment.sync_world();await frames()
+	check(game.dealer_locker_level == 1 and game._dealer_locker_capacity() == 100 and game.cash == 9700, "Placed locker holds 100g without another charge")
+
 	game._use_target()
 	check(game.inventory_system.is_open(), "Purchased dealer container opens with E")
-	game.storage_level = 5
+	game.inventory_system.furniture.model.state.items.legacy_storage.sku="storage_5"
+	game.inventory_system.furniture.sync_world()
 	game.products["Purple Dream"]["stock"] = 150
 	game.locker_weed.clear()
 	var moved: int = game._dealer_locker_add_from_storage("Purple Dream", 999999)
@@ -143,43 +147,29 @@ func run() -> void:
 	check(game.inventory_system.confirm != null, "dealer container provides quantity transfer controls")
 	game._close_active_panel()
 	check(not game.inventory_system.is_open(), "Escape closes dealer storage")
+	game.locker_weed.clear()
 	for tier in range(2, 5):
-		game.neighborhood.location_ops.installing=true
-		game._buy_dealer_locker_upgrade()
-		game.neighborhood.location_ops.installing=false
-		check(game.dealer_locker_level == tier and game._dealer_locker_capacity() == tier * 100, "locker upgrades sequentially to tier %d" % tier)
-	check(game.premium_dealer_locker_root.visible and not game.get_node("LockerBody").visible, "premium locker replaces basic locker at tier III")
-	game._use_target()
-	await create_timer(0.4).timeout
-	check(game.inventory_system.is_open() and game.premium_dealer_locker_open, "premium locker doors open before first-person menu")
+		check(model.upgrade(locker),"Empty locker upgrades to tier %d"%tier)
+		equipment.sync_world()
+		check(game.dealer_locker_level == tier and game._dealer_locker_capacity() == tier * 100, "locker capacity follows owned tier %d" % tier)
+	await frames()
+	check(equipment.equipment_world.rendered.has(locker),"Upgraded locker remains a physical owned item")
+	game.inventory_system.open_container("apartment:dealer")
 	game._pause_gameplay()
 	check(not game.inventory_system.is_open(), "pause hides locker controls")
 	game._resume_gameplay()
-	check(game.inventory_system.is_open(), "resume restores locker in first-person view")
-	game._close_dealer_storage_panel()
-	game._use_target()
-	game._pause_gameplay()
-	await create_timer(0.4).timeout
-	check(not game.inventory_system.is_open() and not game.fp_station_opening, "pause cancels pending locker opening")
-	game._resume_gameplay()
-	game.grower_level = 6
-	game.cash = 10000
-	game.bagging_level = 1
-	game.neighborhood.location_ops.installing=true
-	game._buy_supply("Bagging Bench III")
-	check(game.bagging_level == 1 and game.cash == 10000, "bench III requires bench II")
-	game._buy_supply("Bagging Bench II")
-	var bench_cash: int = game.cash
-	game.neighborhood.location_ops.installing=true
-	game._buy_supply("Bagging Bench III")
-	check(game.bagging_level == 3 and game.cash == bench_cash - 850, "bench III purchase charges 850")
-	game.neighborhood.location_ops.installing=false
-	await frames()
-	check(game.get_node("BenchIIIBackBoard").visible and not game.get_node("BenchLowerShelf").visible, "bench III replaces old lower furniture")
-	check(game.get_node("BenchIIIBackBoard").has_node("PrototypeCollision"), "newly purchased bench has collision")
-	var collider_count: int = game.fp_collisions.size()
-	game._apply_visual_upgrades()
-	check(game.fp_collisions.size() == collider_count, "repeated upgrades do not duplicate collision")
+	game.inventory_system.close()
+	game.cash=10000
+	game.untrimmed_inventory.clear();game.trimmed_inventory.clear();game.bagged_inventory.clear()
+	check(model.upgrade("legacy_packing") and model.upgrade("legacy_packing"),"Empty bench upgrades to tier III")
+	equipment.sync_world();await frames()
+	check(game.bagging_level==3,"Owned bench tier drives packing")
+	var bench_root:Node3D=equipment.equipment_world.rendered.legacy_packing
+	check(not bench_root.find_children("*","StaticBody3D",true,false).is_empty(),"Upgraded bench has collision")
+	var collider_count:int=bench_root.find_children("*","StaticBody3D",true,false).size()
+	equipment.sync_world()
+	check(bench_root.find_children("*","StaticBody3D",true,false).size()==collider_count,"Repeated sync does not duplicate collision")
+
 	game.trimmed_inventory["Purple Dream"] = 17
 	var bags_before: int = game.bagged_inventory.get("Purple Dream", 0)
 	aim(Vector3(1.8, 0.08, 0.78), Vector3(3.25, 1.35, 0.78))
@@ -207,23 +197,17 @@ func run() -> void:
 	check(counter.position.x - counter.mesh.size.x / 2 > frame.position.x + frame.mesh.size.x / 2, "kitchen clears grow-room door frame")
 	check(game.get_node("ScaleBody").position.x - game.get_node("ScaleBody").mesh.size.x / 2 >= game.get_node("BenchTop").position.x - game.get_node("BenchTop").mesh.size.x / 2, "scale sits inside tabletop front edge")
 	check(is_equal_approx(game.get_node("PackingScaleText").rotation_degrees.y, -90), "scale display faces player")
-	game.storage_level = 4
-	game._apply_visual_upgrades()
-	check(game.storage_vault.position.is_equal_approx(Vector3(-4.33, 0, -0.30)), "vault anchor remains unchanged")
-	game.storage_level = 5
-	game._apply_visual_upgrades()
-	check(game.hidden_stash_interior_root.position.is_equal_approx(Vector3(-4.69, 0, -0.30)), "stash moves toward wall without moving along it")
 	aim(Vector3(-2.3, 0.08, -0.3), Vector3(-3.95, 1.3, -0.3))
-	game._open_storage_panel()
-	check(game.fp_station_opening, "stash animation blocks movement")
+	game.inventory_system.open_container("apartment:storage")
+	check(game.inventory_system.is_open(),"Owned storage remains reachable")
 	game._pause_gameplay()
-	await create_timer(0.35).timeout
-	check(not game.inventory_system.is_open(), "pause cancels pending stash menu")
+	check(not game.inventory_system.is_open(),"Pause hides owned storage")
 	game._resume_gameplay()
-	game._open_storage_panel()
-	await create_timer(0.35).timeout
-	check(game.inventory_system.is_open(), "stash opens normally after resume")
-	game._close_storage_panel()
+	game.inventory_system.close()
+	game.inventory_system.open_container("apartment:storage")
+	check(game.inventory_system.is_open(),"Owned storage opens after resume")
+	game.inventory_system.close()
+
 	game.seed_inventory.clear()
 	for seed_name in game.SEED_ORDER:
 		game.seed_inventory[seed_name] = 1

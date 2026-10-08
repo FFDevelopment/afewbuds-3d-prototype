@@ -1964,11 +1964,14 @@ func _empty_plant_slot() -> Dictionary:
 	return {"strain": "", "stage": -1, "growth": 0.0, "water": 0.0, "health": 0.0, "fertilizer": 0.0, "dead": false}
 
 func _ensure_tent_capacity() -> void:
-	var target_slots: int = clampi(grow_tent_count, 1, 3) * 3
-	while plant_slots.size() < target_slots:
-		plant_slots.append(_empty_plant_slot())
-	while plant_slots.size() > target_slots:
-		plant_slots.pop_back()
+	var equipment:Dictionary=location_state.get("furniture_v1",{})
+	if int(equipment.get("schema",1))>=2:
+		for item in equipment.get("items",{}).values():
+			for slot in item.get("slots",[]):
+				while plant_slots.size()<=int(slot):plant_slots.append(_empty_plant_slot())
+		return
+	var target_slots:int=maxi(plant_slots.size(),maxi(1,grow_tent_count)*3)
+	while plant_slots.size()<target_slots:plant_slots.append(_empty_plant_slot())
 
 func _build_grow_expansion_slots() -> void:
 	_build_grow_slot_marker(2, Vector3(-3.20, 0.055, -8.95))
@@ -1976,6 +1979,7 @@ func _build_grow_expansion_slots() -> void:
 	_sync_grow_expansion_visuals()
 
 func _sync_grow_expansion_visuals() -> void:
+	if inventory_system!=null and inventory_system.furniture!=null and int(inventory_system.furniture.model.state.get("schema",1))>=2:return
 	_ensure_tent_capacity()
 	for slot_number in [2, 3]:
 		var installed: bool = grow_tent_count >= slot_number
@@ -2098,9 +2102,17 @@ func _total_seed_inventory() -> int:
 	return total
 
 func _supply_seed_capacity() -> int:
+	if inventory_system!=null and inventory_system.furniture!=null:
+		var id:String=inventory_system.operation()+":supply"
+		if inventory_system.furniture.model.container_item(id).is_empty():return 0
+		return inventory_system.capacity(id,"seed|Street Green")
 	return SUPPLY_SEED_CAPACITY_BY_LEVEL[clampi(supply_shelf_level, 1, 3)]
 
 func _supply_fertilizer_capacity() -> int:
+	if inventory_system!=null and inventory_system.furniture!=null:
+		var id:String=inventory_system.operation()+":supply"
+		if inventory_system.furniture.model.container_item(id).is_empty():return 0
+		return inventory_system.capacity(id,"fertilizer")
 	return SUPPLY_FERTILIZER_CAPACITY_BY_LEVEL[clampi(supply_shelf_level, 1, 3)]
 
 func _supply_can_add_seeds(amount: int) -> bool:
@@ -3044,6 +3056,9 @@ func _update_all_plant_visuals() -> void:
 		_update_plant_visual(slot_index)
 
 func _update_plant_visual(slot_index: int) -> void:
+	if inventory_system!=null and inventory_system.furniture!=null and not inventory_system.furniture.model.can_plant(slot_index):
+		if slot_index<plant_visuals.size():plant_visuals[slot_index].hide()
+		return
 	if slot_index < 0 or slot_index >= plant_visuals.size():
 		return
 	var root: Node3D = plant_visuals[slot_index]
@@ -4940,6 +4955,7 @@ func _refresh_grow_panel() -> void:
 				row.add_child(hint)
 
 func _plant_seed(slot_index: int, strain_name: String, use_backpack: bool = true) -> void:
+	if inventory_system!=null and inventory_system.furniture!=null and not inventory_system.furniture.model.can_plant(slot_index):return
 	if inventory_system!=null and inventory_system.furniture!=null and not inventory_system.furniture.model.can_plant(slot_index):
 		status_label.text="Place the grow tent before planting."
 		return
@@ -4962,6 +4978,7 @@ func _plant_seed(slot_index: int, strain_name: String, use_backpack: bool = true
 	_refresh_grow_panel()
 
 func _water_plant(slot_index: int) -> void:
+	if inventory_system!=null and inventory_system.furniture!=null and not inventory_system.furniture.model.can_plant(slot_index):return
 	if tutorial_active and slot_index != tutorial_slot:
 		status_label.text = "Use the plant you just planted. SHOW ME selects the right pot."
 		return
@@ -4976,7 +4993,7 @@ func _water_plant(slot_index: int) -> void:
 	water = clampf(water + 42.0, 0.0, 100.0)
 	slot["water"] = water
 	plant_slots[slot_index] = slot
-	_charge_water_use(1)
+	_charge_water_use(1,slot_index)
 	_increment_advancement_stat("waters")
 	_tutorial_record("water", slot_index)
 	_save_game()
@@ -4984,6 +5001,7 @@ func _water_plant(slot_index: int) -> void:
 	_refresh_grow_panel()
 
 func _fertilize_plant(slot_index: int) -> void:
+	if inventory_system!=null and inventory_system.furniture!=null and not inventory_system.furniture.model.can_plant(slot_index):return
 	if tutorial_active and slot_index != tutorial_slot:
 		status_label.text = "Use the plant you just planted. SHOW ME selects the right pot."
 		return
@@ -5040,8 +5058,8 @@ func _stage_from_growth(growth: float) -> int:
 		return 1
 	return 0
 
-func _plant_growth_settings(offline: bool) -> Dictionary:
-	return {
+func _plant_growth_settings(offline: bool, slot_index:int = -1) -> Dictionary:
+	var settings:Dictionary = {
 		"growth_seconds": GROWTH_SECONDS_TO_READY,
 		"water_decay": WATER_DECAY_PER_SECOND,
 		"health_loss": DRY_HEALTH_LOSS_PER_SECOND,
@@ -5053,16 +5071,25 @@ func _plant_growth_settings(offline: bool) -> Dictionary:
 		"auto_water": auto_water_unlocked and not offline
 	}
 
+	if inventory_system!=null and inventory_system.furniture!=null:
+		var model=inventory_system.furniture.model
+		if slot_index>=0:return model.growth_settings(slot_index,settings,offline)
+		settings["per_slot"]=[];settings["care_slots"]=[]
+		for i in range(plant_slots.size()):
+			settings.per_slot.append(model.growth_settings(i,settings,offline))
+			settings.care_slots.append(model.slot_property(i)==inventory_system.operation())
+	return settings
+
 func _update_plant_over_time(slot_index: int, elapsed_seconds: float) -> void:
 	if _simulation_blocked() or slot_index < 0 or slot_index >= plant_slots.size():
 		return
 	var before_water: float = float(plant_slots[slot_index].get("water", 0.0))
 	var before_stage: int = int(plant_slots[slot_index].get("stage", -1))
 	var before_dead: bool = bool(plant_slots[slot_index].get("dead", false))
-	plant_slots[slot_index] = PlantGrowth.advance(plant_slots[slot_index], elapsed_seconds, _plant_growth_settings(false))
+	plant_slots[slot_index] = PlantGrowth.advance(plant_slots[slot_index], elapsed_seconds, _plant_growth_settings(false,slot_index))
 	var after_water: float = float(plant_slots[slot_index].get("water", 0.0))
-	if auto_water_unlocked and before_stage >= 0 and before_stage < 3 and not before_dead and after_water > before_water + 0.01:
-		_charge_water_use(1)
+	if bool(_plant_growth_settings(false,slot_index).auto_water) and before_stage >= 0 and before_stage < 3 and not before_dead and after_water > before_water + 0.01:
+		_charge_water_use(1,slot_index)
 	_update_plant_visual(slot_index)
 
 func _offline_crops_enabled() -> bool:
@@ -5084,7 +5111,7 @@ func _simulate_offline_plants(elapsed_seconds: float, worker_care: bool = false)
 	away_worker_next_service = float(result["service_in"])
 	var offline_waterings: int = maxi(0, int(result["waterings"]))
 	if offline_waterings > 0:
-		_charge_water_use(offline_waterings)
+		for watered_slot in result.get("water_by_slot",{}):_charge_water_use(int(result.water_by_slot[watered_slot]),int(watered_slot))
 	var matured: int = 0
 	var died: int = 0
 	var growing: int = 0
@@ -5526,6 +5553,7 @@ func _production_worker_find_seed() -> String:
 
 
 func _assign_production_worker_task() -> void:
+	if inventory_system!=null and not inventory_system.worker_equipment_ready():production_worker_pending_action="";production_worker_task="Equipment unavailable";return
 	if not packing_employee_hired or not packing_employee_active:
 		return
 	if not production_worker_pending_action.is_empty():
@@ -5568,7 +5596,7 @@ func _assign_production_worker_task() -> void:
 		var auto_seed: String = _production_worker_find_seed()
 		if not auto_seed.is_empty():
 			for slot_index in range(plant_slots.size()):
-				if int(plant_slots[slot_index].get("stage", -1)) < 0:
+				if int(plant_slots[slot_index].get("stage", -1)) < 0 and (inventory_system==null or inventory_system.furniture==null or inventory_system.furniture.model.can_plant(slot_index)):
 					_set_production_worker_task("plant", "grow", slot_index, auto_seed, "Planting %s" % auto_seed)
 					return
 
@@ -5578,6 +5606,7 @@ func _assign_production_worker_task() -> void:
 
 
 func _execute_production_worker_action() -> void:
+	if inventory_system!=null and not inventory_system.worker_equipment_ready():production_worker_pending_action="";return
 	if _simulation_blocked():
 		return
 	var action_id: String = production_worker_pending_action
@@ -5597,7 +5626,7 @@ func _execute_production_worker_action() -> void:
 				slot["water"] = 100.0
 				slot["health"] = minf(100.0, float(slot.get("health", 100.0)) + 2.0)
 				plant_slots[slot_index] = slot
-				_charge_water_use(1)
+				_charge_water_use(1,slot_index)
 				_update_plant_visual(slot_index)
 		"fertilize":
 			if fertilizer_units > 0 and slot_index >= 0 and slot_index < plant_slots.size():
@@ -5882,10 +5911,18 @@ func _finalize_daily_power_bill(show_feedback: bool) -> void:
 	lifetime_power_cost += bill
 	current_day_power_cost = 0.0
 
-func _charge_water_use(count: int = 1) -> void:
+func _charge_water_use(count: int = 1, slot_index:int = -1) -> void:
 	if count <= 0:
 		return
 	if neighborhood!=null and neighborhood.location_ops!=null:
+		if slot_index>=0 and inventory_system!=null and inventory_system.furniture!=null:
+			var property:String=inventory_system.furniture.model.slot_property(slot_index)
+			if property in ["apartment","house"]:
+				var ledger:Dictionary=neighborhood.location_ops.utility_state(property)
+				ledger.water_uses=int(ledger.get("water_uses",0))+count
+				ledger.today_water=float(ledger.get("today_water",0.0))+WATER_COST_PER_WATERING*count
+				neighborhood.location_ops._sync_legacy_utility_totals()
+				return
 		neighborhood.location_ops.charge_water_use(count)
 		return
 	current_day_water_uses += count
@@ -5936,6 +5973,10 @@ func _roman(value: int) -> String:
 		_: return str(value)
 
 func _dealer_locker_capacity() -> int:
+	if inventory_system!=null and inventory_system.furniture!=null:
+		var id:String=inventory_system.operation()+":dealer"
+		if inventory_system.furniture.model.container_item(id).is_empty():return 0
+		return inventory_system.capacity(id,"product|Street Green")
 	var level: int = clampi(dealer_locker_level, 0, DEALER_LOCKER_CAPACITY_BY_LEVEL.size() - 1)
 	return DEALER_LOCKER_CAPACITY_BY_LEVEL[level]
 
@@ -5955,6 +5996,8 @@ func _dealer_locker_next_cost() -> int:
 	return DEALER_LOCKER_COST_BY_LEVEL[next_level]
 
 func _buy_dealer_locker_upgrade() -> void:
+	if true and inventory_system!=null and inventory_system.furniture!=null:
+		inventory_system.furniture.shop("equipment");return
 	if neighborhood!=null and neighborhood.location_ops!=null and not neighborhood.location_ops.installing:
 		status_label.text="Order dealer storage at Central Market, then install it at your computer."
 		return
@@ -6170,6 +6213,7 @@ func _simulate_offline_business(_elapsed_seconds: float) -> void:
 	return
 
 func _harvest_plant(slot_index: int) -> void:
+	if inventory_system!=null and inventory_system.furniture!=null and not inventory_system.furniture.model.can_plant(slot_index):return
 	if not _tutorial_can_do("harvest"):
 		return
 	if slot_index < 0 or slot_index >= plant_slots.size():
@@ -6181,11 +6225,14 @@ func _harvest_plant(slot_index: int) -> void:
 	var strain_name: String = str(slot.get("strain", "Unknown"))
 	var health: float = float(slot.get("health", 100.0))
 	var harvest_amount: int = _fictional_harvest_amount(strain_name)
-	if tent_level >= 2:
+	if (inventory_system.furniture.model.tent_quality(slot_index) if inventory_system!=null else tent_level) >= 2:
 		harvest_amount = maxi(1, int(round(float(harvest_amount) * 1.25)))
 	if health < 60.0:
 		harvest_amount = maxi(1, int(round(float(harvest_amount) * 0.75)))
-	_add_inventory(untrimmed_inventory, strain_name, harvest_amount)
+	if inventory_system!=null and inventory_system.furniture!=null:
+		if not inventory_system.equipment_harvest(slot_index,strain_name,harvest_amount):
+			status_label.text="Make room in your backpack or place an empty packing bench before harvesting.";return
+	else:_add_inventory(untrimmed_inventory, strain_name, harvest_amount)
 	_increment_advancement_stat("harvests")
 	_tutorial_record("harvest", slot_index, strain_name)
 	plant_slots[slot_index] = {"strain": "", "stage": -1, "growth": 0.0, "water": 0.0, "health": 0.0, "fertilizer": 0.0, "dead": false}
@@ -8348,7 +8395,7 @@ func _story_chapter_two_complete() -> bool:
 		and int(advancement_stats.get("customers_known", 0)) >= 4 \
 		and reputation >= 50 \
 		and _launched_product_count() >= 2 \
-		and grow_tent_count >= 2 \
+		and maxi(grow_tent_count,int(location_state.get("furniture_v1",{}).get("progress",{}).get("grow_tent_count",0))) >= 2 \
 		and grower_level >= 5 \
 		and brand_level >= 3 \
 		and lifetime_revenue >= 2000
@@ -8368,12 +8415,12 @@ func _story_chapter_three_complete() -> bool:
 
 func _story_chapter_four_apartment_complete() -> bool:
 	return _story_chapter_three_complete() \
-		and grow_tent_count >= 3 \
-		and bagging_level >= 3
+		and maxi(grow_tent_count,int(location_state.get("furniture_v1",{}).get("progress",{}).get("grow_tent_count",0))) >= 3 \
+		and maxi(bagging_level,int(location_state.get("furniture_v1",{}).get("progress",{}).get("bagging_level",0))) >= 3
 
 func _story_chapter_four_distribution_complete() -> bool:
 	return _story_chapter_four_apartment_complete() \
-		and dealer_locker_level >= 4 \
+		and maxi(dealer_locker_level,int(location_state.get("furniture_v1",{}).get("progress",{}).get("dealer_locker_level",0))) >= 4 \
 		and int(advancement_stats.get("dealer_sales", 0)) >= 20
 
 func _story_chapter_four_crew_complete() -> bool:
@@ -9286,6 +9333,8 @@ func _buy_seed(seed_name: String) -> void:
 	_refresh_phone()
 
 func _buy_supply(supply_name: String) -> void:
+	if supply_name != "Fertilizer Pack" and inventory_system!=null and inventory_system.furniture!=null:
+		inventory_system.furniture.shop("equipment");return
 	if neighborhood!=null and neighborhood.location_ops!=null and neighborhood.location_ops.supply_intercept(supply_name):return
 	if tutorial_active and (supply_name != "Fertilizer Pack" or not _tutorial_can_do("buy_fertilizer")):
 		return
@@ -9384,6 +9433,10 @@ func _effective_price(product_name: String) -> int:
 	return base_price + equipment_bonus + brand_bonus
 
 func _storage_capacity() -> int:
+	if inventory_system!=null and inventory_system.furniture!=null:
+		var id:String=inventory_system.operation()+":storage"
+		if inventory_system.furniture.model.container_item(id).is_empty():return 0
+		return inventory_system.capacity(id,"product|Street Green")
 	if storage_level >= 5:
 		return 1000
 	if storage_level >= 4:
@@ -9680,7 +9733,7 @@ func _load_game() -> void:
 	storage_level = int(data.get("storage_level", storage_level))
 	supply_shelf_level = clampi(int(data.get("supply_shelf_level", supply_shelf_level)), 1, 3)
 	tent_level = int(data.get("tent_level", tent_level))
-	grow_tent_count = clampi(int(data.get("grow_tent_count", grow_tent_count)), 1, 3)
+	grow_tent_count = maxi(0,int(data.get("grow_tent_count", grow_tent_count)))
 	auto_water_unlocked = bool(data.get("auto_water_unlocked", auto_water_unlocked))
 	auto_bagger_unlocked = bool(data.get("auto_bagger_unlocked", auto_bagger_unlocked))
 	auto_sales_unlocked = bool(data.get("auto_sales_unlocked", auto_sales_unlocked))

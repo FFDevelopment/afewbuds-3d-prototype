@@ -20,13 +20,14 @@ static func advance(plants: Array[Dictionary], elapsed_seconds: float, settings:
 	var remaining_units: int = maxi(0, fertilizer_units)
 	var next_service: float = _next_service(next_service_seconds)
 	var waterings: int = 0
+	var water_by_slot:Dictionary={}
 	var fertilizes: int = 0
 	var service_ticks: int = 0
 	if elapsed_seconds > 0.0 and is_finite(elapsed_seconds):
 		if not worker_enabled:
 			# Keep unattended plant outcomes identical to the established integrator.
 			for i: int in range(slots.size()):
-				slots[i] = PlantGrowth.advance(slots[i], elapsed_seconds, settings)
+				slots[i] = PlantGrowth.advance(slots[i], elapsed_seconds, settings.get("per_slot",[])[i] if i<settings.get("per_slot",[]).size() else settings)
 		else:
 			var remaining: float = elapsed_seconds
 			# Only currently planted crops can be serviced. All actual game growth
@@ -42,7 +43,7 @@ static func advance(plants: Array[Dictionary], elapsed_seconds: float, settings:
 					break
 				var step: float = minf(remaining, next_service)
 				for i: int in range(slots.size()):
-					slots[i] = PlantGrowth.advance(slots[i], step, settings)
+					slots[i] = PlantGrowth.advance(slots[i], step, settings.get("per_slot",[])[i] if i<settings.get("per_slot",[]).size() else settings)
 				remaining = maxf(0.0, remaining - step)
 				next_service = maxf(0.0, next_service - step)
 				if next_service > EPS:
@@ -54,24 +55,25 @@ static func advance(plants: Array[Dictionary], elapsed_seconds: float, settings:
 				var target: int = -1
 				var lowest_water: float = WATER_THRESHOLD
 				for i: int in range(slots.size()):
-					if _growing(slots[i]) and float(slots[i].get("water", 0.0)) < lowest_water:
+					if (i>=settings.get("care_slots",[]).size() or settings.care_slots[i]) and _growing(slots[i]) and float(slots[i].get("water", 0.0)) < lowest_water:
 						target = i
 						lowest_water = float(slots[i].get("water", 0.0))
 				if target >= 0:
 					slots[target]["water"] = 100.0
 					slots[target]["health"] = minf(100.0, float(slots[target].get("health", 100.0)) + 2.0)
 					waterings += 1
+					water_by_slot[target]=int(water_by_slot.get(target,0))+1
 					continue
 				if remaining_units <= 0:
 					continue
 				var lowest_feed: float = FERTILIZER_THRESHOLD
 				for i: int in range(slots.size()):
 					var slot: Dictionary = slots[i]
-					if _growing(slot) and int(slot.get("stage", -1)) >= 1 and float(slot.get("fertilizer", 0.0)) < lowest_feed:
+					if (i>=settings.get("care_slots",[]).size() or settings.care_slots[i]) and _growing(slot) and int(slot.get("stage", -1)) >= 1 and float(slot.get("fertilizer", 0.0)) < lowest_feed:
 						target = i
 						lowest_feed = float(slot.get("fertilizer", 0.0))
 				if target >= 0:
 					slots[target]["fertilizer"] = 100.0
 					remaining_units -= 1
 					fertilizes += 1
-	return {"plants": slots, "fertilizer_units": remaining_units, "waterings": waterings, "fertilizes": fertilizes, "service_in": next_service, "service_ticks": service_ticks}
+	return {"water_by_slot":water_by_slot,"plants": slots, "fertilizer_units": remaining_units, "waterings": waterings, "fertilizes": fertilizes, "service_in": next_service, "service_ticks": service_ticks}

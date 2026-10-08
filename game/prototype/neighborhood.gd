@@ -586,7 +586,7 @@ func _toggle_couch() -> void:
 	else:
 		couch_stand=host.fp_player.position
 		couch_seated=true
-		host.fp_player.position=bench_seating.eyes(Vector3(-1.785,0,3.035),0,ScalePolicy.SEAT_HEIGHT)-Vector3.UP*host.fp_player.EYE_HEIGHT
+		host.fp_player.position=host.inventory_system.furniture.equipment_world.seat_eye()-Vector3.UP*host.fp_player.EYE_HEIGHT
 		host.fp_player.yaw=0;host.fp_player.pitch=0
 	host.fp_player.sync_camera()
 

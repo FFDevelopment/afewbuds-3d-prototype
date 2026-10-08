@@ -456,6 +456,9 @@ func _update_target() -> void:
 		else:
 			var id := str(fp_target.get_meta("interaction_id"))
 			label_text = {"station_locker": "Dealer Storage", "station_workbench": "Packaging bench", "station_storage": "Product storage", "storage_vault": "Storage vault", "station_door": ("Close front door" if neighborhood.door_open else "Open front door") + ("   [ " + DesktopInput.label("visitor") + " ] Answer visitor" if customer_waiting else "   [ " + DesktopInput.label("visitor") + " ] Peephole"), "interior_door": "Open / close door", "inspect_house": "Inspect house", "station_system": "Grow-room controls", "station_supply": "Seeds & fertilizer", "main_light_switch": "Main lights", "floor_lamp": "Floor lamp", "grow_room_light_switch": "Grow-room light"}.get(id, id.replace("_", " ").capitalize())
+			if id=="equipment_container":
+				var container:String=fp_target.get_meta("equipment_container")
+				label_text="Sit down" if container=="seat" else ("Toggle lamp" if container=="lamp" else inventory_system.title(container))
 			if id=="station_door" and not _can_use_apartment_peephole():label_text="Close front door" if neighborhood.door_open else "Open front door"
 			if id == "interior_door" and fp_target.get_meta("door_controller").name == "HouseEntrance" and not neighborhood.get_node("HouseEntrance").opened and not neighborhood.property_opportunity.touring and not bool(property_opportunity_state.get("relocated",false)) and neighborhood.get_node("HouseEntrance").to_local(fp_player.position).z >= 0.0:
 				label_text = "View house details" if property_offer_unlocked else "House not available yet"
@@ -474,6 +477,13 @@ func _use_target() -> void:
 		_open_direct_plant(int(fp_target.get_meta("plant_slot")))
 	else:
 		var id := str(fp_target.get_meta("interaction_id"))
+		if id=="equipment_container":
+			var container:String=fp_target.get_meta("equipment_container")
+			if container=="seat":neighborhood._toggle_couch()
+			elif container=="lamp":inventory_system.furniture.equipment_world.toggle_lamp()
+			elif container.ends_with(":computer"):neighborhood.location_ops.computer(container.get_slice(":",0))
+			else:inventory_system.open_container(container)
+			return
 		if id.begins_with("operation_"):
 			neighborhood.location_ops.use(id.trim_prefix("operation_"))
 			return

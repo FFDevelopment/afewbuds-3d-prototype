@@ -79,7 +79,7 @@ jobs:
         run: |
           set -euo pipefail
           version='${{ steps.release.outputs.version }}'
-          printf 'AFewBuds expansion test. Furniture placement, Chapter 5, physical packing, and inside-only apartment peephole. Test progress saves separately on this device; your live career is unchanged. Character models and map expansion are still in development.\n' > build/TEST_NOTES.txt
+          printf 'AFewBuds expansion test. Equipment items: backpack packing and placement, 1/2/3/4-plant tents, buyable equipment tiers and furniture, upgrades, market buyback, property curb deliveries, empty-before-moving safety, and preserved Chapter 5 progress. Test progress saves separately on this device; your live career is unchanged. Character models and map expansion are still in development.\n' > build/TEST_NOTES.txt
           cp build/TEST_NOTES.txt build/windows/TEST_NOTES.txt
           cd build/windows
           zip -qr "../AFewBuds-${version}-Windows.zip" .

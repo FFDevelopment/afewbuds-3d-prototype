@@ -30,24 +30,26 @@ func run() -> void:
 	var fert: int=game.fertilizer_units;cash=game.cash;ops.fertilizer()
 	check(game.fertilizer_units==fert and int(game.location_state.carried_fertilizer)==5 and game.cash==cash-45,"Market fertilizer carried, not auto-delivered")
 	cash=game.cash;ops.order_fertilizer();check(game.cash==cash-45 and game.fertilizer_units==fert and game.location_state.pickup_fertilizer==5,"Phone fertilizer waits at market after one charge")
-	var upgrade := "Grow Supply Shelf II";cash=game.cash;ops.order_equipment(upgrade)
-	check(game.supply_shelf_level==1 and game.location_state.deliveries.has(upgrade),"Paid equipment waits for installation")
-	check(game.cash==cash-int(game.supply_catalog[upgrade].cost),"Equipment charged once")
-	ops.order_equipment(upgrade);check(game.cash==cash-int(game.supply_catalog[upgrade].cost),"Duplicate equipment order rejected")
-	var dealer_level: int=game.dealer_locker_level
-	ops.order_dealer()
-	var dealer_name: String="Dealer Storage "+game._roman(dealer_level+1)
-	check(game.dealer_locker_level==dealer_level and game.location_state.deliveries.has(dealer_name),"Dealer storage waits for installation")
-	# Both paid items must be physically collected before computer installation.
-	game.inventory_system.state.backpack_level=4
-	game.inventory_system.transfer("market:orders","backpack","delivery|"+upgrade,1)
-	game.inventory_system.transfer("market:orders","backpack","delivery|"+dealer_name,1)
+	var inv=game.inventory_system;var model=inv.furniture.model
+	inv.state.backpack_level=4
+	cash=game.cash
+	var upgrade:String=model.own("shelf_2","apartment")
+	check(game.supply_shelf_level==1 and model.state.items[upgrade].property=="apartment:delivery","Paid equipment waits at selected property's curb")
+	check(game.cash==cash-280,"Equipment charged once")
+	var another:String=model.own("shelf_2","apartment")
+	check(another!=upgrade and game.cash==cash-560,"Repeat orders create distinct paid items")
+	var dealer:String=model.own("dealer_1","apartment")
+	check(game.dealer_locker_level==0,"Ordered dealer storage does not auto-install")
+	game.camera.position=model.CURBS.apartment+Vector3.UP*2
+	check(inv.transfer("apartment:delivery","backpack","furniture|"+upgrade,1).ok,"Collect ordered shelf")
+	check(inv.transfer("apartment:delivery","backpack","furniture|"+dealer,1).ok,"Collect ordered locker")
+	cash=game.cash
+	check(model.place(dealer,"apartment",Vector3(3.9,0,-2.2),90),"Place the owned locker")
+	inv.furniture.sync_world()
+	check(game.dealer_locker_level==1 and game.cash==cash,"Placement never charges again")
 	game.camera.position=Vector3(3,1.64,4.35);game.camera.look_at(ops.APT_PC)
 	check(ops.target()=="apartment_computer","Apartment computer reachable")
-	cash=game.cash;ops.install(upgrade)
-	check(game.supply_shelf_level==2 and not game.location_state.deliveries.has(upgrade) and game.cash==cash,"Computer installs paid equipment without second charge")
-	cash=game.cash;ops.install(dealer_name)
-	check(game.dealer_locker_level==dealer_level+1 and game.cash==cash,"Dealer storage installs without double charge")
+
 	ops.deposit();check(int(game.seed_inventory.get(seed,0))==owned,"Computer cannot remotely deposit supplies")
 	game.camera.position=game.inventory_system.POSITIONS["apartment:supply"]+Vector3(0,1,1)
 	game.inventory_system.transfer("backpack","apartment:supply","seed|"+seed,1)
@@ -96,12 +98,13 @@ func run() -> void:
 	ops.manage("employees")
 	check(ops.management_app=="employees" and not game.phone_open,"Staff management stays in computer")
 	ops.close()
+	game.property_opportunity_state.acquired=true;game.inventory_system.furniture.sync_world()
 	game.camera.position=Vector3(27.7,1.64,1.65);game.camera.look_at(ops.HOUSE_PC)
 	check(ops.target()=="house_computer","House computer reachable")
 	ops.computer("house");check(ops.is_open() and not game.location_state.house.has("equipment"),"House computer preview does not activate production")
 	ops.close()
 
-	ops.close();game.phone_open=false;game.phone_panel.hide();game.session_paused=false
+	ops.close();game.inventory_system.furniture.close();game.phone_open=false;game.phone_panel.hide();game.session_paused=false
 	for spec in [[Vector3(2.7,.08,4.35),Vector3(3.70,1.35,4.35),"apartment"],[Vector3(14,.08,4.6),Vector3(14,1.35,3),"market"],[Vector3(27.8,.08,1.65),Vector3(25.90,1.35,1.65),"house"]]:
 		game.fp_player.position=spec[0];game.camera.position=spec[0]+Vector3.UP*2.16;game.camera.look_at(spec[1])
 		await physics_frame
@@ -117,7 +120,7 @@ func run() -> void:
 	for at in [Vector3(82,.1,8),Vector3(125.5,.1,-1.6),Vector3(131,.1,24)]:
 		game.fp_player.position=at
 		check(game.fp_player.move_and_collide(Vector3(0,-1,0))!=null,"New district has physical ground")
-	game.fp_player.position=Vector3(-1.78,.08,1.8);n._toggle_couch()
+	game.fp_player.position=Vector3(-1.78,.08,1.8);game.fp_player.sync_camera();n._toggle_couch()
 	check(n.couch_seated and is_equal_approx(game.camera.position.y,1.562837),"Desktop couch uses seated eye height")
 	n._toggle_couch();check(not n.couch_seated and game.fp_player.position.distance_to(Vector3(-1.78,.08,1.8))<.001,"Standing restores safe approach position")
 	for player in game.find_children("*","AudioStreamPlayer",true,false):player.stop();player.stream=null
