@@ -8,6 +8,7 @@ var account_overlay: CanvasLayer
 var fp_player: CharacterBody3D
 var fp_ready := false
 var fp_control := ""
+var fp_container: String = ""
 var fp_target: Area3D
 var fp_crosshair: Label
 var fp_prompt: Label
@@ -444,6 +445,7 @@ func _update_target() -> void:
 	if inventory_system.furniture.is_placing():fp_target=null;return
 	fp_target = _target_from_ray(camera.global_position, -camera.global_basis.z)
 	fp_prompt.text = ""
+	fp_container=inventory_system.near_container() if fp_target==null else ""
 	fp_control = neighborhood.house_controls.nearby() if fp_target == null else ""
 	if fp_target==null and fp_control.is_empty():fp_control=neighborhood.bench_seating.target()
 	if not fp_control.is_empty():
@@ -464,7 +466,9 @@ func _update_target() -> void:
 			if id == "interior_door" and fp_target.get_meta("door_controller").name == "HouseEntrance" and not neighborhood.get_node("HouseEntrance").opened and not neighborhood.property_opportunity.touring and not bool(property_opportunity_state.get("relocated",false)) and neighborhood.get_node("HouseEntrance").to_local(fp_player.position).z >= 0.0:
 				label_text = "View house details" if property_offer_unlocked else "House not available yet"
 		fp_prompt.text = "[ " + DesktopInput.label("interact") + " ]   " + label_text
-	fp_crosshair.modulate = Color("b6f38a") if fp_target != null or not fp_control.is_empty() else Color(1, 1, 1, 0.7)
+	if not fp_container.is_empty() and fp_control.is_empty():
+		fp_prompt.text="[ " + DesktopInput.label("interact") + " ]   " + inventory_system.title(fp_container)
+	fp_crosshair.modulate = Color("b6f38a") if fp_target != null or not fp_control.is_empty() or not fp_container.is_empty() else Color(1, 1, 1, 0.7)
 
 func _use_target() -> void:
 	_update_target() # Revalidate reach and line of sight at the actual key press.
@@ -473,6 +477,7 @@ func _use_target() -> void:
 		else:neighborhood.house_controls.use(fp_control)
 		return
 	if fp_target == null:
+		if not fp_container.is_empty():inventory_system.open_container(fp_container)
 		return
 	if fp_target.has_meta("plant_slot"):
 		_open_direct_plant(int(fp_target.get_meta("plant_slot")))

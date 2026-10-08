@@ -3734,6 +3734,11 @@ func _close_direct_plant() -> void:
 	status_label.text = "Tent overview. Tap a plant or empty pot directly to interact."
 
 func _refresh_direct_plant_panel() -> void:
+	if inventory_system!=null and inventory_system.furniture!=null and selected_plant_slot>=0:
+		inventory_system.at_property(inventory_system.furniture.model.slot_property(selected_plant_slot),_refresh_direct_plant_panel_local)
+	else:_refresh_direct_plant_panel_local()
+
+func _refresh_direct_plant_panel_local() -> void:
 	if plant_direct_box == null or selected_plant_slot < 0 or selected_plant_slot >= plant_slots.size():
 		return
 	_clear_children(plant_direct_box)
@@ -4955,6 +4960,11 @@ func _refresh_grow_panel() -> void:
 				row.add_child(hint)
 
 func _plant_seed(slot_index: int, strain_name: String, use_backpack: bool = true) -> void:
+	if inventory_system!=null and inventory_system.furniture!=null:
+		inventory_system.at_property(inventory_system.furniture.model.slot_property(slot_index),_plant_seed_local.bind(slot_index,strain_name,use_backpack))
+	else:_plant_seed_local(slot_index,strain_name,use_backpack)
+
+func _plant_seed_local(slot_index: int, strain_name: String, use_backpack: bool = true) -> void:
 	if inventory_system!=null and inventory_system.furniture!=null and not inventory_system.furniture.model.can_plant(slot_index):return
 	if inventory_system!=null and inventory_system.furniture!=null and not inventory_system.furniture.model.can_plant(slot_index):
 		status_label.text="Place the grow tent before planting."
@@ -4978,6 +4988,11 @@ func _plant_seed(slot_index: int, strain_name: String, use_backpack: bool = true
 	_refresh_grow_panel()
 
 func _water_plant(slot_index: int) -> void:
+	if inventory_system!=null and inventory_system.furniture!=null:
+		inventory_system.at_property(inventory_system.furniture.model.slot_property(slot_index),_water_plant_local.bind(slot_index))
+	else:_water_plant_local(slot_index)
+
+func _water_plant_local(slot_index: int) -> void:
 	if inventory_system!=null and inventory_system.furniture!=null and not inventory_system.furniture.model.can_plant(slot_index):return
 	if tutorial_active and slot_index != tutorial_slot:
 		status_label.text = "Use the plant you just planted. SHOW ME selects the right pot."
@@ -5001,6 +5016,11 @@ func _water_plant(slot_index: int) -> void:
 	_refresh_grow_panel()
 
 func _fertilize_plant(slot_index: int) -> void:
+	if inventory_system!=null and inventory_system.furniture!=null:
+		inventory_system.at_property(inventory_system.furniture.model.slot_property(slot_index),_fertilize_plant_local.bind(slot_index))
+	else:_fertilize_plant_local(slot_index)
+
+func _fertilize_plant_local(slot_index: int) -> void:
 	if inventory_system!=null and inventory_system.furniture!=null and not inventory_system.furniture.model.can_plant(slot_index):return
 	if tutorial_active and slot_index != tutorial_slot:
 		status_label.text = "Use the plant you just planted. SHOW ME selects the right pot."
@@ -5077,7 +5097,7 @@ func _plant_growth_settings(offline: bool, slot_index:int = -1) -> Dictionary:
 		settings["per_slot"]=[];settings["care_slots"]=[]
 		for i in range(plant_slots.size()):
 			settings.per_slot.append(model.growth_settings(i,settings,offline))
-			settings.care_slots.append(model.slot_property(i)==inventory_system.operation())
+			settings.care_slots.append(model.slot_property(i)==inventory_system.worker_property())
 	return settings
 
 func _update_plant_over_time(slot_index: int, elapsed_seconds: float) -> void:
@@ -5099,6 +5119,11 @@ func _offline_worker_care_enabled() -> bool:
 	return packing_employee_hired and packing_employee_active and game_day >= raid_lockdown_until_day and _offline_crops_enabled()
 
 func _simulate_offline_plants(elapsed_seconds: float, worker_care: bool = false) -> void:
+	if inventory_system!=null and inventory_system.furniture!=null and inventory_system.controlled(inventory_system.worker_property()+":packing"):
+		inventory_system.at_property(inventory_system.worker_property(),_simulate_offline_plants_local.bind(elapsed_seconds,worker_care))
+	else:_simulate_offline_plants_local(elapsed_seconds,worker_care and (inventory_system==null or inventory_system.controlled(inventory_system.worker_property()+":packing")))
+
+func _simulate_offline_plants_local(elapsed_seconds: float, worker_care: bool = false) -> void:
 	if elapsed_seconds <= 0.0 or not is_finite(elapsed_seconds) or not _offline_crops_enabled():
 		return
 	var before: Array[Dictionary] = plant_slots.duplicate(true)
@@ -5553,12 +5578,18 @@ func _production_worker_find_seed() -> String:
 
 
 func _assign_production_worker_task() -> void:
+	if inventory_system!=null:
+		inventory_system.at_property(inventory_system.worker_property(),_assign_production_worker_task_local)
+	else:_assign_production_worker_task_local()
+
+func _assign_production_worker_task_local() -> void:
 	if inventory_system!=null and not inventory_system.worker_equipment_ready():production_worker_pending_action="";production_worker_task="Equipment unavailable";return
 	if not packing_employee_hired or not packing_employee_active:
 		return
 	if not production_worker_pending_action.is_empty():
 		return
 	for slot_index in range(plant_slots.size()):
+		if inventory_system!=null and inventory_system.furniture.model.slot_property(slot_index)!=inventory_system.worker_property():continue
 		var slot: Dictionary = plant_slots[slot_index]
 		var stage: int = int(slot.get("stage", -1))
 		if stage < 0 or bool(slot.get("dead", false)):
@@ -5596,7 +5627,7 @@ func _assign_production_worker_task() -> void:
 		var auto_seed: String = _production_worker_find_seed()
 		if not auto_seed.is_empty():
 			for slot_index in range(plant_slots.size()):
-				if int(plant_slots[slot_index].get("stage", -1)) < 0 and (inventory_system==null or inventory_system.furniture==null or inventory_system.furniture.model.can_plant(slot_index)):
+				if (inventory_system==null or inventory_system.furniture.model.slot_property(slot_index)==inventory_system.worker_property()) and int(plant_slots[slot_index].get("stage", -1)) < 0 and (inventory_system==null or inventory_system.furniture==null or inventory_system.furniture.model.can_plant(slot_index)):
 					_set_production_worker_task("plant", "grow", slot_index, auto_seed, "Planting %s" % auto_seed)
 					return
 
@@ -5606,8 +5637,16 @@ func _assign_production_worker_task() -> void:
 
 
 func _execute_production_worker_action() -> void:
+	if inventory_system!=null:
+		inventory_system.at_property(inventory_system.worker_property(),_execute_production_worker_action_local)
+	else:_execute_production_worker_action_local()
+
+func _execute_production_worker_action_local() -> void:
 	if inventory_system!=null and not inventory_system.worker_equipment_ready():production_worker_pending_action="";return
 	if _simulation_blocked():
+		return
+	if inventory_system!=null and production_worker_pending_slot>=0 and inventory_system.furniture.model.slot_property(production_worker_pending_slot)!=inventory_system.worker_property():
+		production_worker_pending_action=""
 		return
 	var action_id: String = production_worker_pending_action
 	var slot_index: int = production_worker_pending_slot
@@ -6085,6 +6124,11 @@ func _dealer_eligible_customers() -> Array[Dictionary]:
 	return eligible
 
 func _dealer_sell_one(show_feedback: bool, assigned_dealer_name: String = "", door_customer: Dictionary = {}, door_order: Dictionary = {}) -> bool:
+	if inventory_system!=null:
+		return bool(inventory_system.at_property(inventory_system.staff_property(assigned_dealer_name),_dealer_sell_one_local.bind(show_feedback,assigned_dealer_name,door_customer,door_order)))
+	return _dealer_sell_one_local(show_feedback,assigned_dealer_name,door_customer,door_order)
+
+func _dealer_sell_one_local(show_feedback: bool, assigned_dealer_name: String = "", door_customer: Dictionary = {}, door_order: Dictionary = {}) -> bool:
 	if dealer_arrested:return false
 	if door_customer.is_empty() and neighborhood!=null and assigned_dealer_name==neighborhood.location_ops.crew.manager() and not assigned_dealer_name.is_empty():return false
 	if _simulation_blocked():
@@ -6213,6 +6257,11 @@ func _simulate_offline_business(_elapsed_seconds: float) -> void:
 	return
 
 func _harvest_plant(slot_index: int) -> void:
+	if inventory_system!=null and inventory_system.furniture!=null:
+		inventory_system.at_property(inventory_system.furniture.model.slot_property(slot_index),_harvest_plant_local.bind(slot_index))
+	else:_harvest_plant_local(slot_index)
+
+func _harvest_plant_local(slot_index: int) -> void:
 	if inventory_system!=null and inventory_system.furniture!=null and not inventory_system.furniture.model.can_plant(slot_index):return
 	if not _tutorial_can_do("harvest"):
 		return

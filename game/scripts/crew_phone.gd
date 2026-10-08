@@ -241,11 +241,11 @@ func update(delta: float) -> void:
 	tick+=delta
 	if tick<10 or host._simulation_blocked():return
 	tick=0
-	if host.business_open and host.dealers_active and host._total_dealer_count()>0:alert(name if not name.is_empty() else host._critical_dealer_sender(),"dealer_stock",packaged_stock()==0 if not name.is_empty() else host._dealer_locker_total()==0,"Apartment packaged stock is empty. Restock it so I can serve the door." if not name.is_empty() else "Dealer Locker is empty. I cannot sell on the street until you restock it.")
+	if host.business_open and host.dealers_active and host._total_dealer_count()>0:alert(name if not name.is_empty() else host._critical_dealer_sender(),"dealer_stock",packaged_stock()==0 if not name.is_empty() else property_supply_empty(assignment(host._critical_dealer_sender()),"product|", "dealer"),"Apartment packaged stock is empty. Restock it so I can serve the door." if not name.is_empty() else "Dealer Locker is empty. I cannot sell on the street until you restock it.")
 	if host.packing_employee_hired and host.packing_employee_active:
 		var worker: String=host._critical_production_sender()
-		alert(worker,"seeds",host._total_seed_inventory()==0,"We're out of seeds. Collect an order at Central Market and deposit it at the computer.")
-		alert(worker,"fertilizer",host.fertilizer_units==0,"Fertilizer is out. I'll keep watering existing plants, but you'll need to restock fertilizer at Central Market.")
+		alert(worker,"seeds",property_supply_empty(assignment(worker),"seed|"),"We're out of seeds. Collect an order at Central Market and deposit it at the computer.")
+		alert(worker,"fertilizer",property_supply_empty(assignment(worker),"fertilizer"),"Fertilizer is out. I'll keep watering existing plants, but you'll need to restock fertilizer at Central Market.")
 
 func malik_instance() -> Node3D:return character_instance("Malik")
 func character_instance(name: String) -> Node3D:
@@ -322,12 +322,20 @@ func update_seating(delta: float) -> void:
 			worker.position.y=-0.57 if seated else 0.0
 
 func packaged_stock() -> int:
+	if host.inventory_system!=null:return int(host.inventory_system.at_property("apartment",packaged_stock_local))
+	return packaged_stock_local()
+
+func packaged_stock_local() -> int:
 	var amount: int=host._dealer_locker_total()
 	for product in host.products:amount+=host._available_amount(product)
 	for product in host.bagged_inventory:amount+=maxi(0,int(host.bagged_inventory[product]))
 	return amount
 
 func product_stock(product: String) -> int:
+	if host.inventory_system!=null:return int(host.inventory_system.at_property("apartment",product_stock_local.bind(product)))
+	return product_stock_local(product)
+
+func product_stock_local(product: String) -> int:
 	return maxi(0,int(host.locker_weed.get(product,0)))+host._available_amount(product)+maxi(0,int(host.bagged_inventory.get(product,0)))
 
 func animate_manager(motion: Vector3,seated: bool,delta: float) -> void:
@@ -347,3 +355,9 @@ func animate_manager(motion: Vector3,seated: bool,delta: float) -> void:
 		for spec in [["ArmL",swing],["ArmR",-swing],["LegL",-swing*0.75],["LegR",swing*0.75]]:
 			var part: Node3D=manager_node.get_node_or_null(spec[0])
 			if part!=null:part.rotation.x=spec[1]
+
+func property_supply_empty(property:String,prefix:String,kind:String="supply") -> bool:
+	if host.inventory_system==null:return false
+	for item in host.inventory_system.contents(property+":"+kind):
+		if str(item).begins_with(prefix) and int(host.inventory_system.contents(property+":"+kind)[item])>0:return false
+	return true
