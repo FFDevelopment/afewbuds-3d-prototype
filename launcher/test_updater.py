@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 from updater import ASSET, EXE, REPO, API, InstanceLock, AlreadyRunning, Updater, UpdateError, release_candidate, unpack
 
@@ -102,6 +103,10 @@ class Updates(unittest.TestCase):
                 self.server.extra = {name: b'bad'}
                 with self.assertRaises(UpdateError): self.updater.prepare()
         self.assertFalse((self.updater.root / 'escape.exe').exists())
+    def test_windows_zip_reader_normalization_cannot_hide_backslashes(self):
+        self.server.extra = {'folder\\escape': b'bad'}
+        with patch('zipfile.os.sep', '\\'):
+            with self.assertRaises(UpdateError): self.updater.prepare()
     def test_wrong_packaged_version_is_rejected(self):
         self.server.extra = {'BUILD_VERSION.txt': 'AFewBuds Desktop 0.1.0\n'}
         with self.assertRaises(UpdateError): self.updater.prepare()

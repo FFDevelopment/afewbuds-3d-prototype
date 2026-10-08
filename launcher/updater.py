@@ -119,7 +119,7 @@ def unpack(archive, target, tag):
             raise UpdateError('Unexpected update archive size.')
         names = set()
         for member in members:
-            name = member.filename
+            name = member.orig_filename
             path = PurePosixPath(name)
             # Windows drive paths, alternate streams, symlinks and aliases are forbidden.
             if not name or '\\' in name or ':' in name or path.is_absolute() or '..' in path.parts or any(p.rstrip(' .') != p or p.upper().split('.')[0] in {'CON','PRN','AUX','NUL',*[f'COM{i}' for i in range(1,10)],*[f'LPT{i}' for i in range(1,10)]} for p in path.parts):
