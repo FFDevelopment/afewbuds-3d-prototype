@@ -55,7 +55,7 @@ func _ready() -> void:
 	box.add_child(logo)
 	label("AFewBuds", 32)
 	label("Welcome to Bongchester", 18)
-	label("Separate test career on this device.", 16)
+	label("Continue your shared career.", 16)
 	username = field("Username")
 	username.max_length = 20
 	password = field("Password", true)

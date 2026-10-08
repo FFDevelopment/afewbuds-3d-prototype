@@ -10,7 +10,7 @@ func check(ok:bool,label:String):
  if not ok:failures+=1;push_error(label)
  else:print("PASS ",label)
 func run():
- var c=Preview.new();root.add_child(c)
+ var c=Preview.new();c.inventory_preview=true;root.add_child(c)
  c.accept_session({"account_id":"preview-qa","username":"QA","session_token":"fixture"},false)
  var result:Dictionary=await c.prepare()
  check(result.get("ok",false) and c.baseline.cash==1234,"Preview imports live career read-only")

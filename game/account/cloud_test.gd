@@ -34,11 +34,25 @@ func run() -> void:
 	check(not cloud.remote.runtime.has("prototype_player") and cloud.remote.runtime.current_view == "main_grow_door", "camera isolated from shared save")
 	check(cloud.remote.future_field.keep and cloud.remote.runtime.future == 7, "unknown root and runtime fields retained")
 	check(cloud.read_json(cloud.settings_path()).x == 2, "camera persisted per account on desktop")
+	check(cloud.fingerprint({"cash":500,"items":[1,2.0]}) == cloud.fingerprint(JSON.parse_string('{"cash":500,"items":[1,2]}')), "Equivalent JSON numbers keep the same save signature")
+	cloud.json_roundtrip=true
+	cloud.queue_save({"cash":501,"save_schema":2})
+	await cloud.flush()
+	while cloud.busy:await process_frame
+	cloud.queue_save({"cash":502,"save_schema":2})
+	await cloud.flush()
+	while cloud.busy:await process_frame
+	check(not cloud.blocked and cloud.remote.cash==502,"Repeated saves survive server JSON number normalization")
+	cloud.heartbeat_state=""
+	await cloud.heartbeat()
+	check(cloud.launched and not cloud.blocked,"Malformed heartbeat does not invent another active session")
+	cloud.heartbeat_state="active"
 	cloud.remote.cash = 700
+	cloud.server_revision += 1
 	cloud.queue_save({"cash": 550, "save_schema": 2})
 	await cloud.flush()
 	while cloud.busy: await process_frame
-	check(cloud.blocked and cloud.remote.cash == 700, "concurrent regular save blocks stale desktop upload")
+	check(cloud.blocked and cloud.block_reason=="save_conflict" and not cloud.session.is_empty() and cloud.remote.cash == 700, "concurrent regular save blocks stale desktop upload")
 	result = await cloud.prepare()
 	check(result.get("conflict", false), "pending desktop conflict requires cloud restore decision")
 	result = await cloud.prepare(false, true)

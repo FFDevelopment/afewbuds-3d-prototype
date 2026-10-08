@@ -16,7 +16,7 @@ func run():
  var desktop:bool=ResourceLoader.exists("res://prototype/apartment.tscn")
  if desktop:
   var cloud=root.get_node("AFBCloud")
-  check(cloud.inventory_preview,"Expansion test defaults to isolated local careers")
+  check(not cloud.inventory_preview,"Public beta defaults to shared cloud careers")
   cloud.inventory_preview=true
   cloud.launched=true;cloud.session={"account_id":"inventory-fixture","username":"Preview","session_token":"not-a-real-token"}
   cloud.baseline={"cash":80,"lifetime_revenue":36130}

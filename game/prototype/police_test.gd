@@ -79,8 +79,9 @@ func run() -> void:
 	check(buried_trim.is_empty(),"Wall-base trim is surface-mounted and not buried in masonry")
 	check(stair_nosings==19,"Top stair nosing stops at the upstairs landing edge")
 	player.position=station.point(11.2,.1,30)
-	game.camera.position=player.position+Vector3.UP*2.16;game.camera.look_at(station.point(11.2,1.6,28));await frames()
-	game._use_target();await create_timer(.5).timeout
+	game.camera.position=player.position+Vector3.UP*2.16;game.camera.look_at(station.point(11.2,1.6,28))
+	player.yaw=game.camera.rotation.y;player.pitch=game.camera.rotation.x;await frames()
+	game._use_target();await create_timer(.5,true,true).timeout
 	check(station.get_node("PUBLIC_ENTRANCE").opened,"Native raycast interaction opens police entrance")
 	for door in station.doors:
 		if not door.opened:door.toggle(station.point(12,2.16,15))

@@ -287,7 +287,8 @@ func _on_cloud_status(message: String) -> void:
 		elif not fp_sync_warning.is_empty() and not message.begins_with("Saving "):
 			if status_label.text == fp_sync_warning:status_label.text = ""
 			fp_sync_warning = ""
-	if AFBCloud.blocked and inventory_system!=null:inventory_system.session_menu.on_cloud_event("replaced")
+	if AFBCloud.blocked and inventory_system!=null:
+		inventory_system.session_menu.on_cloud_event("replaced" if AFBCloud.block_reason in ["session_replaced","session_invalid"] else "save_conflict")
 
 func _close_active_panel() -> bool:
 	if inventory_system.packing.is_open():inventory_system.packing.close();return true
