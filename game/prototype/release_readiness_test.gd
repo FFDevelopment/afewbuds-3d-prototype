@@ -65,7 +65,9 @@ func run():
   var target:int=game.bag_target_units;var drops:=0
   while game.bag_current_units<target:
    game.bag_bud_token.global_position=game.bag_target_panel.global_position;game._finish_bud_drag();drops+=1
-  check(drops==3,"Bench level %d packs its larger batch in three drops" % level)
+  var expected_drops:int=ceili(float(target)/float(game._packing_drop_size()))
+  check(target==(3 if level==1 else 7),"Bench level %d uses correct 3g/7g bag target" % level)
+  check(drops==expected_drops,"Bench level %d packs its batch in correct number of drag drops" % level)
   game._seal_current_bag()
   check(int(game.trimmed_inventory.get(strain,0))+int(game.bagged_inventory.get(strain,0))==13,"Bench level %d conserves product through sealing" % level)
   if game.bag_minigame_panel.visible:game._close_bag_minigame()
