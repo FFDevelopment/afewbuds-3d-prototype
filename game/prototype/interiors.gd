@@ -164,6 +164,7 @@ func table(at: Vector3, size: Vector2, color: String = "87613e", height: float =
 
 func shelf(at: Vector3, width: float, depth: float, stocked: bool = true) -> void:
 	var body := StaticBody3D.new()
+	if at.x>25 and at.x<45 and at.z> -14 and at.z<3:body.set_meta("equipment_template_group","house_supply" if at.z< -7 else "house_storage")
 	body.collision_layer = 1
 	body.collision_mask = 4
 	body.position = at+Vector3.UP*0.95
