@@ -12,6 +12,18 @@ func check(ok:bool,message:String):
 func stand(id:String):
  game.camera.position=inv.POSITIONS[id]+Vector3(0,.34,2)
  game.camera.look_at(inv.POSITIONS[id])
+func move_work_cursor(cursor:Control,target:Control,trim_target:Control=null) -> void:
+ # Controller uses A/Cross held plus the LEFT analog stick. Unlike old menu
+ # selection tests, the restored scissors/bagging games use physical cursors.
+ for step in 150:
+  if trim_target!=null and not trim_target.visible:return
+  var wanted:Vector2=target.global_position+target.size*.5-cursor.size*.5
+  var delta:Vector2=wanted-cursor.global_position
+  if delta.length()<3.0:
+   game._controller_work_tick(.025,Vector2.ZERO)
+   return
+  var axis:Vector2=delta.normalized()*minf(1.0,delta.length()/10.0)
+  game._controller_work_tick(.025,axis)
 func empty_bag():
  game.location_state.carried_seeds={};game.location_state.carried_fertilizer=0
  game.location_state.property_storage=[];inv.state.backpack={}
@@ -89,20 +101,21 @@ func run():
  inv.open_container("packing");inv.select_item("apartment:packing","raw|Purple Dream");inv.process_selected()
  for frame in 4:await process_frame
  joy.button_index=JOY_BUTTON_A;joy.pressed=true;controls._input(joy)
- joy.button_index=JOY_BUTTON_DPAD_RIGHT;controls._input(joy)
- for i in 3:
-  joy.button_index=JOY_BUTTON_A;joy.pressed=true;controls._input(joy)
-  joy.pressed=false;controls._input(joy)
- check(int(game.trimmed_inventory.get("Purple Dream",0))==3,"Controller trims all buds without a mouse")
+ for target in game.trim_targets:
+  if is_instance_valid(target) and target.visible:
+   move_work_cursor(game.trim_scissors,target,target)
+ joy.pressed=false;controls._input(joy)
+ check(int(game.trimmed_inventory.get("Purple Dream",0))==3,"Controller trims all buds using held A and left analog stick")
+ game._close_trim_minigame()
  inv.select_item("apartment:packing","trimmed|Purple Dream");inv.process_selected()
  for frame in 4:await process_frame
  for i in 3:
   joy.button_index=JOY_BUTTON_A;joy.pressed=true;controls._input(joy)
-  joy.button_index=JOY_BUTTON_DPAD_RIGHT;controls._input(joy)
-  joy.button_index=JOY_BUTTON_A;controls._input(joy)
-  joy.button_index=JOY_BUTTON_DPAD_LEFT;controls._input(joy)
- joy.button_index=JOY_BUTTON_DPAD_RIGHT;controls._input(joy);controls._input(joy)
- joy.button_index=JOY_BUTTON_A;controls._input(joy)
+  move_work_cursor(game.bag_bud_token,game.bag_target_panel)
+  joy.pressed=false;controls._input(joy)
+ check(game.bag_current_units==game.bag_target_units,"Controller fills the bag by moving bud token with analog stick")
+ game.bag_seal_button.grab_focus()
+ joy.button_index=JOY_BUTTON_A;joy.pressed=true;controls._input(joy)
  check(int(game.bagged_inventory.get("Purple Dream",0))==3,"Controller fills and seals product without a mouse")
  inv.close();controls.bindings=controls.DEFAULTS.duplicate();controls.pad_bindings=controls.PAD_DEFAULTS.duplicate();controls.install_actions();controls.save_preferences()
  game.queue_free();await process_frame
