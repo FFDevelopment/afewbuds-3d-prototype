@@ -339,4 +339,5 @@ func run() -> void:
 	game.queue_free()
 	await frames()
 	print("PROGRESSION_TEST_RESULT: ","PASS" if failures==0 else "FAIL"," checks=",checks," failures=",failures)
-	quit(0 if failures==0 else 1)
+	# Let coroutine locals unwind before Godot shuts down its resource cache.
+	call_deferred("quit",0 if failures==0 else 1)
