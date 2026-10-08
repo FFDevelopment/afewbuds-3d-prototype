@@ -11610,6 +11610,10 @@ func _build_hidden_wall_stash_visual() -> void:
 	hidden_stash_frame_open = false
 
 func _set_hidden_stash_open(opened: bool) -> void:
+	if inventory_system!=null and inventory_system.furniture!=null and inventory_system.furniture.equipment_world!=null:
+		var target:String=inventory_system.container_id
+		if target.is_empty():target=inventory_system.operation()+":storage"
+		inventory_system.furniture.equipment_world.animate_container(target,opened);return
 	if hidden_stash_frame_pivot == null:
 		return
 	if hidden_stash_frame_tween != null and hidden_stash_frame_tween.is_running():
@@ -11749,6 +11753,8 @@ func _build_premium_dealer_locker_visual() -> void:
 	premium_dealer_locker_open = false
 
 func _sync_dealer_locker_visual() -> void:
+	if inventory_system!=null and inventory_system.furniture!=null and inventory_system.furniture.equipment_world!=null:
+		inventory_system.furniture.sync_world();return
 	var premium: bool = dealer_locker_level >= 3
 	for child: Node in get_children():
 		if not child is Node3D:
@@ -11767,6 +11773,10 @@ func _sync_dealer_locker_visual() -> void:
 		premium_dealer_locker_open = false
 
 func _set_premium_dealer_locker_open(opened: bool) -> void:
+	if inventory_system!=null and inventory_system.furniture!=null and inventory_system.furniture.equipment_world!=null:
+		var target:String=inventory_system.container_id
+		if target.is_empty():target=inventory_system.operation()+":dealer"
+		inventory_system.furniture.equipment_world.animate_container(target,opened);return
 	if premium_dealer_locker_left_door_pivot == null or premium_dealer_locker_right_door_pivot == null or dealer_locker_level < 3:
 		return
 	if premium_dealer_locker_left_tween != null and premium_dealer_locker_left_tween.is_running():
@@ -11789,6 +11799,8 @@ func _set_premium_dealer_locker_open(opened: bool) -> void:
 	premium_dealer_locker_right_tween.tween_property(premium_dealer_locker_right_door_pivot, "rotation:y", right_target, 0.32)
 
 func _sync_storage_furniture() -> void:
+	if inventory_system!=null and inventory_system.furniture!=null and inventory_system.furniture.equipment_world!=null:
+		inventory_system.furniture.sync_world();return
 	var show_hidden_stash: bool = storage_level >= 5
 	var show_vault: bool = storage_level >= 4 and not show_hidden_stash
 	if show_vault and storage_vault == null:
