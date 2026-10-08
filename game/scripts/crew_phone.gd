@@ -319,6 +319,18 @@ func character_instance(name: String) -> Node3D:
 		for clip in player.get_animation_list():
 			if str(clip).ends_with("idle"):player.play(clip);break
 	return instance
+func production_worker_animation(worker: Node3D) -> String:
+	if bool(worker.get_meta("seated",false)) and host.production_worker_pending_action.is_empty():return "sit"
+	if not host.packing_employee_active:return "idle"
+	# Do not keep walking in place at the packing bench, grow tents or storage.
+	# Task-specific work animations may replace the standing idle later.
+	var goal: Vector3=host.production_worker_target_position
+	var horizontal_distance: float=Vector2(worker.position.x-goal.x,worker.position.z-goal.z).length()
+	if horizontal_distance<=0.20:return "idle"
+	var next_waypoint: Vector3=host._production_worker_navigation_target()
+	var to_waypoint: float=Vector2(worker.position.x-next_waypoint.x,worker.position.z-next_waypoint.z).length()
+	return "walk" if to_waypoint>0.10 else "idle"
+
 func update_malik() -> void:
 	var worker: Node3D=host.production_worker_node
 	var name: String=host.production_worker_friend_name
@@ -329,7 +341,7 @@ func update_malik() -> void:
 		for child in worker.get_children():
 			if child is MeshInstance3D:child.hide()
 		for player in malik_worker.find_children("*","AnimationPlayer",true,false):
-			var wanted: String="sit" if bool(worker.get_meta("seated",false)) and host.production_worker_pending_action.is_empty() else ("walk" if host.packing_employee_active and worker.position.distance_to(host._production_worker_navigation_target())>0.10 else "idle")
+			var wanted: String=production_worker_animation(worker)
 			for clip in player.get_animation_list():
 				if str(clip).ends_with(wanted) and player.current_animation!=clip:player.play(clip)
 	elif malik_worker!=null:
