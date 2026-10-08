@@ -222,12 +222,14 @@ func update(delta: float) -> void:
 					if child is MeshInstance3D:child.visible=child.name!=host.production_worker_face_shell.name
 			for tag in manager_node.find_children("*","Label3D",true,false):tag.text=name+" · APARTMENT DEALER"
 		manager_node.visible=not host.dealer_arrested
-		var relax: bool=not host.customer_waiting and not world.couch_seated
-		var seat:=Vector3(-1.785 if host.packing_employee_hired else -2.775,0,3.035)
+		var couch: Dictionary=idle_couch()
+		var relax: bool=not couch.is_empty() and not host.customer_waiting and not world.couch_seated
+		var seat: Vector3=idle_spot(true,false)
 		var before: Vector3=manager_node.position
-		manager_node.position=manager_node.position.move_toward(seat if relax else Vector3(1.45,0,4.45),delta*2.0)
+		var destination: Vector3=seat if relax else (Vector3(1.45,0,4.45) if host.customer_waiting else idle_spot(true,true))
+		manager_node.position=manager_node.position.move_toward(destination,delta*2.0)
 		var seated: bool=relax and Vector2(manager_node.position.x-seat.x,manager_node.position.z-seat.z).length()<0.1
-		if seated:manager_node.rotation.y=0.0
+		if seated:manager_node.rotation.y=float(couch.get("yaw",0.0))
 		seated_pose(manager_node,seated)
 		animate_manager(Vector3(manager_node.position.x-before.x,0,manager_node.position.z-before.z),seated,delta)
 		if host.customer_waiting and not host.customer_answered and not host.customer_departing and can_handle() and not manager_attempted and manager_node.position.distance_to(Vector3(1.45,0,4.45))<0.2 and str(host.current_customer.get("special","")).is_empty():
@@ -304,15 +306,42 @@ func seated_pose(model: Node3D,seated: bool) -> void:
 		model.position.y=-0.57 if seated else 0.0
 	model.set_meta("seated",seated)
 
-func update_seating(delta: float) -> void:
+# Resolve idle furniture from the actual save. A packed couch or one moved
+# to the house must never leave an invisible apartment seating target.
+func idle_couch() -> Dictionary:
+	if host.inventory_system == null or host.inventory_system.furniture == null:return {}
+	var model: RefCounted=host.inventory_system.furniture.model
+	var candidate: Dictionary={}
+	for id in model.state.items:
+		var e: Dictionary=model.state.items[id]
+		if e.get("sku","")!="sofa" or e.get("property","")!="apartment" or not e.has("position"):continue
+		var p: Array=e.position
+		candidate={"id":id,"origin":Vector3(float(p[0]),0.0,float(p[2])),"yaw":deg_to_rad(float(e.get("yaw",0.0)))}
+		if str(id)=="legacy_sofa":break
+	return candidate
+
+func idle_spot(manager: bool=false,approach: bool=false) -> Vector3:
+	var couch: Dictionary=idle_couch()
+	if couch.is_empty():
+		# Neutral standing area: no furniture means no sitting in empty space.
+		return Vector3(0.75 if manager else -0.75,0.0,1.25)
+	var second: bool=manager and host.packing_employee_hired
+	var offset: Vector3=Vector3(0.615 if second else -0.375,0.0,-1.10 if approach else -0.165)
+	return (couch["origin"] as Vector3)+offset.rotated(Vector3.UP,float(couch["yaw"]))
+
+func update_seating(_delta: float) -> void:
 	var worker: Node3D=host.production_worker_node
 	if worker!=null and worker.visible:
 		var idle: bool=host.production_worker_pending_action.is_empty() and (not host.packing_employee_active or host.production_worker_task=="Waiting for work" or host.lay_low_active)
-		var at:=Vector3(-2.775,0,2.1)
-		var seated: bool=idle and worker.position.distance_to(at)<0.15
-		if seated:worker.position=Vector3(-2.775,0,3.035);worker.rotation.y=0.0
-		# Seated positions stay fixed until real work is assigned.
-		if idle and bool(worker.get_meta("seated",false)):worker.position=Vector3(-2.775,0,3.035);seated=true
+		var couch: Dictionary=idle_couch()
+		var at: Vector3=idle_spot(false,true)
+		var seat: Vector3=idle_spot(false,false)
+		var close_approach: bool=Vector2(worker.position.x-at.x,worker.position.z-at.z).length()<0.15
+		var close_seat: bool=Vector2(worker.position.x-seat.x,worker.position.z-seat.z).length()<0.15
+		var seated: bool=idle and not couch.is_empty() and (close_approach or close_seat)
+		if seated:
+			worker.position=seat
+			worker.rotation.y=float(couch.get("yaw",0.0))
 		worker.set_meta("seated",seated)
 		if malik_worker!=null:seated_pose(malik_worker,seated)
 		else:
