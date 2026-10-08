@@ -5468,7 +5468,7 @@ func _production_worker_station_position(station_name: String) -> Vector3:
 		"entry": return Vector3(0.65, 0.0, 3.85)
 		_:
 			if neighborhood != null and neighborhood.location_ops != null and neighborhood.location_ops.crew != null:
-				return neighborhood.location_ops.crew.idle_spot(false,true)
+				return neighborhood.location_ops.crew.idle_spot(false,false)
 			return Vector3(-0.75, 0.0, 1.25)
 
 
