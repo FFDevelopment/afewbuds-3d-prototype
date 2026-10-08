@@ -5466,7 +5466,10 @@ func _production_worker_station_position(station_name: String) -> Vector3:
 		"workbench": return Vector3(2.85, 0.0, 0.30)
 		"storage": return Vector3(-3.25, 0.0, -0.15) # Clear the vault handle and worker radius.
 		"entry": return Vector3(0.65, 0.0, 3.85)
-		_: return Vector3(-2.775, 0.0, 2.1)
+		_:
+			if neighborhood != null and neighborhood.location_ops != null and neighborhood.location_ops.crew != null:
+				return neighborhood.location_ops.crew.idle_spot(false,true)
+			return Vector3(-0.75, 0.0, 1.25)
 
 
 func _reset_production_worker_navigation() -> void:
@@ -5512,8 +5515,14 @@ func _update_production_worker_visual(delta: float) -> void:
 	var on_duty: bool = packing_employee_hired and packing_employee_active
 	production_worker_node.visible = packing_employee_hired and not production_worker_arrested
 	if not on_duty:
-		if production_worker_node.visible:production_worker_node.position=production_worker_node.position.move_toward(_production_worker_station_position("idle"),PRODUCTION_WORKER_MOVE_SPEED*delta)
+		if production_worker_node.visible and not bool(production_worker_node.get_meta("seated",false)):
+			production_worker_node.position=production_worker_node.position.move_toward(_production_worker_station_position("idle"),PRODUCTION_WORKER_MOVE_SPEED*delta)
 		return
+	var worker_idle: bool=production_worker_pending_action.is_empty() and (production_worker_task=="Waiting for work" or lay_low_active)
+	if worker_idle:
+		production_worker_target_position=_production_worker_station_position("idle")
+		if bool(production_worker_node.get_meta("seated",false)):
+			return
 	var move_target: Vector3 = _production_worker_navigation_target()
 	var before: Vector3 = production_worker_node.position
 	production_worker_node.position = before.move_toward(move_target, PRODUCTION_WORKER_MOVE_SPEED * delta)
