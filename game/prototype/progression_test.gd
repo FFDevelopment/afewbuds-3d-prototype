@@ -347,6 +347,9 @@ func run() -> void:
 	game.phone_panel.hide()
 
 	furniture=null
+	# Drain the final message chime before disposing the audio mixer fixture.
+	for player in game.find_children("*","AudioStreamPlayer",true,false):player.stop();player.stream=null
+	await create_timer(.15).timeout
 	game.queue_free()
 	await frames()
 	print("PROGRESSION_TEST_RESULT: ","PASS" if failures==0 else "FAIL"," checks=",checks," failures=",failures)
