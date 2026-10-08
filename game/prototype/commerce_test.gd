@@ -98,7 +98,11 @@ func run() -> void:
 	ops.manage("employees")
 	check(ops.management_app=="employees" and not game.phone_open,"Staff management stays in computer")
 	ops.close()
-	game.property_opportunity_state.acquired=true;game.inventory_system.furniture.sync_world()
+	game.property_opportunity_state.acquired=true
+	game.cash+=1000
+	var computer_id:String=game.inventory_system.furniture.model.own("computer")
+	check(game.inventory_system.furniture.model.place(computer_id,"house",Vector3(26.35,0,1.65),0),"Buy and place house computer")
+	game.inventory_system.furniture.sync_world()
 	game.camera.position=Vector3(27.7,1.64,1.65);game.camera.look_at(ops.HOUSE_PC)
 	check(ops.target()=="house_computer","House computer reachable")
 	ops.computer("house");check(ops.is_open() and not game.location_state.house.has("equipment"),"House computer preview does not activate production")
