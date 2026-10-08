@@ -142,7 +142,7 @@ func menu_root() -> Node:
 	for game in get_tree().root.get_children():
 		if not game.has_method("_any_modal_open"):continue
 		if is_instance_valid(game.get("account_overlay")):return game.account_overlay
-		if game.inventory_system!=null and game.inventory_system.furniture.blocks_movement():return game.inventory_system.furniture.panel
+		if game.inventory_system!=null and game.inventory_system.furniture.controls_panel()!=null:return game.inventory_system.furniture.controls_panel()
 		if game.inventory_system!=null and game.inventory_system.is_open():return game.inventory_system.panel
 		for name in ["pause_overlay","daily_report_panel","tutorial_panel","trim_panel","bag_minigame_panel","sale_panel","peephole_panel","plant_direct_panel","grow_panel","phone_panel","system_control_panel"]:
 			var panel=game.get(name)

@@ -109,6 +109,31 @@ func run():
  game.camera.global_position=Vector3(30,1.2,2.8);game.camera.look_at(Vector3(30,.8,1))
  editor.start_layout("house")
  check(editor.layout_focus==computer_id and not editor.layout_move.disabled,"Walk-around layout selects the complete desk")
+ if desktop:
+  var input=root.get_node("DesktopInput")
+  var toggle:=InputEventKey.new();toggle.keycode=KEY_TAB;toggle.pressed=true
+  check(editor.handle_placement_input(toggle) and editor.controls_active and Input.mouse_mode==Input.MOUSE_MODE_VISIBLE,"Tab releases cursor for furniture controls")
+  check(editor.blocks_movement() and input.menu_root()==editor.layout_panel,"Furniture controls pause movement and expose correct toolbar")
+  var selected_before:String=editor.layout_focus
+  editor.refresh_layout()
+  check(editor.layout_focus==selected_before,"Cursor mode preserves selected furniture")
+  var back:=InputEventJoypadButton.new();back.button_index=JOY_BUTTON_B;back.pressed=true
+  check(editor.handle_placement_input(back) and not editor.controls_active and editor.layout_mode,"Controller B returns to camera without closing layout")
+  var pad_toggle:=InputEventJoypadButton.new();pad_toggle.button_index=JOY_BUTTON_Y;pad_toggle.pressed=true
+  input._input(pad_toggle)
+  check(editor.controls_active and input.menu_controls().size()==4,"Controller Y exposes all four furniture actions")
+  editor.layout_move.grab_focus()
+  var right:=InputEventJoypadButton.new();right.button_index=JOY_BUTTON_DPAD_RIGHT;right.pressed=true
+  input._input(right)
+  check(root.gui_get_focus_owner()==editor.layout_pickup,"D-pad navigates from Move to Pick up")
+  editor.layout_move.grab_focus()
+  var accept:=InputEventJoypadButton.new();accept.button_index=JOY_BUTTON_A;accept.pressed=true
+  input._input(accept)
+  check(editor.is_placing() and not editor.controls_active,"Controller A activates focused Move and returns to aiming")
+  editor.handle_placement_input(toggle)
+  check(input.menu_root()==editor.placement_panel,"Placement controls expose Rotate Place and Cancel")
+  editor.handle_placement_input(back)
+  editor.cancel_placement()
  editor.layout_move_item()
  check(editor.is_placing() and editor.layout_mode,"Layout move enters placement without reopening phone")
  editor.cancel_placement()

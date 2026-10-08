@@ -1,6 +1,7 @@
 extends Node
 var preview_model:Node3D
 var preview_material:StandardMaterial3D
+var controls_active:=false
 var layout_mode:=false
 var layout_property:=""
 var layout_focus:=""
@@ -74,12 +75,27 @@ func setup(owner:Node3D,inv:Node) -> void:
  rod_button.hide()
 func is_open() -> bool:return panel.visible or is_placing() or layout_mode
 func is_placing() -> bool:return not selected.is_empty() and editing_camera
-func blocks_movement() -> bool:return panel.visible
+func blocks_movement() -> bool:return panel.visible or controls_active
+func controls_panel() -> Control:
+ if panel.visible:return panel
+ if not controls_active:return null
+ return placement_panel if is_placing() else layout_panel
+func set_controls(active:bool) -> void:
+ controls_active=active
+ Input.mouse_mode=Input.MOUSE_MODE_VISIBLE if active else Input.MOUSE_MODE_CAPTURED
+ var focused:Control=host.get_viewport().gui_get_focus_owner()
+ if focused!=null:focused.release_focus()
+ if active:
+  host.fp_player.enabled=false
+  var desktop:Node=host.get_node_or_null("/root/DesktopInput")
+  if desktop!=null:desktop.ensure_focus()
+
 func over_controls(p:Vector2) -> bool:return (placement_panel.visible and placement_panel.get_global_rect().has_point(p)) or (layout_panel.visible and layout_panel.get_global_rect().has_point(p))
 func restore_camera() -> void:
  editing_camera=false
  placement_panel.hide()
 func close() -> void:
+ controls_active=false
  layout_mode=false;layout_panel.hide();clear_preview()
  restore_camera()
  selected="";panel.hide();ghost.hide()
@@ -98,6 +114,7 @@ func toggle_lock(id:String) -> void:
  if not inside(str(model.state.items[id].get("property",""))):hint.text="Enter this property before changing furniture.";return
  model.lock(id,not bool(model.state.items[id].get("locked",false)));render_list()
 func open() -> void:
+ controls_active=false
  portfolio_property=""
  layout_panel.hide()
  if host.phone_open:host._toggle_phone()
@@ -159,6 +176,7 @@ func begin(id:String) -> void:
  var e:Dictionary=model.state.items[id]
  if e.get("property","") not in [property,"backpack"]:hint.text="Pick up this item at its property first.";selected="";return
  if not model.empty_reason(id).is_empty():hint.text=model.empty_reason(id);selected="";return
+ controls_active=false
  editing_camera=true
  layout_panel.hide();build_preview()
  point=host.camera.global_position-host.camera.global_basis.z*2.0;point.y=0
@@ -184,8 +202,15 @@ func aim() -> void:
  point.x=snappedf(point.x,.05);point.z=snappedf(point.z,.05)
  if model.state.items[selected].sku=="storage_5":snap_stash_to_wall()
 func handle_placement_input(event:InputEvent) -> bool:
- if (not is_placing() and not layout_mode) or host.session_paused:return false
+ if panel.visible or (not is_placing() and not layout_mode) or host.session_paused:return false
  if not event.is_pressed() or event.is_echo():return false
+ var toggle:bool=(event is InputEventKey and event.keycode==KEY_TAB) or (event is InputEventJoypadButton and event.button_index==JOY_BUTTON_Y)
+ if toggle:set_controls(not controls_active);return true
+ if controls_active:
+  if (event is InputEventKey and event.keycode==KEY_ESCAPE) or (event is InputEventJoypadButton and event.button_index==JOY_BUTTON_B):set_controls(false);return true
+  return false
+ if event is InputEventJoypadButton and event.button_index in [JOY_BUTTON_DPAD_UP,JOY_BUTTON_DPAD_DOWN,JOY_BUTTON_DPAD_LEFT,JOY_BUTTON_DPAD_RIGHT]:set_controls(true);return true
+ if not is_placing() and event is InputEventJoypadButton and event.button_index==JOY_BUTTON_X:layout_pickup_item();return true
  var desktop:Node=host.get_node_or_null("/root/DesktopInput")
  var accept:bool=desktop.pressed(event,"interact") if desktop!=null else event is InputEventKey and event.keycode==KEY_E
  var cancel:bool=desktop.is_back(event) if desktop!=null else event is InputEventKey and event.keycode==KEY_ESCAPE
@@ -242,7 +267,7 @@ func preview() -> void:
  if selected.is_empty():return
  ghost.mesh.size=model.size_of(selected,yaw);ghost.position=point+Vector3.UP*ghost.mesh.size.y/2
  var problem:=obstacle();hint.text="Ready to place" if problem.is_empty() else problem
- placement_hint.text=hint.text+"\nWalk / look to aim | R / RB: rotate | E / A: place" if host.get("fp_player")!=null else hint.text+"\nMove with joystick; drag to aim"
+ placement_hint.text=hint.text+"\nWalk / look to aim | R / RB: rotate | E / A: place | Tab / Y: controls" if host.get("fp_player")!=null else hint.text+"\nMove with joystick; drag to aim"
  place_button.disabled=not problem.is_empty()
  var mat:=StandardMaterial3D.new();mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;mat.albedo_color=Color(0.3,.9,.4,.35) if problem.is_empty() else Color(1,.25,.2,.35)
  ghost.material_override=mat;ghost.hide()
@@ -259,7 +284,9 @@ func confirm() -> void:
 func _process(_delta:float) -> void:
  if host==null:return
  if is_placing():
-  if not host.session_paused:aim();preview()
+  if not host.session_paused:
+   if not controls_active:aim()
+   preview()
   var screen:Vector2=host.get_viewport().get_visible_rect().size
   placement_panel.size=Vector2(minf(440,screen.x-24),0)
   placement_panel.position=Vector2((screen.x-placement_panel.size.x)/2,80)
@@ -366,17 +393,20 @@ func build_preview() -> void:
   if node is MeshInstance3D:node.set_meta("no_collision",true);node.material_overlay=preview_material
   if node is Label3D:node.hide()
 func cancel_placement() -> void:
+ set_controls(false)
  restore_camera();selected="";ghost.hide();clear_preview()
  if layout_mode and inside(layout_property):
   panel.hide();layout_panel.show();refresh_layout()
  else:close()
 func start_layout(property_id:String) -> void:
+ controls_active=false
  if not inside(property_id):hint.text="Enter this property before editing its furniture.";return
  layout_mode=true;layout_property=property_id;portfolio_property=property_id;panel.hide();layout_panel.show()
  if host.get("fp_player")!=null:Input.mouse_mode=Input.MOUSE_MODE_CAPTURED
  refresh_layout()
-func refresh_layout() -> void:
+func refresh_layout(force:bool=false) -> void:
  if not inside(layout_property):close();return
+ if controls_active and not force:return
  layout_focus=""
  var origin:Vector3=host.camera.global_position
  var direction:Vector3=-host.camera.global_basis.z
@@ -390,6 +420,7 @@ func refresh_layout() -> void:
   if hit!=null and origin.distance_to(hit)<distance:layout_focus=id;distance=origin.distance_to(hit)
  var reason:String="" if layout_focus.is_empty() else model.empty_reason(layout_focus)
  layout_hint.text=layout_property.capitalize()+" · "+("Look at furniture to select it" if layout_focus.is_empty() else model.item_name(layout_focus))
+ if host.get("fp_player")!=null:layout_hint.text+="\nTab / Y: controls · E / A: move · X (pad): pick up"
  if not reason.is_empty():layout_hint.text+="\n"+reason
  layout_move.disabled=layout_focus.is_empty() or not reason.is_empty();layout_pickup.disabled=layout_move.disabled
  var screen:Vector2=host.get_viewport().get_visible_rect().size
@@ -402,8 +433,8 @@ func layout_pickup_item() -> void:
  refresh_layout()
  if layout_focus.is_empty() or not model.empty_reason(layout_focus).is_empty():return
  model.lock(layout_focus,false)
- if not model.pack(layout_focus):layout_hint.text=model.error
- sync_world();refresh_layout()
+ if not model.pack(layout_focus):layout_hint.text=model.error;return
+ sync_world();refresh_layout(true)
 func snap_stash_to_wall() -> void:
  wall_found=false
  var origin:Vector3=host.camera.global_position
