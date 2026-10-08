@@ -1,0 +1,27 @@
+{
+  "character": "Diddy",
+  "status": "Concept reference generated; model not built or imported.",
+  "references": [
+    "C:\\Users\\jkill\\Desktop\\AFEWBUDS\\friends\\diddy_door.png",
+    "C:\\Users\\jkill\\Desktop\\AFEWBUDS\\friends\\diddy_face.png",
+    "C:\\Users\\jkill\\Desktop\\AFEWBUDS\\friends\\diddy_portrait.png"
+  ],
+  "generator": "Built-in image_gen",
+  "prompt": "Full-body front-facing neutral A-pose; preserve face, short locs, gold rectangular glasses, black and white tracksuit; match Rod semi-realistic stylized game proportions; plain gray background, no text, no props.",
+  "rig": "Existing AFB 56-bone contract",
+  "height_m": 2.35,
+  "target_triangles": 25000,
+  "texture": "One 2048px base color atlas",
+  "animations": [
+    "idle",
+    "walk",
+    "sit",
+    "work"
+  ],
+  "source_reference": "diddy-reference-v1.png",
+  "next_friends": [
+    "Tyler",
+    "Jeremias"
+  ],
+  "other_clients": "Deferred by user instruction."
+}

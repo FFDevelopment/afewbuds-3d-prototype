@@ -1,0 +1,6 @@
+{
+  "tool": "image_gen.imagegen",
+  "prompt": "Create a single full-body 3D game character production reference for AFewBuds friend Diddy. First three images are identity and outfit references; fourth Rod concept sheet is ONLY game rendering/style reference. Preserve Diddy's face, warm medium-dark brown skin, short black locs, gold rectangular glasses, black zipped tracksuit with white horizontal chest stripe and white sleeve and trouser outer stripes, black hoodie white drawstrings. Match Rod's grounded stylized semi-realistic game character proportions and material clarity. One character only, full body head to shoes completely visible, neutral relaxed A-pose with both hands out of pockets and fingers legible, arms separated from torso, feet apart, directly front facing, black low-top sneakers with white soles. Plain light gray studio background, even neutral illumination, sharp readable shapes, no props, no text, no branding, no additional faces or turnarounds. Intended reference for later mesh creation, not a portrait crop.",
+  "output": "diddy-reference-v1.png",
+  "status": "Concept reference, not a runtime 3D asset"
+}

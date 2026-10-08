@@ -1,0 +1,71 @@
+{
+  "schema": "game-room.room-brief.v1",
+  "roomId": "second-sitting",
+  "family": "gameplay-room",
+  "purpose": "Sofas, armchairs, tables, beds and shelving. Full-size displays with a clear central aisle. Purchases go to Property Storage.",
+  "runtimeSurface": "Godot desktop and mobile first-person neighborhood",
+  "boundsMeters": [
+    10,
+    3.4,
+    12
+  ],
+  "hero": {
+    "id": "display",
+    "role": "Full-size product display beside the entrance",
+    "reservedBoundsMeters": [
+      3.5,
+      3,
+      2.5
+    ]
+  },
+  "symmetry": {
+    "mode": "none",
+    "order": 1,
+    "appliesTo": [],
+    "exceptions": []
+  },
+  "circulation": {
+    "description": "Central 2.4m entry and aisle, 1.2m paths around displays; rear checkout visible from entry.",
+    "minimumClearanceMeters": 1.2
+  },
+  "productionCamera": {
+    "viewport": [
+      390,
+      844
+    ],
+    "location": [
+      5.0,
+      2.16,
+      11
+    ],
+    "target": [
+      5.0,
+      1.4,
+      6.0
+    ],
+    "verticalFovDegrees": 75
+  },
+  "performanceBudget": {
+    "maxSceneTriangles": 80000,
+    "maxVLowBytes": 4000000,
+    "maxHighTextureBytes": 16000000
+  },
+  "creditBudget": {
+    "maximumCredits": 0,
+    "approvalRequired": true
+  },
+  "environment": {
+    "type": "none",
+    "identity": "",
+    "source": "",
+    "assignmentKey": ""
+  },
+  "artifacts": {
+    "floorPlan": "",
+    "reflectedCeilingPlan": "",
+    "planMetadata": "plan-metadata.json",
+    "wallElevations": [],
+    "visualTarget": "",
+    "openingContactSheet": ""
+  }
+}

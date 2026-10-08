@@ -1,0 +1,6 @@
+{
+  "tool": "image_gen.imagegen",
+  "prompt": "Full-body 3D game character production reference: AFewBuds friend Tyler. First image is outfit/body, second identity/face, third is ONLY Rod game rendering style reference. Preserve Tyler's short spiky sandy-blond hair, blue eyes, light skin, faint stubble, small silver ear studs, plain black short-sleeve T-shirt, loose dark charcoal cargo trousers, white low-top sneakers without visible logos. Grounded stylized semi-realistic 3D game rendering like Rod, consistent human proportions and subtle material textures. One character only, head to shoes fully visible with margin, straight front view, relaxed neutral A-pose with both hands out of pockets, fingers visible and separated, arms slightly away from torso, feet apart. Light gray studio background, neutral even lighting, clean silhouette. No text, no logos, no secondary portraits, no scenery. Preserve identity; do not copy Rod's face.",
+  "output": "tyler-reference-v1.png",
+  "status": "Concept reference, not a runtime 3D asset"
+}

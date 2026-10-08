@@ -1,0 +1,124 @@
+{
+  "schema": "game-room.layout.v1",
+  "roomId": "second-sitting",
+  "units": "meters",
+  "surfaces": [
+    {
+      "id": "floor"
+    },
+    {
+      "id": "ceiling"
+    },
+    {
+      "id": "north"
+    },
+    {
+      "id": "south"
+    },
+    {
+      "id": "east"
+    },
+    {
+      "id": "west"
+    }
+  ],
+  "instances": [
+    {
+      "id": "sofa-0",
+      "assetId": "sofa",
+      "position": [
+        2.15,
+        0,
+        2.425
+      ],
+      "dimensions": [
+        1.9,
+        1,
+        0.85
+      ]
+    },
+    {
+      "id": "coffee_table-1",
+      "assetId": "coffee_table",
+      "position": [
+        1.75,
+        0,
+        4.3
+      ],
+      "dimensions": [
+        1.1,
+        1,
+        0.6
+      ]
+    },
+    {
+      "id": "bed-2",
+      "assetId": "bed",
+      "position": [
+        8.075,
+        0,
+        4.025
+      ],
+      "dimensions": [
+        1.55,
+        1,
+        2.05
+      ]
+    },
+    {
+      "id": "bookcase-3",
+      "assetId": "bookcase",
+      "position": [
+        1.65,
+        0,
+        7.675
+      ],
+      "dimensions": [
+        0.9,
+        1,
+        0.35
+      ]
+    },
+    {
+      "id": "dining_table-4",
+      "assetId": "dining_table",
+      "position": [
+        7.85,
+        0,
+        7.925
+      ],
+      "dimensions": [
+        1.5,
+        1,
+        0.85
+      ]
+    },
+    {
+      "id": "counter-5",
+      "assetId": "counter",
+      "position": [
+        5.0,
+        0,
+        9.35
+      ],
+      "dimensions": [
+        2,
+        1,
+        0.7
+      ]
+    }
+  ],
+  "productionCamera": {
+    "location": [
+      0,
+      0,
+      0
+    ],
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "verticalFovDegrees": 60
+  }
+}

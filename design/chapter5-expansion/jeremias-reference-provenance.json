@@ -1,0 +1,6 @@
+{
+  "tool": "image_gen.imagegen",
+  "prompt": "Full-body 3D game character production reference: AFewBuds friend Jeremias. First two images are outfit/identity references; third Rod is ONLY game rendering/style reference. Preserve Jeremias's face, medium warm brown skin, black thick rectangular eyeglasses, white tied durag with hanging tails behind his neck, neat thin moustache and separate chin goatee, one small white earbud, plain light gray short sleeve crewneck T-shirt, dark charcoal cargo trousers, visible original forearm tattoos. Plain dark sneakers with modest white soles. Grounded stylized semi-realistic game render matching Rod's material finish and human proportions. Single full body, head through shoes fully visible, front-facing neutral relaxed A-pose, both hands out of pockets with visible fingers, arms slightly away from body. Plain light gray studio backdrop, even neutral lighting, clean mesh-ready silhouette. No text, branding, extra characters or panels. Preserve Jeremias identity, not Rod's.",
+  "output": "jeremias-reference-v1.png",
+  "status": "Concept reference, not a runtime 3D asset"
+}

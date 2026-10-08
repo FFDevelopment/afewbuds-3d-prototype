@@ -89,20 +89,20 @@ func run():
  inv.open_container("packing");inv.select_item("apartment:packing","raw|Purple Dream");inv.process_selected()
  for frame in 4:await process_frame
  joy.button_index=JOY_BUTTON_A;joy.pressed=true;controls._input(joy)
- for target in game.trim_targets:
-  if target.visible:
-   var movement:Vector2=target.position-game.trim_scissors.position
-   game._controller_work_tick(movement.length()/400.0,movement.normalized())
- joy.pressed=false;controls._input(joy)
+ joy.button_index=JOY_BUTTON_DPAD_RIGHT;controls._input(joy)
+ for i in 3:
+  joy.button_index=JOY_BUTTON_A;joy.pressed=true;controls._input(joy)
+  joy.pressed=false;controls._input(joy)
  check(int(game.trimmed_inventory.get("Purple Dream",0))==3,"Controller trims all buds without a mouse")
- game._close_trim_minigame();inv.select_item("apartment:packing","trimmed|Purple Dream");inv.process_selected()
+ inv.select_item("apartment:packing","trimmed|Purple Dream");inv.process_selected()
  for frame in 4:await process_frame
  for i in 3:
-  joy.pressed=true;controls._input(joy)
-  var movement:Vector2=game.bag_target_panel.position-game.bag_bud_token.position
-  game._controller_work_tick(movement.length()/400.0,movement.normalized())
-  joy.pressed=false;controls._input(joy)
- game._seal_current_bag()
+  joy.button_index=JOY_BUTTON_A;joy.pressed=true;controls._input(joy)
+  joy.button_index=JOY_BUTTON_DPAD_RIGHT;controls._input(joy)
+  joy.button_index=JOY_BUTTON_A;controls._input(joy)
+  joy.button_index=JOY_BUTTON_DPAD_LEFT;controls._input(joy)
+ joy.button_index=JOY_BUTTON_DPAD_RIGHT;controls._input(joy);controls._input(joy)
+ joy.button_index=JOY_BUTTON_A;controls._input(joy)
  check(int(game.bagged_inventory.get("Purple Dream",0))==3,"Controller fills and seals product without a mouse")
  inv.close();controls.bindings=controls.DEFAULTS.duplicate();controls.pad_bindings=controls.PAD_DEFAULTS.duplicate();controls.install_actions();controls.save_preferences()
  game.queue_free();await process_frame

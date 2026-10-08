@@ -1,0 +1,71 @@
+{
+  "schema": "game-room.room-brief.v1",
+  "roomId": "green-room",
+  "family": "gameplay-room",
+  "purpose": "Grow tents, parent seeds, fertilizer and growing upgrades. A tent demonstration bay explains grow-room-only placement. Genetics-only seeds remain unavailable.",
+  "runtimeSurface": "Godot desktop and mobile first-person neighborhood",
+  "boundsMeters": [
+    8,
+    3.4,
+    10
+  ],
+  "hero": {
+    "id": "display",
+    "role": "Full-size product display beside the entrance",
+    "reservedBoundsMeters": [
+      3.5,
+      3,
+      2.5
+    ]
+  },
+  "symmetry": {
+    "mode": "none",
+    "order": 1,
+    "appliesTo": [],
+    "exceptions": []
+  },
+  "circulation": {
+    "description": "Central 2.4m entry and aisle, 1.2m paths around displays; rear checkout visible from entry.",
+    "minimumClearanceMeters": 1.2
+  },
+  "productionCamera": {
+    "viewport": [
+      390,
+      844
+    ],
+    "location": [
+      4.0,
+      2.16,
+      9
+    ],
+    "target": [
+      4.0,
+      1.4,
+      5.0
+    ],
+    "verticalFovDegrees": 75
+  },
+  "performanceBudget": {
+    "maxSceneTriangles": 80000,
+    "maxVLowBytes": 4000000,
+    "maxHighTextureBytes": 16000000
+  },
+  "creditBudget": {
+    "maximumCredits": 0,
+    "approvalRequired": true
+  },
+  "environment": {
+    "type": "none",
+    "identity": "",
+    "source": "",
+    "assignmentKey": ""
+  },
+  "artifacts": {
+    "floorPlan": "",
+    "reflectedCeilingPlan": "",
+    "planMetadata": "plan-metadata.json",
+    "wallElevations": [],
+    "visualTarget": "",
+    "openingContactSheet": ""
+  }
+}

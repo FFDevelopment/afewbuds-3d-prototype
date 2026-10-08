@@ -1,0 +1,17 @@
+{
+  "status": "local candidate checks passed; not a published release",
+  "desktop": "20 existing regression suites passed across the full run and targeted corrected reruns; furniture authority and expansion integration also passed",
+  "desktop_expansion_checks": 29,
+  "desktop_progression_checks": 71,
+  "mobile_checks": {
+    "expansion": 29,
+    "movement": 50,
+    "progression": 71,
+    "stations": 50,
+    "tutorial_market": 33,
+    "shop": 37,
+    "session_ui": 17
+  },
+  "visual_review": "Portrait packing controls inspected; furniture camera corrected to stay below ceiling. Furniture art and placement UX still need review.",
+  "public_repositories_modified": false
+}

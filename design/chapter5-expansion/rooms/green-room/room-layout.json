@@ -1,0 +1,110 @@
+{
+  "schema": "game-room.layout.v1",
+  "roomId": "green-room",
+  "units": "meters",
+  "surfaces": [
+    {
+      "id": "floor"
+    },
+    {
+      "id": "ceiling"
+    },
+    {
+      "id": "north"
+    },
+    {
+      "id": "south"
+    },
+    {
+      "id": "east"
+    },
+    {
+      "id": "west"
+    }
+  ],
+  "instances": [
+    {
+      "id": "grow_tent-0",
+      "assetId": "grow_tent",
+      "position": [
+        2.16,
+        0,
+        1.95
+      ],
+      "dimensions": [
+        3.12,
+        1,
+        1.5
+      ]
+    },
+    {
+      "id": "bookcase-1",
+      "assetId": "bookcase",
+      "position": [
+        1.05,
+        0,
+        5.175
+      ],
+      "dimensions": [
+        0.9,
+        1,
+        0.35
+      ]
+    },
+    {
+      "id": "bookcase-2",
+      "assetId": "bookcase",
+      "position": [
+        6.65,
+        0,
+        2.175
+      ],
+      "dimensions": [
+        0.9,
+        1,
+        0.35
+      ]
+    },
+    {
+      "id": "bookcase-3",
+      "assetId": "bookcase",
+      "position": [
+        6.65,
+        0,
+        4.175
+      ],
+      "dimensions": [
+        0.9,
+        1,
+        0.35
+      ]
+    },
+    {
+      "id": "counter-4",
+      "assetId": "counter",
+      "position": [
+        4.0,
+        0,
+        7.85
+      ],
+      "dimensions": [
+        2,
+        1,
+        0.7
+      ]
+    }
+  ],
+  "productionCamera": {
+    "location": [
+      0,
+      0,
+      0
+    ],
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "verticalFovDegrees": 60
+  }
+}

@@ -81,37 +81,22 @@ func run() -> void:
 	game.inventory_system.select_item("apartment:packing","raw|Purple Dream")
 	game.inventory_system.process_selected()
 	await frames()
-	check(game.trim_panel.get_global_rect().end.y <= game.hud.size.y, "trim panel fits landscape viewport")
-	for target in game.trim_targets:
-		if is_instance_valid(target) and target.visible:
-			var press := InputEventMouseButton.new()
-			press.button_index = MOUSE_BUTTON_LEFT
-			press.pressed = true
-			press.position = game.trim_scissors.get_global_rect().get_center()
-			game._input(press)
-			var release := InputEventMouseButton.new()
-			release.button_index = MOUSE_BUTTON_LEFT
-			release.pressed = false
-			release.position = target.get_global_rect().get_center()
-			game._input(release)
-	check(int(game.trimmed_inventory.get("Purple Dream", 0)) > 0, "mouse dragging trims harvested product")
-	game._close_trim_minigame()
+	var packing=game.inventory_system.packing
+	check(packing.bar.get_global_rect().end.y<=game.hud.size.y,"Physical packing controls fit landscape viewport")
+	var closeup:Transform3D=game.camera.global_transform
+	await frames(10)
+	check(game.camera.global_transform.is_equal_approx(closeup),"Packing camera stays at bench while player physics runs")
+	click_prop(packing,0)
+	var grams:int=packing.amount
+	for i in grams:click_prop(packing,1)
+	check(int(game.trimmed_inventory.get("Purple Dream",0))==grams,"Mouse clicks trim exact batch through world objects")
 	game.inventory_system.select_item("apartment:packing","trimmed|Purple Dream")
 	game.inventory_system.process_selected()
 	await frames()
-	check(game.bag_minigame_panel.get_global_rect().end.y <= game.hud.size.y, "bagging panel fits landscape viewport")
-	for i in range(game.bag_target_units):
-		var press := InputEventMouseButton.new()
-		press.button_index = MOUSE_BUTTON_LEFT
-		press.pressed = true
-		press.position = game.bag_bud_token.get_global_rect().get_center()
-		game._input(press)
-		var release := InputEventMouseButton.new()
-		release.button_index = MOUSE_BUTTON_LEFT
-		release.position = game.bag_target_panel.get_global_rect().get_center()
-		game._input(release)
-	game._seal_current_bag()
-	check(int(game.bagged_inventory.get("Purple Dream", 0)) > 0, "mouse dragging and sealing creates packaged product")
+	while packing.progress<packing.amount:
+		click_prop(packing,0);click_prop(packing,1)
+	click_prop(packing,2)
+	check(int(game.bagged_inventory.get("Purple Dream",0))>0,"Mouse clicks fill and seal packaged product")
 	var old_stock: int = game.products["Purple Dream"].stock
 	game.inventory_system.transfer("apartment:packing","backpack","product|Purple Dream",1)
 	game.inventory_system.close()
@@ -202,15 +187,15 @@ func run() -> void:
 	game.inventory_system.select_item("apartment:packing","trimmed|Purple Dream")
 	game.inventory_system.process_selected()
 	var batches := 0
-	while game.bag_minigame_panel.visible and batches < 20:
-		var remaining: int = game.trimmed_inventory["Purple Dream"]
-		check(game.bag_target_units == mini(12, remaining), "continuous target uses a 12g batch capped by remaining product")
-		game.bag_current_units = game.bag_target_units
-		game._seal_current_bag()
-		batches += 1
-		if game.trimmed_inventory["Purple Dream"] > 0:
-			check(game.bag_minigame_panel.visible and game.bag_current_units == 0, "bench III continues next bag without reopening")
-	check(batches > 1 and not game.bag_minigame_panel.visible and game.bagged_inventory["Purple Dream"] == bags_before + 17, "continuous bagging finishes and conserves all product")
+	while packing.is_open() and batches<20:
+		var remaining:int=game.trimmed_inventory["Purple Dream"]
+		check(packing.amount==mini(12,remaining),"Continuous target caps a 12g batch by remaining product")
+		while packing.progress<packing.amount:
+			click_prop(packing,0);click_prop(packing,1)
+		click_prop(packing,2);batches+=1
+		if game.trimmed_inventory["Purple Dream"]>0:
+			check(packing.is_open() and packing.progress==0,"Bench III continues next bag without reopening")
+	check(batches>1 and not packing.is_open() and game.bagged_inventory["Purple Dream"]==bags_before+17,"Continuous bagging conserves all product")
 	game.inventory_system.close()
 	check(not game.has_node("WindowBuildingA") and not game.has_node("WindowBuildingB") and not game.has_node("WindowBuildingC"), "window placeholder squares removed")
 	check(game.neighborhood.has_node("ApartmentWindow") and game.window_sun_disc == null, "real glazed window replaces fake sky and sun")
@@ -458,3 +443,9 @@ func check_neighborhood() -> void:
 	check(game._any_modal_open(), "R preserves front-door visitor interaction")
 	game._close_active_panel()
 	await frames()
+
+func click_prop(packing:Node,index:int) -> void:
+	var press:=InputEventMouseButton.new()
+	press.button_index=MOUSE_BUTTON_LEFT;press.pressed=true
+	press.position=game.camera.unproject_position(packing.targets[index].global_position)
+	packing._unhandled_input(press)

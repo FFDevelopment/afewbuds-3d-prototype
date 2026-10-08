@@ -112,6 +112,12 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled();return
 	if is_instance_valid(settings) and is_back(event):
 		close_settings();get_viewport().set_input_as_handled();return
+	if event is InputEventJoypadButton and not is_instance_valid(settings):
+		for game in get_tree().root.get_children():
+			if not game.has_method("_any_modal_open") or game.inventory_system==null:continue
+			if game.inventory_system.packing.is_open() and not game.session_paused:
+				game.inventory_system.packing._unhandled_input(event)
+				get_viewport().set_input_as_handled();return
 	if event is InputEventJoypadButton and event.button_index==JOY_BUTTON_A and not is_instance_valid(settings):
 		for game in get_tree().root.get_children():
 			if game.has_method("_controller_grab") and game._controller_grab(event.pressed):
@@ -134,6 +140,7 @@ func menu_root() -> Node:
 	for game in get_tree().root.get_children():
 		if not game.has_method("_any_modal_open"):continue
 		if is_instance_valid(game.get("account_overlay")):return game.account_overlay
+		if game.inventory_system!=null and game.inventory_system.furniture.is_open():return game.inventory_system.furniture.panel
 		if game.inventory_system!=null and game.inventory_system.is_open():return game.inventory_system.panel
 		for name in ["pause_overlay","daily_report_panel","tutorial_panel","trim_panel","bag_minigame_panel","sale_panel","peephole_panel","plant_direct_panel","grow_panel","phone_panel","system_control_panel"]:
 			var panel=game.get(name)

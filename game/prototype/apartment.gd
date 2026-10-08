@@ -288,6 +288,8 @@ func _on_cloud_status(message: String) -> void:
 	if AFBCloud.blocked and inventory_system!=null:inventory_system.session_menu.on_cloud_event("replaced")
 
 func _close_active_panel() -> bool:
+	if inventory_system.packing.is_open():inventory_system.packing.close();return true
+	if inventory_system.furniture.is_open():inventory_system.furniture.close();return true
 	if inventory_system!=null and inventory_system.is_open():
 		inventory_system.close()
 		return true

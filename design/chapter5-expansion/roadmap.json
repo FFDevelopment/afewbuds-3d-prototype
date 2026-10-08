@@ -1,0 +1,169 @@
+{
+  "schema": 1,
+  "status": "Chapter 5 mechanics are implemented locally; Chapters 6\u201315 are planned, not playable.",
+  "rules": [
+    "Count new activity from a persisted chapter baseline.",
+    "Never remove claimed rewards or purchased assets.",
+    "Mutually exclusive choices retire incompatible unclaimed objectives.",
+    "Every branch has a reachable convergence and completion path.",
+    "No story progress during the tutorial or while simulation is paused.",
+    "Mobile and desktop share requirements and save schema; controls remain platform-specific."
+  ],
+  "chapters": [
+    {
+      "number": 5,
+      "title": "Building an Operation",
+      "district": "Roachwood / Half Baked Heights",
+      "story": "Rod helps turn the new house into a stable operation. Kobi tests batch consistency; Malik asks the player to keep the crew dependable.",
+      "milestones": [
+        "Make It Yours: place and lock two ordinary furniture items in the house.",
+        "Room to Grow: place a tent in the grow room and harvest three new plants.",
+        "A Consistent Batch: trim 30g and seal five bags.",
+        "House Regulars: five personal sales and two dealer sales after moving.",
+        "Keep the Lights On: pay a house utility bill and clear overdue property balances.",
+        "Open House, Quiet Business: earn $2,500 new revenue, make ten personal sales, lower Heat to 25 or less, and meet Rod."
+      ],
+      "finale": "Rod recognizes the house as an established operation and introduces the Joint Junction opportunity. $1,600 total milestone rewards; each reward is granted once."
+    },
+    {
+      "number": 6,
+      "title": "A Place at the Junction",
+      "district": "Joint Junction",
+      "story": "Diddy introduces the downtown regulars. The player learns to manage appointments without overwhelming the house.",
+      "milestones": [
+        "Meet Diddy downtown after Chapter 5.",
+        "Complete three scheduled pickups for existing friends.",
+        "Set a storefront schedule and honor five appointments.",
+        "Choose a small service counter or appointment-only office; both advance the story.",
+        "Pay the first agreement bill and complete the opening day."
+      ],
+      "finale": "Unlock a second operating location and appointment scheduling upgrades. Choice controls location flavor, not access to later chapters."
+    },
+    {
+      "number": 7,
+      "title": "The Regulars",
+      "district": "Cottonmouth Commons / Munchie Mile",
+      "story": "Tyler and Jeremias disagree about chasing more customers versus looking after regulars. Reliability wins over raw volume.",
+      "milestones": [
+        "Introduce Tyler and Jeremias through their existing friend relationships.",
+        "Reach a dependable relationship with four named friends.",
+        "Complete three small requests with different time windows.",
+        "Resolve one missed appointment through a make-good rather than losing the chapter.",
+        "Finish a weekend of ten fulfilled orders."
+      ],
+      "finale": "Unlock customer notes, repeat orders, and a staff scheduling board."
+    },
+    {
+      "number": 8,
+      "title": "A Crew of Your Own",
+      "district": "Couchlock Court",
+      "story": "Malik needs the player to stop being the answer to every problem. Roles and fair pay become the center of the story.",
+      "milestones": [
+        "Assign three distinct staff roles.",
+        "Train one worker through five supervised tasks.",
+        "Cover a day off by reassigning duties.",
+        "Pay three payroll cycles without overdue wages.",
+        "Resolve a staff disagreement and finish a fully staffed shift."
+      ],
+      "finale": "Unlock shift presets, training levels, and a deputy manager; no required firing route."
+    },
+    {
+      "number": 9,
+      "title": "Room for the Boxes",
+      "district": "Bongwater Bay",
+      "story": "Rod finds a modest warehouse. The challenge is organizing the move while keeping customers supplied.",
+      "milestones": [
+        "Inspect a warehouse and choose rent, lease, or purchase.",
+        "Arrange receiving, storage, and packing areas with clear access.",
+        "Move owned equipment without losing contents or upgrades.",
+        "Complete five delivery collections within carrying capacity.",
+        "Run one day with correct stock and paid utilities."
+      ],
+      "finale": "Unlock warehouse ownership agreements, larger furniture, and property-to-property logistics."
+    },
+    {
+      "number": 10,
+      "title": "Your Name on the Bag",
+      "district": "Cottonmouth Commons",
+      "story": "Kobi wants a recognizable house style. Quality and honest labeling matter more than charging extra for a faster bench.",
+      "milestones": [
+        "Choose a brand name and visual identity.",
+        "Complete three consistent quality batches.",
+        "Record stock and labels for five orders.",
+        "Run a small launch for existing regulars.",
+        "Resolve one quality complaint with a refund or replacement."
+      ],
+      "finale": "Unlock cosmetic packaging and a brand ledger; bench upgrades remain speed/convenience upgrades."
+    },
+    {
+      "number": 11,
+      "title": "Too Much Attention",
+      "district": "Paranoia Point",
+      "story": "The growing business draws scrutiny. Reeves returns as a character with consequences shaped by the earlier payment choice.",
+      "milestones": [
+        "Review the prior Reeves outcome without reviving retired tasks.",
+        "Receive a district notice and inspect the affected property.",
+        "Reduce noise/traffic through schedules and equipment settings.",
+        "Resolve bills and complete three quiet shifts.",
+        "Choose a lawful settlement or temporary closure; both converge at the finale."
+      ],
+      "finale": "Unlock compliance and property alerts. No real-world evasion instructions; pressure stays abstract and fictional."
+    },
+    {
+      "number": 12,
+      "title": "Higher Expectations",
+      "district": "High Society Hills",
+      "story": "Rod introduces a demanding client circle. The player must decide what premium service actually means.",
+      "milestones": [
+        "Visit High Society Hills with an existing friend.",
+        "Furnish a reception space with accessible seating.",
+        "Meet three customer preference requests.",
+        "Complete five on-time appointments.",
+        "Host a small invitation-only opening with a staffed reception."
+      ],
+      "finale": "Unlock premium decor, client preference profiles, and service tiers without automatic product-value inflation."
+    },
+    {
+      "number": 13,
+      "title": "Out Past the Lights",
+      "district": "The Sticks",
+      "story": "Mahto brings a rural property lead. Distance and utilities make the new site a different kind of commitment.",
+      "milestones": [
+        "Tour two rural property options.",
+        "Choose an agreement and budget for recurring obligations.",
+        "Install an appropriate growing room and utility equipment.",
+        "Assign on-site staff and test a transport route.",
+        "Complete the first rural production cycle."
+      ],
+      "finale": "Unlock rural properties, larger capacity equipment, and scheduled transport. Earlier homes remain optional holdings."
+    },
+    {
+      "number": 14,
+      "title": "One Business, Many Doors",
+      "district": "Multiple districts",
+      "story": "The player has several places but needs one coherent operation. Malik and the crew help build routines that survive a busy week.",
+      "milestones": [
+        "Assign a manager to each active operation.",
+        "Balance stock between three controlled properties.",
+        "Cover five shifts with no missed payroll.",
+        "Resolve a shortage through transfer or reduced orders.",
+        "Finish a multi-property week with all bills accounted for."
+      ],
+      "finale": "Unlock a city-wide operations overview, transfer plans, and manager summaries."
+    },
+    {
+      "number": 15,
+      "title": "Bongchester Built Together",
+      "district": "Bongchester",
+      "story": "The friends return for the city story finale. The ending reflects relationships, retained properties, and earlier choices.",
+      "milestones": [
+        "Complete personal follow-up scenes with the core friends.",
+        "Resolve outstanding story obligations; old debt cannot vanish.",
+        "Choose the final business identity: neighborhood roots, service network, or independent craft.",
+        "Prepare and host a celebration at a property the player controls.",
+        "Review the completed city story and choose free-play goals."
+      ],
+      "finale": "Complete the ten-chapter continuation with a persistent epilogue, optional challenges, and no forced reset."
+    }
+  ]
+}

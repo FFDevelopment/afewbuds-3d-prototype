@@ -1,0 +1,31 @@
+{
+  "schema": "game-room.opening-schedule.v1",
+  "roomId": "second-sitting",
+  "primaryArrival": {
+    "openingId": "front-entry",
+    "exception": ""
+  },
+  "openings": [
+    {
+      "id": "front-entry",
+      "kind": "door",
+      "widthMeters": 2.4,
+      "heightMeters": 2.9,
+      "depthMeters": 0.25,
+      "wall": "south",
+      "destination": "Cottonmouth Commons sidewalk",
+      "approved": false
+    },
+    {
+      "id": "front-window",
+      "kind": "window",
+      "widthMeters": 2,
+      "heightMeters": 1.6,
+      "sillMeters": 0.8,
+      "depthMeters": 0.25,
+      "wall": "south",
+      "destination": "Shop display / sidewalk",
+      "approved": false
+    }
+  ]
+}

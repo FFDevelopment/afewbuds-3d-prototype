@@ -38,21 +38,18 @@ func run():
  inv.select_item("apartment:packing","raw|"+strain)
  check(inv.packing_action!=null and not inv.packing_action.disabled,"Raw harvest exposes Trim by hand")
  inv.packing_action.pressed.emit()
- check(game.trim_panel.visible and not inv.is_open(),"Trim opens its work area without inventory overlay")
- for target in game.trim_targets:
-  game.trim_scissors.position=target.position
-  game._check_trim_collisions()
+ check(inv.packing.active and not inv.is_open(),"Trim opens physical work area without inventory overlay")
+ inv.packing.selected=0;inv.packing.use_selected();inv.packing.selected=1
+ for i in range(3):inv.packing.use_selected()
  check(int(game.trimmed_inventory.get(strain,0))==3 and int(game.untrimmed_inventory.get(strain,0))==0,"Trimming conserves the harvested three grams")
- game._close_trim_minigame()
  check(inv.is_open() and not game.bagging_panel.visible,"Finishing trim returns to modern bench")
  inv.select_item("apartment:packing","trimmed|"+strain)
  check(inv.packing_action!=null and not inv.packing_action.disabled,"Trimmed product exposes Bag by hand")
  inv.packing_action.pressed.emit()
- check(game.bag_minigame_panel.visible and not inv.is_open(),"Bagging opens its work area")
- for i in game.bag_target_units:
-  game.bag_bud_token.global_position=game.bag_target_panel.global_position
-  game._finish_bud_drag()
- game.bag_seal_button.pressed.emit()
+ check(inv.packing.active and not inv.is_open(),"Bagging opens physical work area")
+ while inv.packing.progress<inv.packing.amount:
+  inv.packing.selected=0;inv.packing.use_selected();inv.packing.selected=1;inv.packing.use_selected()
+ inv.packing.selected=2;inv.packing.use_selected()
  check(int(game.bagged_inventory.get(strain,0))==3 and int(game.trimmed_inventory.get(strain,0))==0,"Sealing transfers exactly three grams to packaged bench stock")
  check(inv.is_open() and not game.bagging_panel.visible,"Sealing returns to the modern bench")
  inv.select_item("apartment:packing","product|"+strain)

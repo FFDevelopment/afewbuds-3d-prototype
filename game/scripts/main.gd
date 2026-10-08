@@ -4826,6 +4826,8 @@ func _context_action() -> void:
 				_open_peephole()
 
 func _any_modal_open() -> bool:
+	if inventory_system!=null and inventory_system.packing!=null and inventory_system.packing.is_open():return true
+	if inventory_system!=null and inventory_system.furniture!=null and inventory_system.furniture.is_open():return true
 	if inventory_system!=null and inventory_system.is_open():return true
 	if neighborhood!=null and neighborhood.location_ops!=null and neighborhood.location_ops.is_open():return true
 	if neighborhood!=null and neighborhood.property_opportunity!=null and neighborhood.property_opportunity.is_open(): return true
@@ -4930,6 +4932,9 @@ func _refresh_grow_panel() -> void:
 				row.add_child(hint)
 
 func _plant_seed(slot_index: int, strain_name: String, use_backpack: bool = true) -> void:
+	if inventory_system!=null and inventory_system.furniture!=null and not inventory_system.furniture.model.can_plant(slot_index):
+		status_label.text="Place the grow tent before planting."
+		return
 	if not _tutorial_can_do("plant"):
 		return
 	if slot_index >= 0 and slot_index < plant_slots.size() and int(plant_slots[slot_index].get("stage", -1)) >= 0:
@@ -8535,7 +8540,7 @@ func _build_story_progress_section() -> void:
 		])
 		objectives.text += "\n\nFINALE: prove the apartment can no longer support the operation and unlock your first house opportunity."
 	else:
-		objectives.text = "✓ Apartment operation maxed\n✓ Distribution proven\n✓ Crew proven\n✓ Demand proven\n✓ Operation proven\n\nEXPANSION OPPORTUNITY UNLOCKED\nRod found a residential operation property with RENT, LEASE-TO-OWN and PURCHASE options.\n\nThe property becomes the next major AFewBuds progression step."
+		objectives.text = inventory_system.furniture.chapter.description()
 
 	objectives.custom_minimum_size.x = 0.0
 	objectives.size_flags_horizontal = Control.SIZE_EXPAND_FILL
