@@ -26,4 +26,4 @@ jobs:
           /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --editor --import --quit 2>&1 | tee /tmp/import.log
           if grep -E 'SCRIPT ERROR|^ERROR:' /tmp/import.log; then exit 1; fi
       - name: Validate registry, old-career isolation and equipment
-        run: python3 tools/test.py /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 dynamic_property_test property_isolation_test equipment_test
+        run: python3 tools/test.py /tmp/godot/Godot_v4.7.2-stable_linux.x86_64
