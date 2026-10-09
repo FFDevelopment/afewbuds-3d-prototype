@@ -87,7 +87,7 @@ func grow_summary() -> String:
 func refresh_grow_panel() -> void:
 	if grow_panel_label==null:return
 	var status:Dictionary=grow_snapshot()
-	grow_panel_label.text="HOUSE GROW   %d TENT(S)\nPLANTS %d/%d   READY %d\nLIGHTS %s   AIR %s" % [status.tents,status.active,status.capacity,status.ready,"ON" if bool(states.get("grow_lights",false)) else "OFF",("ON" if status.ventilation_on else "OFF") if status.ventilation else "NOT INSTALLED"]
+	grow_panel_label.text="HOUSE GROW   %d TENT(S)\nPLANTS %d/%d   READY %d\nDRY %d   DEAD %d\nLIGHTS %s   AIR %s" % [status.tents,status.active,status.capacity,status.ready,status.dry,status.dead,"ON" if bool(states.get("grow_lights",false)) else "OFF",("ON" if status.ventilation_on else "OFF") if status.ventilation else "NOT INSTALLED"]
 	grow_panel_label.modulate=Color("f0d18d") if status.dry>0 or status.dead>0 else Color("d4f5d2")
 
 func _sync_house_ventilation() -> void:
@@ -156,7 +156,7 @@ func _inside_room(point: Vector3) -> String:
 func _reachable(at: Vector3) -> bool:
 	var offset: Vector3=at-host.camera.global_position
 	if offset.length()>2.5 or offset.length()<0.01: return false
-	if (-host.camera.global_basis.z).dot(offset.normalized())<0.97: return false
+	if (-host.camera.global_basis.z).dot(offset.normalized())<0.65: return false
 	return world._door_line_clear(at)
 
 func nearby() -> String:
