@@ -1635,7 +1635,7 @@ func _stop_lay_low_and_reopen() -> void:
 	_refresh_phone()
 
 func _use_heat_contact() -> void:
-	if not reeves_met or not corrupt_contact_unlocked or heat < HEAT_CONTACT_MINIMUM:
+	if not reeves_met or reeves_arrangement_active or not (corrupt_contact_unlocked or _reeves_is_friendly()) or heat <= 0.0 or (heat < HEAT_CONTACT_MINIMUM and not _reeves_is_friendly()):
 		return
 	var contact_cost: int = _heat_contact_cost()
 	if cash < contact_cost:
@@ -10071,6 +10071,9 @@ func _record_customer_encounter(completed: bool) -> String:
 		return name
 	return ""
 
+func _reeves_is_friendly() -> bool:
+	return reeves_met and reeves_arrangement_ended and not reeves_arrangement_active and reeves_total_paid >= REEVES_TOTAL_OBLIGATION and reeves_relationship >= 25
+
 func _reeves_remaining_balance() -> int:
 	return maxi(0, REEVES_TOTAL_OBLIGATION - reeves_total_paid)
 
@@ -10157,6 +10160,16 @@ func _open_reeves_visit() -> void:
 	if sale_customer_art != null:
 		sale_customer_art.visible = false
 	_clear_substitutes()
+	if reeves_visit_reason == "friendly_checkin" and _reeves_is_friendly():
+		sale_title.text = "AGENT REEVES - PRIVATE CHECK-IN"
+		sale_body.text = "We are square on the $8,000 protection arrangement. No new debt or scheduled payments. If there is heat on you, I can make some calls for $%d to reduce it by up to %d. Or we can just talk." % [_heat_contact_cost(), int(HEAT_CONTACT_REDUCTION)]
+		_set_sale_action_labels("PAY $%d - REDUCE HEAT" % _heat_contact_cost(), "JUST TALK", "NOT NOW")
+		if sale_primary_button != null:
+			sale_primary_button.disabled = heat <= 0.0 or cash < _heat_contact_cost()
+		_save_game()
+		return
+	if sale_primary_button != null:
+		sale_primary_button.disabled = false
 	if not reeves_met:
 		reeves_met = true
 		_increment_advancement_stat("reeves_meetings")
@@ -10182,12 +10195,24 @@ You can REFUSE and then LAY LOW, but protection is suspended while the payment i
 	_save_game()
 
 func _reeves_primary_action() -> void:
+	if reeves_visit_reason == "friendly_checkin":
+		var prior_calls: int = corrupt_contact_calls
+		_use_heat_contact()
+		if corrupt_contact_calls > prior_calls:
+			_end_reeves_visit()
+		return
 	_reeves_pay_half(false)
 
 func _reeves_secondary_action() -> void:
+	if reeves_visit_reason == "friendly_checkin":
+		_end_reeves_visit()
+		return
 	_reeves_pay_full(false)
 
 func _reeves_decline_action() -> void:
+	if reeves_visit_reason == "friendly_checkin":
+		_end_reeves_visit()
+		return
 	if reeves_visit_reason == "first_offer" or not reeves_arrangement_active:
 		enforcement_risk = clampf(enforcement_risk + 20.0, 0.0, 100.0)
 		reeves_next_payment_day = game_day + 2
