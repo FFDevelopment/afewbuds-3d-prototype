@@ -1,0 +1,29 @@
+name: Validate shared property core - desktop
+on:
+  push:
+    branches: [feature/dynamic-property-registry-v1]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  property-registry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Godot 4.7.2
+        run: |
+          curl -fL --retry 3 -o /tmp/godot.zip https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot
+      - name: Restore pinned game assets
+        run: |
+          if [ ! -f game/assets/.recovered-source ]; then
+            python3 tools/recover_assets.py /tmp/godot/Godot_v4.7.2-stable_linux.x86_64
+          fi
+      - name: Import game and verify scripts
+        run: |
+          set -euo pipefail
+          /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --editor --import --quit 2>&1 | tee /tmp/import.log
+          if grep -E 'SCRIPT ERROR|^ERROR:' /tmp/import.log; then exit 1; fi
+      - name: Validate registry, old-career isolation and equipment
+        run: python3 tools/test.py /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 dynamic_property_test property_isolation_test equipment_test
