@@ -44,12 +44,15 @@ const UTILITY_POSITIONS={
  "house":{"water_kit":Vector3(39.65,0,-8.2),"ventilation":Vector3(40.65,0,-8.2)}}
 const CURBS={"apartment":Vector3(-2,0,7.2),"house":Vector3(34.8,0,4.8)}
 var host:Node
+var registry:RefCounted
 var state:Dictionary
 var error:=""
 var busy:=false
 func inv():return host.inventory_system
 func setup(owner:Node) -> void:
  host=owner
+ registry=load("res://scripts/property_registry.gd").new()
+ registry.setup(owner, ROOMS)
  if not host.location_state.get("furniture_v1",{}) is Dictionary:host.location_state["furniture_v1"]={}
  if not host.location_state.has("furniture_v1"):host.location_state["furniture_v1"]={}
  state=host.location_state.furniture_v1
@@ -136,12 +139,13 @@ func ensure_slots() -> void:
    while host.plant_slots.size()<=int(slot):host.plant_slots.append(host._empty_plant_slot())
 func is_tent(e:Dictionary) -> bool:return CATALOG.has(e.get("sku","")) and CATALOG[e.sku].has("plants")
 func controlled(property:String) -> bool:
- if property=="apartment":return bool(host.apartment_rent_state.get("lease_active",true))
- return property=="house" and bool(host.property_opportunity_state.get("acquired",false))
+ return registry!=null and registry.controlled(property)
+func property_at(world_point:Vector3) -> String:
+ return registry.property_at(world_point) if registry!=null else ""
 func tent_count() -> int:
  var n:=0
  for e in state.items.values():
-  if is_tent(e) and e.get("property","") in ROOMS:n+=1
+  if is_tent(e) and registry.exists(str(e.get("property",""))):n+=1
  return n
 func price_for(sku:String) -> int:return int(CATALOG[sku].price)
 func item_name(id:String) -> String:return str(CATALOG[state.items[id].sku].name)
@@ -168,7 +172,7 @@ func item_for_slot(slot:int) -> String:
  return ""
 func can_plant(slot:int) -> bool:
  var id:=item_for_slot(slot)
- return not id.is_empty() and state.items[id].get("property","") in ROOMS
+ return not id.is_empty() and registry.exists(str(state.items[id].get("property","")))
 func slot_property(slot:int) -> String:
  var id:=item_for_slot(slot);return str(state.items[id].get("property","")) if not id.is_empty() else ""
 func live(id:String) -> bool:
@@ -183,7 +187,7 @@ func primary(property:String,kind:String) -> String:
  return ""
 func container_item(container:String) -> String:
  for id in state.items:
-  if container_of(id)==container and state.items[id].get("property","") in ROOMS:return id
+  if container_of(id)==container and registry.exists(str(state.items[id].get("property",""))):return id
  return ""
 func empty_reason(id:String) -> String:
  if not state.items.has(id):return "Item is no longer owned."
@@ -204,17 +208,18 @@ func validate(id:String,property:String,point:Vector3,yaw:int) -> String:
  if not state.items.has(id):return "Furniture is not owned."
  if not controlled(property):return "You do not hold this property."
  var e:Dictionary=state.items[id]
- if e.get("property","") in ROOMS and e.property!=property:return "Pick up this item into your backpack before moving it to another property."
- if e.get("property","")!="backpack" and e.get("property","") not in ROOMS:return "Collect this item into your backpack first."
+ if registry.exists(str(e.get("property",""))) and e.property!=property:return "Pick up this item into your backpack before moving it to another property."
+ if e.get("property","")!="backpack" and not registry.exists(str(e.get("property",""))):return "Collect this item into your backpack first."
  if bool(e.get("locked",false)):return "Unlock the furniture first."
  var reason:=empty_reason(id)
  if not reason.is_empty():return reason
  if not point.is_finite() or absf(point.y)>.05 or yaw%90!=0:return "Place on the floor with quarter-turn rotation."
  var rect:=bounds(id,point,yaw).grow(.015);var room:=""
- for key in ROOMS[property]:
-  if (ROOMS[property][key] as Rect2).grow(.35 if e.sku=="storage_5" else 0.14).encloses(rect):room=key;break
+ var allowed_rooms:Dictionary=registry.rooms_for(property)
+ for key in allowed_rooms:
+  if (allowed_rooms[key] as Rect2).grow(.35 if e.sku=="storage_5" else 0.14).encloses(rect):room=key;break
  if room.is_empty():return "Keep the entire item inside one room and clear of doorways."
- if bool(CATALOG[e.sku].get("grow_only",false)) and room!="grow":return "Grow equipment can only be placed in grow rooms."
+ if bool(CATALOG[e.sku].get("grow_only",false)) and not registry.is_grow_room(property,room):return "Grow equipment can only be placed in grow rooms."
  for other in state.items:
   if other==id:continue
   var item:Dictionary=state.items[other]
@@ -238,7 +243,7 @@ func pack(id:String) -> bool:
  if not error.is_empty():return false
  var e:Dictionary=state.items[id]
  if e.get("locked",false):error="Unlock the furniture first.";return false
- if e.get("property","") not in ROOMS:error="Only placed equipment can be picked up.";return false
+ if not registry.exists(str(e.get("property",""))):error="Only placed equipment can be picked up.";return false
  if inv().backpack_weight()+int(CATALOG[e.sku].get("weight",8))*inv().POUND>inv().backpack_limit():error="Not enough backpack capacity for this packed item.";return false
  var was_house_air:bool=e.get("property","")=="house" and e.sku=="ventilation"
  e.property="backpack";e.erase("position");e.erase("yaw");e.erase("container")
@@ -279,7 +284,7 @@ func upgrade(id:String) -> bool:
  var old_size:Array=e.get("size_override",[])
  if not sku.begins_with("shelf_"):e.erase("size_override")
  e.sku=sku;e.locked=false
- if e.get("property","") in ROOMS and not sku.begins_with("shelf_"):
+ if registry.exists(str(e.get("property",""))) and not sku.begins_with("shelf_"):
   var p:Array=e.position;error=validate(id,e.property,Vector3(p[0],0,p[2]),int(e.yaw))
  if not error.is_empty():
   e.sku=old_sku;e.locked=locked
@@ -319,7 +324,7 @@ func growth_settings(slot:int,base:Dictionary,offline:bool) -> Dictionary:
  var result:Dictionary=base.duplicate();result.erase("per_slot");result.erase("care_slots")
  var property:=slot_property(slot);var water:=false;var vent:=false;var light:=false
  for e in state.items.values():
-  if e.get("property","")!=property or property not in ROOMS:continue
+  if e.get("property","")!=property or not registry.exists(property):continue
   if e.sku=="water_kit":water=true
   if e.sku=="ventilation":vent=true
   if e.sku=="grow_light":light=true
