@@ -57,6 +57,8 @@ func setup(owner:Node) -> void:
  registry.setup(owner, ROOMS)
  item_registry=load("res://scripts/item_registry.gd").new()
  item_registry.setup(LEGACY_CATALOG)
+ if not item_registry.load_external_catalog("res://data/item_definitions.json"):
+  push_error("Invalid item catalog; legacy equipment has been retained.")
  CATALOG=item_registry.definitions
  if not host.location_state.get("furniture_v1",{}) is Dictionary:host.location_state["furniture_v1"]={}
  if not host.location_state.has("furniture_v1"):host.location_state["furniture_v1"]={}
