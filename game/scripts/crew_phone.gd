@@ -214,12 +214,8 @@ func update(delta: float) -> void:
 	if manager_node!=null and str(manager_node.get_meta("contact",""))!=name:manager_node.queue_free();manager_node=null
 	if not name.is_empty() and host.production_worker_node!=null:
 		if manager_node==null:
-			manager_node=character_instance(name) if name in ["Malik","Rod","Kobi"] else host.production_worker_node.duplicate()
+			manager_node=character_instance(name) if name in ["Malik","Rod","Kobi"] else generic_manager_instance(name)
 			manager_node.name="ApartmentDoorManager";host.add_child(manager_node);manager_node.set_meta("contact",name)
-			if name not in ["Malik","Rod","Kobi"]:
-				for child in manager_node.get_children():
-					if str(child.name).ends_with("Visual"):child.queue_free()
-					if child is MeshInstance3D:child.visible=child.name!=host.production_worker_face_shell.name
 			for tag in manager_node.find_children("*","Label3D",true,false):tag.text=name+" · APARTMENT DEALER"
 		manager_node.visible=not host.dealer_arrested
 		var relax: bool=not host.customer_waiting and not world.couch_seated
@@ -246,6 +242,27 @@ func update(delta: float) -> void:
 		var worker: String=host._critical_production_sender()
 		alert(worker,"seeds",host._total_seed_inventory()==0,"We're out of seeds. Collect an order at Central Market and deposit it at the computer.")
 		alert(worker,"fertilizer",host.fertilizer_units==0,"Fertilizer is out. I'll keep watering existing plants, but you'll need to restock fertilizer at Central Market.")
+
+func generic_manager_instance(name: String) -> Node3D:
+	# Duplicate only the base primitive rig. Never clone an existing worker's
+	# custom Malik/Rod/Kobi avatar, animation players, or stale visuals.
+	var source: Node3D=host.production_worker_node
+	var instance:=Node3D.new()
+	for child in source.get_children():
+		if child is MeshInstance3D or child is Label3D:
+			var copy: Node=child.duplicate()
+			instance.add_child(copy)
+			if copy is MeshInstance3D:
+				copy.visible=child.name!="FriendFaceWrap"
+				if child.name=="FriendFaceWrap":
+					copy.visible=false
+				elif child.name=="Head":
+					# The default worker skin is overridden by its own manager identity.
+					var skin:=StandardMaterial3D.new()
+					skin.albedo_color=host._worker_skin_color(name)
+					copy.material_override=skin
+			if child.name=="FriendFaceWrap":copy.visible=false
+	return instance
 
 func malik_instance() -> Node3D:return character_instance("Malik")
 func character_instance(name: String) -> Node3D:
@@ -279,8 +296,10 @@ func update_malik() -> void:
 			var wanted: String="sit" if bool(worker.get_meta("seated",false)) and host.production_worker_pending_action.is_empty() else ("walk" if host.packing_employee_active and worker.position.distance_to(host._production_worker_navigation_target())>0.10 else "idle")
 			for clip in player.get_animation_list():
 				if str(clip).ends_with(wanted) and player.current_animation!=clip:player.play(clip)
-	elif malik_worker!=null:
-		malik_worker.hide()
+	else:
+		if malik_worker!=null:
+			malik_worker.queue_free()
+			malik_worker=null
 		if worker!=null:
 			for child in worker.get_children():
 				if child is MeshInstance3D and child!=host.production_worker_face_shell:child.show()
