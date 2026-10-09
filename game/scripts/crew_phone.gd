@@ -398,7 +398,6 @@ func generic_manager_instance(name: String) -> Node3D:
 					face.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
 					part.material_override=face
 					part.visible=true
-	var title:Label3D=source.get_node_or_null("ProductionWorkerTaskLabel") as Label3D
 	# Copy the label's appearance when possible, never a worker's model.
 	for child in source.get_children():
 		if child is Label3D:
