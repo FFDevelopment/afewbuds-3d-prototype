@@ -96,7 +96,7 @@ func run()->void:
  check(game.reeves_visit_pending and game.reeves_visit_reason=="friendly_checkin","Text Reeves to schedule friendly doorstep visit")
  game.reeves_visit_pending=false
  game.reeves_visit_reason="friendly_checkin"
- game._start_reeves_door_visit("friendly_checkin")
+ # Test the follow-up meeting panel without starting unrelated customer timers.
  game._open_reeves_visit()
  check(game.sale_title.text.contains("PRIVATE CHECK-IN") and game.sale_primary_button.text.contains("REDUCE HEAT"),"Post-payoff visit presents optional favors rather than payments due")
  game._reeves_secondary_action()
