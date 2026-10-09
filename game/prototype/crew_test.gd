@@ -13,6 +13,18 @@ func run() -> void:
 	var game: Node3D=load("res://prototype/apartment.tscn").instantiate();root.add_child(game);game.fp_player.set_physics_process(false);await process_frame
 	game.set_process(false);game.neighborhood.set_process(false);game.gameplay_ready=true;game.session_paused=false;game.tutorial_active=false;game.daily_report_pending=false;game.tutorial_panel.hide();game.pause_overlay.hide();game.daily_report_panel.hide();game.visit_timer.stop();game.dealer_count=1;game.dealers_active=true;game.business_open=true;game.dealer_balance_due=0;game.dealer_arrested=false;game.lay_low_active=false
 	var crew: RefCounted=game.neighborhood.location_ops.crew
+	# A fallback dealer must never inherit a production worker's custom GLB.
+	var old_friend:String=game.production_worker_friend_name
+	game.production_worker_friend_name="Malik"
+	crew.update_malik()
+	var tyler:Node3D=crew.generic_manager_instance("Tyler")
+	check(tyler.find_children("*","Skeleton3D",true,false).is_empty(),"Tyler fallback has no attached Malik skeleton or imported character scene")
+	check(tyler.find_children("*","AnimationPlayer",true,false).is_empty(),"Tyler fallback does not inherit Malik animations")
+	var face:MeshInstance3D=tyler.get_node_or_null("FriendFaceWrap") as MeshInstance3D
+	check(face!=null and face.visible and face.material_override!=null,"Tyler receives only his own default body and face wrap")
+	tyler.free()
+	game.production_worker_friend_name=old_friend
+	crew.update_malik()
 	var dealer: String="Hired Dealer 1";crew.assign_manager(dealer)
 	var client: Dictionary=game.customers[0].duplicate(true)
 	var product: String=str(client.favorite)
