@@ -71,15 +71,51 @@ func run()->void:
  check(game.corrupt_contact_calls==calls_before+1 and game.cash<cash_before and game.heat<heat_before,"Paid Reeves text uses existing cost and heat consequences")
  game._build_heat_app()
  check(not has_button(game.phone_list,"PAY REEVES"),"Reeves contact actions no longer appear inside Heat dashboard")
+ game.reeves_met=true;game.reeves_arrangement_active=false;game.reeves_arrangement_ended=true
+ game.reeves_total_paid=game.REEVES_TOTAL_OBLIGATION;game.reeves_relationship=70
+ game.corrupt_contact_unlocked=true;game.heat=0.0;game.cash=10000
+ game.advancement_stats["contact_calls"]=0
+ crew.open_thread("Agent Reeves");crew.show_actions()
+ check(has_button(game.phone_list,"ASK REEVES TO REDUCE HEAT"),"Paid-off Reeves retains visible favor action with zero Heat")
+ var zero_hint:bool=false
+ for note in game.phone_list.find_children("*","Label",true,false):
+  if str(note.text).contains("Heat is 0"):zero_hint=true
+ check(zero_hint,"Zero Heat explains why the favor cannot reduce anything")
+ var zero_cash:int=game.cash
+ var zero_calls:int=game.corrupt_contact_calls
+ crew.reeves_message("help")
+ check(game.cash==zero_cash and game.corrupt_contact_calls==zero_calls,"Zero Heat cannot charge money or award an unperformed favor")
+ game.heat=24.0
+ var settled_calls:int=game.corrupt_contact_calls
+ var settled_cash:int=game.cash
+ crew.reeves_message("help")
+ check(game.corrupt_contact_calls==settled_calls+1 and game.cash<settled_cash and int(game.advancement_stats.get("contact_calls",0))==1,"Paid-off Reeves paid favor earns Make the Call")
+ check(game._reeves_remaining_balance()==0 and not game.reeves_arrangement_active and game.reeves_arrangement_ended,"Paid-off protection balance remains settled")
+ game.customer_waiting=false;game.reeves_visit_pending=false
+ crew.reeves_message("meeting")
+ check(game.reeves_visit_pending and game.reeves_visit_reason=="friendly_checkin","Text Reeves to schedule friendly doorstep visit")
+ game.reeves_visit_pending=false
+ game.reeves_visit_reason="friendly_checkin"
+ # Test the follow-up meeting panel without starting unrelated customer timers.
+ game._open_reeves_visit()
+ check(game.sale_title.text.contains("PRIVATE CHECK-IN") and game.sale_primary_button.text.contains("REDUCE HEAT"),"Post-payoff visit presents optional favors rather than payments due")
+ game._reeves_secondary_action()
+ check(not game.customer_waiting and game.reeves_arrangement_ended,"Just Talk ends friendly visit without reinstating protection debt")
  game.seed_inventory=original_seeds
  game.advancement_stats["grams_stored"]=old_grams
  game.advancement_stats["hybrids_created"]=old_hybrids
  game.storage_level=old_storage
- # Clear retained signal Callables and RefCounted crew fixtures before teardown.
+ # All phone buttons retain bound RefCounted callables. Unbind their UI
+ # before releasing the world; then let queued nodes and audio finish teardown.
  for node in game.phone_list.get_children():node.queue_free()
+ for player in game.find_children("*","AudioStreamPlayer",true,false):
+  player.stop()
+  player.stream=null
+ for timer in game.find_children("*","Timer",true,false):timer.stop()
+ await process_frame
  await process_frame
  crew=null
  game.queue_free()
- await process_frame
+ for i in 6:await process_frame
  print("REWARD_CONTACT_RESULT: ","PASS" if failures==0 else "FAIL"," checks=",checks," failures=",failures)
  quit(0 if failures==0 else 1)

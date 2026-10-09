@@ -129,13 +129,16 @@ func render_reeves_actions() -> void:
 	if host.reeves_arrangement_active:
 		label(host.phone_list,"Protection balance: $%d · Next payment: Day %d" % [remaining,host.reeves_next_payment_day])
 	elif host.reeves_arrangement_ended:
-		label(host.phone_list,"The protection arrangement is settled.")
+		label(host.phone_list,"The protection arrangement is settled. Optional paid favors and private visits are available." if host._reeves_is_friendly() else "The protection arrangement is settled.")
 	else:
 		label(host.phone_list,"No recurring agreement. Reeves will discuss a formal arrangement in person.")
 	button(host.phone_list,"TEXT: HOW ARE THINGS LOOKING?",reeves_message.bind("status"))
-	var can_help:bool=host.reeves_met and not host.reeves_arrangement_active and (host.corrupt_contact_unlocked or host.heat_peak>=50.0) and host.heat>=host.HEAT_CONTACT_MINIMUM and host.cash>=host._heat_contact_cost()
-	if not host.reeves_arrangement_ended:
-		button(host.phone_list,"ASK REEVES TO REDUCE HEAT · $%d" % host._heat_contact_cost(),reeves_message.bind("help"),not can_help)
+	var can_help:bool=host.reeves_met and not host.reeves_arrangement_active and (not host.reeves_arrangement_ended or host._reeves_is_friendly()) and (host.corrupt_contact_unlocked or host._reeves_is_friendly() or host.heat_peak>=50.0) and (host.heat>=host.HEAT_CONTACT_MINIMUM or (host._reeves_is_friendly() and host.heat>0.0)) and host.cash>=host._heat_contact_cost()
+	button(host.phone_list,"ASK REEVES TO REDUCE HEAT · $%d" % host._heat_contact_cost(),reeves_message.bind("help"),not can_help)
+	if host.heat<=0.0:
+		label(host.phone_list,"Heat is 0. Reeves stays available, but there is no attention to reduce. You can still request a private visit.")
+	elif not can_help and host.cash<host._heat_contact_cost():
+		label(host.phone_list,"Not enough cash for this favor.")
 	if host.reeves_arrangement_active and remaining>0:
 		var paid_today:bool=host.reeves_last_payment_day==host.game_day
 		var half:int=host._reeves_half_payment_amount()
@@ -155,9 +158,18 @@ func reeves_message(action:String) -> void:
 			send(who,"Heat %d. Risk %d%%. %s" % [int(round(host.heat)),int(round(host.enforcement_risk)),("Your next payment is Day %d."%host.reeves_next_payment_day) if host.reeves_arrangement_active else "Stay quiet if you want less attention."])
 		"meeting":
 			outgoing(who,"Can we talk?")
-			send(who,"We can talk when I'm at your door. A message won't start or erase a protection agreement.")
+			if host._reeves_is_friendly():
+				if host.customer_waiting or host.reeves_visit_pending:
+					send(who,"Someone's already at your door or I have a visit lined up. Text again later.")
+				else:
+					host.reeves_visit_pending=true
+					host.reeves_visit_reason="friendly_checkin"
+					send(who,"We are square. I can stop by your place for a private chat. No new protection bill.")
+					host._save_game()
+			else:
+				send(who,"We can talk when I'm at your door. A message won't start or erase a protection agreement.")
 		"help":
-			if not host.reeves_met or host.reeves_arrangement_active or host.reeves_arrangement_ended or not (host.corrupt_contact_unlocked or host.heat_peak>=50.0) or host.heat<host.HEAT_CONTACT_MINIMUM or host.cash<host._heat_contact_cost():return
+			if not host.reeves_met or host.reeves_arrangement_active or (host.reeves_arrangement_ended and not host._reeves_is_friendly()) or not (host.corrupt_contact_unlocked or host._reeves_is_friendly() or host.heat_peak>=50.0) or (host.heat<host.HEAT_CONTACT_MINIMUM and not (host._reeves_is_friendly() and host.heat>0.0)) or host.cash<host._heat_contact_cost():return
 			var cost:int=host._heat_contact_cost()
 			var prior:int=host.corrupt_contact_calls
 			outgoing(who,"Can you make a few calls? I can pay $%d."%cost)
@@ -304,12 +316,8 @@ func update(delta: float) -> void:
 	if manager_node!=null and str(manager_node.get_meta("contact",""))!=name:manager_node.queue_free();manager_node=null
 	if not name.is_empty() and host.production_worker_node!=null:
 		if manager_node==null:
-			manager_node=character_instance(name) if name in ["Malik","Rod","Kobi"] else host.production_worker_node.duplicate()
+			manager_node=character_instance(name) if name in ["Malik","Rod","Kobi"] else generic_manager_instance(name)
 			manager_node.name="ApartmentDoorManager";host.add_child(manager_node);manager_node.set_meta("contact",name)
-			if name not in ["Malik","Rod","Kobi"]:
-				for child in manager_node.get_children():
-					if str(child.name).ends_with("Visual"):child.queue_free()
-					if child is MeshInstance3D:child.visible=child.name!=host.production_worker_face_shell.name
 			for tag in manager_node.find_children("*","Label3D",true,false):tag.text=name+" · APARTMENT DEALER"
 		manager_node.visible=not host.dealer_arrested
 		var couch: Dictionary=idle_couch()
@@ -354,6 +362,48 @@ func update(delta: float) -> void:
 		var worker: String=host._critical_production_sender()
 		alert(worker,"seeds",property_supply_empty(assignment(worker),"seed|"),"We're out of seeds. Collect an order at Central Market and deposit it at the computer.")
 		alert(worker,"fertilizer",property_supply_empty(assignment(worker),"fertilizer"),"Fertilizer is out. I'll keep watering existing plants, but you'll need to restock fertilizer at Central Market.")
+
+func generic_manager_instance(name: String) -> Node3D:
+	# Each generic character gets a fresh primitive visual hierarchy, independent
+	# of the production worker's current skin, hidden state, and custom GLB avatar.
+	var source: Node3D=host.production_worker_node
+	var instance:=Node3D.new()
+	instance.position=source.position
+	instance.rotation=source.rotation
+	for part_name in ["Torso","Head","ArmL","ArmR","LegL","LegR","ShoeL","ShoeR","FriendFaceWrap"]:
+		var original:MeshInstance3D=source.get_node_or_null(part_name) as MeshInstance3D
+		if original==null:continue
+		var part:=MeshInstance3D.new()
+		part.name=part_name
+		part.mesh=original.mesh
+		part.transform=original.transform
+		part.material_override=original.material_override
+		part.visible=true
+		instance.add_child(part)
+		if part_name=="Head":
+			var skin:=StandardMaterial3D.new()
+			skin.albedo_color=host._worker_skin_color(name)
+			part.material_override=skin
+		elif part_name=="FriendFaceWrap":
+			part.visible=false
+			var art:String=host._worker_face_texture_path(name)
+			if not art.is_empty() and ResourceLoader.exists(art):
+				var texture:Texture2D=load(art) as Texture2D
+				if texture!=null:
+					var face:=StandardMaterial3D.new()
+					face.albedo_texture=texture
+					face.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
+					face.cull_mode=BaseMaterial3D.CULL_DISABLED
+					face.roughness=0.74
+					face.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+					part.material_override=face
+					part.visible=true
+	# Copy the label's appearance when possible, never a worker's model.
+	for child in source.get_children():
+		if child is Label3D:
+			var label_node:Label3D=child.duplicate()
+			instance.add_child(label_node)
+	return instance
 
 func malik_instance() -> Node3D:return character_instance("Malik")
 func _complete_sit_tracks(avatar: Node3D) -> void:
@@ -434,8 +484,10 @@ func update_malik() -> void:
 			var wanted: String=production_worker_animation(worker)
 			for clip in player.get_animation_list():
 				if str(clip).ends_with(wanted) and player.current_animation!=clip:player.play(clip)
-	elif malik_worker!=null:
-		malik_worker.hide()
+	else:
+		if malik_worker!=null:
+			malik_worker.queue_free()
+			malik_worker=null
 		if worker!=null:
 			for child in worker.get_children():
 				if child is MeshInstance3D and child!=host.production_worker_face_shell:child.show()

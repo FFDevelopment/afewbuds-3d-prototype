@@ -13,6 +13,35 @@ func run() -> void:
 	var game: Node3D=load("res://prototype/apartment.tscn").instantiate();root.add_child(game);game.fp_player.set_physics_process(false);await process_frame
 	game.set_process(false);game.neighborhood.set_process(false);game.gameplay_ready=true;game.session_paused=false;game.tutorial_active=false;game.daily_report_pending=false;game.tutorial_panel.hide();game.pause_overlay.hide();game.daily_report_panel.hide();game.visit_timer.stop();game.dealer_count=1;game.dealers_active=true;game.business_open=true;game.dealer_balance_due=0;game.dealer_arrested=false;game.lay_low_active=false
 	var crew: RefCounted=game.neighborhood.location_ops.crew
+	# A fallback dealer must never inherit a production worker's custom GLB.
+	var old_friend:String=game.production_worker_friend_name
+	game.production_worker_friend_name="Malik"
+	crew.update_malik()
+	var tyler:Node3D=crew.generic_manager_instance("Tyler")
+	check(tyler.find_children("*","Skeleton3D",true,false).is_empty(),"Tyler fallback has no attached Malik skeleton or imported character scene")
+	check(tyler.find_children("*","AnimationPlayer",true,false).is_empty(),"Tyler fallback does not inherit Malik animations")
+	var face:MeshInstance3D=tyler.get_node_or_null("FriendFaceWrap") as MeshInstance3D
+	check(face!=null and face.visible and face.material_override!=null,"Tyler receives only his own default body and face wrap")
+	check(tyler.get_node_or_null("Torso")!=null and (tyler.get_node("Torso") as MeshInstance3D).visible,"Tyler fallback body remains visible even when Malik hides the production rig")
+	tyler.free()
+	game.friend_staff_roles["Tyler"]="dealer"
+	game.location_state["staff_assignments"]["Tyler"]="apartment"
+	game.location_state["apartment_manager"]="Tyler"
+	crew.update(0.01)
+	check(crew.manager_node!=null and str(crew.manager_node.get_meta("contact",""))=="Tyler","Real apartment manager creates the Tyler avatar")
+	if crew.manager_node!=null:
+		check(crew.manager_node.find_children("*","Skeleton3D",true,false).is_empty(),"Real Tyler door manager contains no Malik/Rod/Kobi skeleton")
+		check((crew.manager_node.get_node("Torso") as MeshInstance3D).visible,"Real Tyler manager has visible independent primitive body")
+		crew.manager_node.queue_free()
+		crew.manager_node=null
+	game.location_state["apartment_manager"]=""
+	game.location_state["staff_assignments"].erase("Tyler")
+	game.friend_staff_roles.erase("Tyler")
+	game.production_worker_friend_name="Tyler"
+	crew.update_malik()
+	check(crew.malik_worker==null,"Switching production identity from Malik to Tyler frees the old custom GLB")
+	game.production_worker_friend_name=old_friend
+	crew.update_malik()
 	var dealer: String="Hired Dealer 1";crew.assign_manager(dealer)
 	var client: Dictionary=game.customers[0].duplicate(true)
 	var product: String=str(client.favorite)
