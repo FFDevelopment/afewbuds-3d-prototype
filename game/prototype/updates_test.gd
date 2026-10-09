@@ -26,7 +26,7 @@ func run() -> void:
 	await ready_game()
 	var n: Node3D=game.neighborhood
 	var controls: RefCounted=n.house_controls
-	check(controls.switches.size()==11,"Eight house rooms, grow service panel, two market circuits")
+	check(controls.switches.size()==12 and controls.switches.has("grow_ventilation"),"Eight house rooms, independent grow light and ventilation panels, two market circuits")
 	check(controls.shades.size()==11,"Ten house shades and apartment blind")
 	check(controls.switches.grow_lights.lamps.is_empty(),"No free house grow equipment")
 	check(n.find_children("GrowTent*","MeshInstance3D",false,false).is_empty(),"Apartment tents do not populate house")
