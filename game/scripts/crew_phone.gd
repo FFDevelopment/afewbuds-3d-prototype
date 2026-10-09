@@ -116,9 +116,30 @@ func outgoing(name: String,body: String) -> void:
 func send(name: String,body: String) -> void:
 	host._push_phone_text(name,body);host._save_game()
 func assign(name: String,property: String) -> void:
-	if role(name).is_empty() or property!="apartment":return
+	if role(name).is_empty() or property not in ["apartment","house"]:return
+	if property=="house" and not ops._property_controlled("house"):return
+	# The anonymous Dealer Team is part of apartment street-sales accounting.
+	# Named recruits may be reassigned; this does not duplicate anyone.
+	if name=="Dealer Team" and property=="house":return
+	var previous:String=assignment(name)
+	if previous==property:return
 	host.location_state.staff_assignments[name]=property
-	outgoing(name,"Work out of the apartment.");send(name,"Assigned to the apartment. I'll use its stock and equipment.");host._refresh_phone()
+	if str(host.location_state.get("apartment_manager",""))==name and property!="apartment":
+		host.location_state["apartment_manager"]=""
+		manager_attempted=false
+	if role(name)=="production":
+		host.production_worker_pending_action=""
+		host.production_worker_pending_slot=-1
+		host.production_worker_task="Transferring to "+property.capitalize()
+		host.production_worker_last_action=host.production_worker_task
+		host._reset_production_worker_navigation()
+		if host.production_worker_node!=null:
+			host.production_worker_node.set_meta("seated",false)
+			host.production_worker_node.position=host._production_worker_station_position("entry")
+		host.production_worker_target_position=host._production_worker_station_position("idle")
+	outgoing(name,"Report to the "+property+".")
+	send(name,"Assigned to "+property.capitalize()+". I will use that property's own stock and equipment.")
+	host._refresh_phone();host._save_game()
 func recruit(name: String,job: String) -> void:
 	actions=false
 	host._recruit_friend_staff(name,job)
