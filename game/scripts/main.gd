@@ -314,6 +314,8 @@ var advancement_stats: Dictionary = {
 	"reeves_freedom": 0
 }
 var advancement_claimed: Dictionary = {}
+# Persist earned-but-unclaimed requirements. Selling inventory cannot undo a career achievement.
+var advancement_ready_history: Dictionary = {}
 var advancement_choice_state: Dictionary = {}
 var advancement_catalog: Array[Dictionary] = [
 	{"id": "first_roots", "category": "Growing", "tier": 1, "title": "First Roots", "description": "Plant your first seed.", "metric": "plants_planted", "target": 1, "reward_cash": 35, "reward_xp": 10, "reward_rep": 0},
@@ -8280,11 +8282,7 @@ func _advancement_value(entry: Dictionary) -> int:
 	if state_name == "production_worker_hired":
 		return 1 if packing_employee_hired else 0
 	if state_name == "seed_varieties":
-		var variety_count: int = 0
-		for seed_name: String in SEED_ORDER:
-			if int(seed_inventory.get(seed_name, 0)) > 0:
-				variety_count += 1
-		return variety_count
+		return maxi(_current_seed_varieties(), int(advancement_stats.get("seed_varieties_peak", 0)))
 	if state_name == "max_friend_loyalty":
 		return _max_friend_loyalty()
 	if state_name == "loyal_friend_count":
@@ -8310,6 +8308,22 @@ func _advancement_value(entry: Dictionary) -> int:
 	if state_name == "chapter_four_complete":
 		return 1 if _story_chapter_four_complete() else 0
 	return 0
+
+func _current_seed_varieties() -> int:
+	var count:int=0
+	for name in SEED_ORDER:
+		if int(seed_inventory.get(name,0))>0:count+=1
+	return count
+
+func _record_advancement_history() -> void:
+	# Sample live inventory BEFORE a purchase, crafting step or save can consume it.
+	# Only mark an achievement when its requirements were actually satisfied.
+	advancement_stats["seed_varieties_peak"]=maxi(int(advancement_stats.get("seed_varieties_peak",0)),_current_seed_varieties())
+	if not gameplay_ready:return
+	for entry in advancement_catalog:
+		var id:String=str(entry.get("id",""))
+		if id.is_empty() or bool(advancement_ready_history.get(id,false)):continue
+		if _advancement_is_ready(entry):advancement_ready_history[id]=true
 
 func _bootstrap_advancement_stats_from_state() -> void:
 	var has_live_plant: bool = false
@@ -9648,6 +9662,7 @@ func _save_game() -> void:
 	last_save_ok=false
 	if reset_in_progress:
 		return # Do not recreate a deleted save during the scene reload.
+	_record_advancement_history()
 	var data: Dictionary = {
 		"saved_unix": Time.get_unix_time_from_system(),
 		"save_schema": SAVE_SCHEMA_VERSION,
@@ -9772,6 +9787,7 @@ func _save_game() -> void:
 		"last_enforcement_report": last_enforcement_report,
 		"advancement_stats": advancement_stats,
 		"advancement_claimed": advancement_claimed,
+		"advancement_ready_history": advancement_ready_history,
 		"advancement_choice_state": advancement_choice_state,
 		"chapter_four_story_stage": chapter_four_story_stage,
 		"property_offer_unlocked": property_offer_unlocked,
@@ -10043,6 +10059,8 @@ func _load_game() -> void:
 	var loaded_advancement_claimed: Variant = data.get("advancement_claimed", advancement_claimed)
 	if loaded_advancement_claimed is Dictionary:
 		advancement_claimed = loaded_advancement_claimed as Dictionary
+	var saved_reward_history: Variant = data.get("advancement_ready_history", {})
+	advancement_ready_history = saved_reward_history.duplicate(true) if saved_reward_history is Dictionary else {}
 	var loaded_advancement_choices: Variant = data.get("advancement_choice_state", {})
 	if loaded_advancement_choices is Dictionary:
 		advancement_choice_state = (loaded_advancement_choices as Dictionary).duplicate(true)
@@ -11517,6 +11535,8 @@ func _build_help_app() -> void:
 func _advancement_is_ready(entry: Dictionary) -> bool:
 	if _advancement_is_retired(entry):
 		return false
+	if bool(advancement_ready_history.get(str(entry.get("id","")),false)):
+		return true
 	if _advancement_value(entry) < int(entry.get("target", 1)):
 		return false
 	for requirement_variant: Variant in entry.get("requires", []):
