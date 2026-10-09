@@ -224,6 +224,15 @@ func run():
  check(int(grow_status.tents)==1 and int(grow_status.capacity)==1 and int(grow_status.active)==1 and int(grow_status.dry)==1,"House grow panel reads placed tent, assigned pot and dry plant")
  check(house_grow.title("switch_grow_lights").contains("1 TENT"),"House panel no longer reports missing equipment when house tent is installed")
  check(house_grow.grow_panel_label!=null and house_grow.grow_panel_label.text.contains("PLANTS 1/1"),"House wall grow panel displays live 1/1 plant count")
+ # The wall status must track live water/health changes without reopening it.
+ game.neighborhood.location_ops.update(.6)
+ check(house_grow.grow_panel_label.text.contains("DRY 1"),"House panel polls current dry plant status")
+ game.plant_slots[house_slot].water=95
+ game.neighborhood.location_ops.update(.6)
+ check(house_grow.grow_panel_label.text.contains("DRY 0"),"House panel removes dry warning after watering without player interaction")
+ game.plant_slots[house_slot].water=0
+ game.neighborhood.location_ops.update(.6)
+ check(house_grow.grow_panel_label.text.contains("DRY 1"),"House panel restores dry warning if crop dries again")
  var apartment_light_before:bool=game.grow_lights_on
  var house_light_before:bool=bool(game.house_control_state.get("grow_lights",false))
  var house_growth_before:float=float(model.growth_settings(house_slot,game._plant_growth_settings(false,house_slot),false).light_factor)
