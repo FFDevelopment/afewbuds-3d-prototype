@@ -87,8 +87,10 @@ func run() -> void:
 	check(desk.position.z-0.55>bench.position.z+1.76+1.0,"Clear gap between desk and packaging bench")
 	var original_list: VBoxContainer=game.phone_list
 	for app in ["business","employees","products","genetics","upgrades","bills"]:
+		# Management tabs require an actual open, controlled property computer.
+		ops.computer("apartment")
 		ops.manage(app)
-		check(ops.is_open() and not game.phone_open and game.phone_list==original_list,"Management stays in computer panel: "+app)
+		check(ops.is_open() and ops.computer_context=="apartment" and not game.phone_open and game.phone_list==original_list,"Management stays in computer panel: "+app)
 		ops.close()
 	ops.computer("apartment")
 	check(ops.management_app=="business","Computer opens complete original Business interface")
