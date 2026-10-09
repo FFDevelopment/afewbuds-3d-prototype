@@ -7,6 +7,7 @@ var installing := false
 var computer_context := ""
 var management_app := ""
 var rendering_management := false
+var grow_panel_poll_seconds:float=0.0
 var last_notice := -1
 var apartment_release_confirm := false
 const APT_PC := Vector3(4.15,1.35,4.35)
@@ -714,6 +715,12 @@ func _house_overdue() -> bool:
 
 func update(_delta: float) -> void:
 	crew.update(_delta)
+	# Installed house tents and ventilation report changing plant conditions
+	# even when the player isn't aiming at the panel or reopening a computer.
+	grow_panel_poll_seconds+=_delta
+	if grow_panel_poll_seconds>=0.5:
+		grow_panel_poll_seconds=0.0
+		if world!=null and world.house_controls!=null:world.house_controls.refresh_grow_panel()
 	if not host.phone_open and not is_open():computer_context=""
 	var changed:bool=_update_apartment_rent()
 	changed=_update_house_payment() or changed
