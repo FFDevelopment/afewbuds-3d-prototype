@@ -8310,10 +8310,19 @@ func _advancement_value(entry: Dictionary) -> int:
 	return 0
 
 func _current_seed_varieties() -> int:
-	var count:int=0
+	# Each property has its own seed shelf. Track the highest number of
+	# varieties owned together at ONE property, not only the active adapter.
+	var best:int=0
 	for name in SEED_ORDER:
-		if int(seed_inventory.get(name,0))>0:count+=1
-	return count
+		if int(seed_inventory.get(name,0))>0:best+=1
+	if inventory_system!=null and inventory_system.furniture!=null:
+		for property in ["apartment","house"]:
+			var shelf:Dictionary=inventory_system.contents(property+":supply")
+			var local:int=0
+			for name in SEED_ORDER:
+				if int(shelf.get("seed|"+name,0))>0:local+=1
+			best=maxi(best,local)
+	return best
 
 func _record_advancement_history() -> void:
 	# Sample live inventory BEFORE a purchase, crafting step or save can consume it.
