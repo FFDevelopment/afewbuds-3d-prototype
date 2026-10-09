@@ -5461,6 +5461,23 @@ func _refresh_production_worker_friend_face() -> void:
 	production_worker_face_shell.set_meta("friend_name", assigned_name)
 
 func _production_worker_station_position(station_name: String) -> Vector3:
+	if inventory_system!=null and inventory_system.furniture!=null and inventory_system.worker_property()=="house":
+		var model:RefCounted=inventory_system.furniture.model
+		if station_name=="entry":return Vector3(28.5,0.0,-0.8)
+		if station_name=="idle":return Vector3(29.0,0.0,-0.9)
+		var kind:String={"workbench":"packing","storage":"storage","grow":"tent"}.get(station_name,"")
+		if station_name=="grow":
+			for id in model.state.items:
+				var entry:Dictionary=model.state.items[id]
+				if entry.get("property","")=="house" and str(entry.get("sku","")).begins_with("tent_") and entry.has("position"):
+					return Vector3(float(entry.position[0])-1.2,0.0,float(entry.position[2]))
+			return Vector3(40.4,0.0,-9.0)
+		if not kind.is_empty():
+			var station_id:String=model.primary("house",kind)
+			if not station_id.is_empty():
+				var e:Dictionary=model.state.items[station_id]
+				if e.has("position"):return Vector3(float(e.position[0])-1.3,0.0,float(e.position[2]))
+		return Vector3(28.5,0.0,-0.8)
 	match station_name:
 		"grow": return Vector3(0.70, 0.0, -6.45)
 		"workbench": return Vector3(2.85, 0.0, 0.30)
@@ -5480,6 +5497,8 @@ func _reset_production_worker_navigation() -> void:
 
 
 func _production_worker_navigation_target() -> Vector3:
+	# House workers navigate to the house stations, not old apartment hallway waypoints.
+	if inventory_system!=null and inventory_system.worker_property()=="house":return production_worker_target_position
 	if production_worker_node == null:
 		return production_worker_target_position
 	var worker_pos: Vector3 = production_worker_node.position
