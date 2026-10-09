@@ -1,10 +1,10 @@
-name: Build expansion test
+name: Build desktop baseline
 on:
   push:
-    branches: [experiment/container-inventory]
+    branches: [main]
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -49,8 +49,6 @@ jobs:
           grep -q 'EXPORTED_WORLD_RESULT: PASS' build/exported-world.log
           printf 'AFewBuds Desktop %s\nSource: %s\n' '${{ steps.release.outputs.version }}' '${{ github.sha }}' > build/windows/BUILD_VERSION.txt
           cp build/windows/BUILD_VERSION.txt build/linux/BUILD_VERSION.txt
-          cp INVENTORY_PREVIEW.md build/windows/INVENTORY_PREVIEW.md
-          cp INVENTORY_PREVIEW.md build/linux/INVENTORY_PREVIEW.md
           cp README.md build/windows/README.md
           cp README.md build/linux/README.md
           python tools/package_source.py
@@ -72,20 +70,3 @@ jobs:
           path: build/AFewBuds-3D-Prototype-Source.zip
           if-no-files-found: error
           retention-days: 30
-
-      - name: Publish playable expansion prerelease
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          version='${{ steps.release.outputs.version }}'
-          printf 'AFewBuds expansion test. Equipment items: backpack packing and placement, 1/2/3/4-plant tents, buyable equipment tiers and furniture, upgrades, market buyback, property curb deliveries, empty-before-moving safety, and preserved Chapter 5 progress. Test progress saves separately on this device; your live career is unchanged. Character models and map expansion are still in development.\n' > build/TEST_NOTES.txt
-          cp build/TEST_NOTES.txt build/windows/TEST_NOTES.txt
-          cd build/windows
-          zip -qr "../AFewBuds-${version}-Windows.zip" .
-          cd ../..
-          if gh release view "v${version}" >/dev/null 2>&1; then
-            gh release upload "v${version}" "build/AFewBuds-${version}-Windows.zip" --clobber
-          else
-            gh release create "v${version}" "build/AFewBuds-${version}-Windows.zip" --target '${{ github.sha }}' --prerelease --title "AFewBuds expansion test ${version}" --notes-file build/TEST_NOTES.txt
-          fi
