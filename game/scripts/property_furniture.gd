@@ -240,7 +240,13 @@ func pack(id:String) -> bool:
  if e.get("locked",false):error="Unlock the furniture first.";return false
  if e.get("property","") not in ROOMS:error="Only placed equipment can be picked up.";return false
  if inv().backpack_weight()+int(CATALOG[e.sku].get("weight",8))*inv().POUND>inv().backpack_limit():error="Not enough backpack capacity for this packed item.";return false
+ var was_house_air:bool=e.get("property","")=="house" and e.sku=="ventilation"
  e.property="backpack";e.erase("position");e.erase("yaw");e.erase("container")
+ if was_house_air:
+  # The removed unit cannot resume running when it gets reinstalled later.
+  host.house_control_state["grow_ventilation"]=false
+  if host.neighborhood!=null and host.neighborhood.house_controls!=null:
+   host.neighborhood.house_controls.states["grow_ventilation"]=false
  save();return true
 func lock(id:String,value:bool) -> void:
  if state.items.has(id):state.items[id].locked=value;save()
@@ -291,8 +297,15 @@ func property_has_furniture(property:String) -> bool:
   if e.get("property","")==property or e.get("property","")==property+":delivery":return true
  return false
 func save() -> void:
+ # Newly placed tents need slot records BEFORE the wall status reads them.
+ # Refresh house air/light readouts immediately; don't rely on reopening a
+ # computer, changing rooms, or waiting for a world-render tick.
+ ensure_slots()
  host.grow_tent_count=tent_count()
  if inv()!=null:inv().revision+=1
+ if host.neighborhood!=null and host.neighborhood.house_controls!=null:
+  host.neighborhood.house_controls.refresh_grow_panel()
+  host.neighborhood.house_controls._sync_house_ventilation()
  host._update_cash_ui();host._save_game()
 
 func tent_quality(slot:int) -> int:
