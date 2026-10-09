@@ -2137,7 +2137,11 @@ func _update_room_status_panel() -> void:
 	var ready_plants: int = 0
 	var thirsty_plants: int = 0
 	var dead_plants: int = 0
-	for slot_variant: Variant in plant_slots:
+	var apartment_capacity:int=0
+	for slot_index in range(plant_slots.size()):
+		if inventory_system!=null and inventory_system.furniture!=null and inventory_system.furniture.model.slot_property(slot_index)!="apartment":continue
+		apartment_capacity+=1
+		var slot_variant:Variant=plant_slots[slot_index]
 		if not (slot_variant is Dictionary):
 			continue
 		var slot: Dictionary = slot_variant as Dictionary
@@ -2169,7 +2173,7 @@ func _update_room_status_panel() -> void:
 	var display_state: String = state
 	if display_state == "REDUCED GROWTH":
 		display_state = "REDUCED"
-	climate_status_label.text = "ROOM  |  %s\nPLANTS %d/%d  |  READY %d\nLIGHTS %s\nAIR %s" % [display_state, active_plants, plant_slots.size(), ready_plants, "ON" if grow_lights_on else "OFF", vent_text]
+	climate_status_label.text = "ROOM  |  %s\nPLANTS %d/%d  |  READY %d\nLIGHTS %s\nAIR %s" % [display_state, active_plants, apartment_capacity, ready_plants, "ON" if grow_lights_on else "OFF", vent_text]
 	climate_status_label.modulate = state_color
 
 
@@ -4117,7 +4121,11 @@ func _refresh_system_control_panel() -> void:
 	var ready_plants: int = 0
 	var thirsty_plants: int = 0
 	var dead_plants: int = 0
-	for slot_variant: Variant in plant_slots:
+	var apartment_capacity:int=0
+	for slot_index in range(plant_slots.size()):
+		if inventory_system!=null and inventory_system.furniture!=null and inventory_system.furniture.model.slot_property(slot_index)!="apartment":continue
+		apartment_capacity+=1
+		var slot_variant:Variant=plant_slots[slot_index]
 		if not (slot_variant is Dictionary):
 			continue
 		var slot: Dictionary = slot_variant as Dictionary
@@ -4707,9 +4715,18 @@ func _finish_leave_grow_room() -> void:
 	_refresh_navigation_ui()
 
 func _grow_room_status_text() -> String:
-	var installed_tents: int = clampi(grow_tent_count, 1, 3)
-	var total_slots: int = installed_tents * 3
-	return "Room systems are stable. %d tent(s) installed  |  %d plant slots  |  ventilation and lighting online." % [installed_tents, total_slots]
+	var installed_tents:int=0
+	var total_slots:int=0
+	if inventory_system!=null and inventory_system.furniture!=null:
+		var model:RefCounted=inventory_system.furniture.model
+		for e in model.state.items.values():
+			if e.get("property","")!="apartment" or not e.has("position") or not model.is_tent(e):continue
+			installed_tents+=1
+			total_slots+=e.get("slots",[]).size()
+	else:
+		installed_tents=clampi(grow_tent_count,1,3)
+		total_slots=installed_tents*3
+	return "Apartment grow room: %d placed tent(s)  |  %d available plant slots." % [installed_tents,total_slots]
 
 func _grow_room_upgrade_text() -> String:
 	if grow_tent_count >= 3:
