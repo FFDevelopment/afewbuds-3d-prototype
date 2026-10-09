@@ -39,7 +39,7 @@ func run() -> void:
 		crew.seated_pose(model,false);player.advance(.3);check(player.current_animation.ends_with("idle") and rig.get_bone_pose_position(rig.find_bone("Root")).distance_to(idle_root)<.0001,name+" standing resets seated root")
 		game.packing_employee_hired=true;game.production_worker_friend_name=name;crew.update_malik();check(crew.malik_worker.get_meta("character")==name,name+" production appearance updated")
 		game.current_customer=game._customer_by_name(name);game.customer_waiting=true;crew.update_malik();check(crew.malik_visitor.get_meta("character")==name,name+" visitor appearance updated")
-	game.customer_waiting=false;crew.update_malik();game.production_worker_node.show();game.production_worker_pending_action="";game.production_worker_task="Waiting for work";game.production_worker_node.position=Vector3(-2.775,0,2.1);crew.update_seating(.1)
+	game.customer_waiting=false;crew.update_malik();game.production_worker_node.show();game.production_worker_pending_action="";game.production_worker_task="Waiting for work";game.production_worker_node.position=crew.idle_spot(false,false);crew.update_seating(.1)
 	check(bool(crew.malik_worker.get_meta("seated",false)) and is_zero_approx(crew.malik_worker.position.y),"Worker sits with floor-level character root")
 	game.production_worker_pending_action="water";crew.update_seating(.1);check(not bool(crew.malik_worker.get_meta("seated",true)),"Worker resumes standing for work")
 	game.production_worker_friend_name="Rod";game.friend_staff_roles["Kobi"]="dealer"
