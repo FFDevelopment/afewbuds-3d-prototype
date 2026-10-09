@@ -81,22 +81,29 @@ func run() -> void:
 	game.inventory_system.select_item("apartment:packing","raw|Purple Dream")
 	game.inventory_system.process_selected()
 	await frames()
-	var packing=game.inventory_system.packing
-	check(packing.bar.get_global_rect().end.y<=game.hud.size.y,"Physical packing controls fit landscape viewport")
+	# The modern inventory invokes the original scissors minigame, not the
+	# retired physical_packing (world-object) prototype.
+	check(game.trim_panel.visible and not game.inventory_system.is_open(),"Raw stock opens the original scissors minigame")
 	var closeup:Transform3D=game.camera.global_transform
 	await frames(10)
 	check(game.camera.global_transform.is_equal_approx(closeup),"Packing camera stays at bench while player physics runs")
-	click_prop(packing,0)
-	var grams:int=packing.amount
-	for i in grams:click_prop(packing,1)
-	check(int(game.trimmed_inventory.get("Purple Dream",0))==grams,"Mouse clicks trim exact batch through world objects")
+	var grams:int=game.trim_harvest_amount
+	for target in game.trim_targets:
+		if is_instance_valid(target) and target.visible:
+			game.trim_scissors.global_position=target.global_position
+			game._check_trim_collisions()
+	check(int(game.trimmed_inventory.get("Purple Dream",0))==grams,"Scissors trim the selected buds with no lost stock")
+	game._close_trim_minigame()
 	game.inventory_system.select_item("apartment:packing","trimmed|Purple Dream")
 	game.inventory_system.process_selected()
 	await frames()
-	while packing.progress<packing.amount:
-		click_prop(packing,0);click_prop(packing,1)
-	click_prop(packing,2)
-	check(int(game.bagged_inventory.get("Purple Dream",0))>0,"Mouse clicks fill and seal packaged product")
+	check(game.bag_minigame_panel.visible,"Trimmed buds open original drag-to-bag minigame")
+	for drag in 12:
+		if game.bag_current_units>=game.bag_target_units:break
+		game.bag_bud_token.global_position=game.bag_target_panel.global_position
+		game._finish_bud_drag()
+	if game.bag_current_units>=game.bag_target_units:game._seal_current_bag()
+	check(int(game.bagged_inventory.get("Purple Dream",0))>0,"Scissors and drag-to-bag make packaged stock")
 	var old_stock: int = game.products["Purple Dream"].stock
 	game.inventory_system.transfer("apartment:packing","backpack","product|Purple Dream",1)
 	game.inventory_system.close()
@@ -176,16 +183,19 @@ func run() -> void:
 	game.inventory_system.open_container("packing")
 	game.inventory_system.select_item("apartment:packing","trimmed|Purple Dream")
 	game.inventory_system.process_selected()
-	var batches := 0
-	while packing.is_open() and batches<20:
+	check(game.bag_minigame_panel.visible,"Bench III opens original seven-gram bagging minigame")
+	var batches:=0
+	while game.bag_minigame_panel.visible and batches<8:
 		var remaining:int=game.trimmed_inventory["Purple Dream"]
-		check(packing.amount==mini(12,remaining),"Continuous target caps a 12g batch by remaining product")
-		while packing.progress<packing.amount:
-			click_prop(packing,0);click_prop(packing,1)
-		click_prop(packing,2);batches+=1
-		if game.trimmed_inventory["Purple Dream"]>0:
-			check(packing.is_open() and packing.progress==0,"Bench III continues next bag without reopening")
-	check(batches>1 and not packing.is_open() and game.bagged_inventory["Purple Dream"]==bags_before+17,"Continuous bagging conserves all product")
+		check(game.bag_target_units==mini(7,remaining),"Bench III continuously targets seven grams then the remainder")
+		for drag in 12:
+			if game.bag_current_units>=game.bag_target_units:break
+			game.bag_bud_token.global_position=game.bag_target_panel.global_position
+			game._finish_bud_drag()
+		game._seal_current_bag();batches+=1
+		if game.trimmed_inventory.get("Purple Dream",0)>0:
+			check(game.bag_minigame_panel.visible and game.bag_current_units==0,"Bench III continues next seven-gram bag without reopening")
+	check(batches==3 and not game.bag_minigame_panel.visible and game.bagged_inventory["Purple Dream"]==bags_before+17,"Bench III conserves 7g + 7g + 3g through drag-to-bag")
 	game.inventory_system.close()
 	check(not game.has_node("WindowBuildingA") and not game.has_node("WindowBuildingB") and not game.has_node("WindowBuildingC"), "window placeholder squares removed")
 	check(game.neighborhood.has_node("ApartmentWindow") and game.window_sun_disc == null, "real glazed window replaces fake sky and sun")
