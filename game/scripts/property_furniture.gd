@@ -1,6 +1,6 @@
 extends RefCounted
 ## Item ownership is authoritative; inventory views are adapters over these records.
-const CATALOG={
+const LEGACY_CATALOG={
  "grow_tent":{"name":"Grow Tent · 3 plants","shop":"grow","price":800,"size":[3.12,2.8,1.5],"grow_only":true,"plants":3,"weight":12},
  "tent_1":{"name":"Compact Tent · 1 plant","shop":"grow","price":240,"size":[1.15,2.5,1.2],"grow_only":true,"plants":1,"weight":6},
  "tent_2":{"name":"Twin Tent · 2 plants","shop":"grow","price":480,"size":[2.15,2.65,1.4],"grow_only":true,"plants":2,"weight":9},
@@ -45,6 +45,8 @@ const UTILITY_POSITIONS={
 const CURBS={"apartment":Vector3(-2,0,7.2),"house":Vector3(34.8,0,4.8)}
 var host:Node
 var registry:RefCounted
+var item_registry:RefCounted
+var CATALOG:Dictionary={}
 var state:Dictionary
 var error:=""
 var busy:=false
@@ -53,6 +55,9 @@ func setup(owner:Node) -> void:
  host=owner
  registry=load("res://scripts/property_registry.gd").new()
  registry.setup(owner, ROOMS)
+ item_registry=load("res://scripts/item_registry.gd").new()
+ item_registry.setup(LEGACY_CATALOG)
+ CATALOG=item_registry.definitions
  if not host.location_state.get("furniture_v1",{}) is Dictionary:host.location_state["furniture_v1"]={}
  if not host.location_state.has("furniture_v1"):host.location_state["furniture_v1"]={}
  state=host.location_state.furniture_v1
@@ -147,7 +152,11 @@ func tent_count() -> int:
  for e in state.items.values():
   if is_tent(e) and registry.exists(str(e.get("property",""))):n+=1
  return n
-func price_for(sku:String) -> int:return int(CATALOG[sku].price)
+func price_for(sku:String) -> int:return item_registry.quote(sku)
+func register_item(sku:String,item:Dictionary) -> bool:
+ return item_registry.register_definition(sku,item)
+func items_in_shop(shop_id:String) -> Array[String]:
+ return item_registry.keys_for_shop(shop_id)
 func item_name(id:String) -> String:return str(CATALOG[state.items[id].sku].name)
 func own(sku:String,destination:String="backpack") -> String:
  error=""
@@ -219,7 +228,7 @@ func validate(id:String,property:String,point:Vector3,yaw:int) -> String:
  for key in allowed_rooms:
   if (allowed_rooms[key] as Rect2).grow(.35 if e.sku=="storage_5" else 0.14).encloses(rect):room=key;break
  if room.is_empty():return "Keep the entire item inside one room and clear of doorways."
- if bool(CATALOG[e.sku].get("grow_only",false)) and not registry.is_grow_room(property,room):return "Grow equipment can only be placed in grow rooms."
+ if not item_registry.permits_room(str(e.sku),str(registry.state.properties[property].get("room_uses",{}).get(room,room))):return "This equipment is not allowed in this room."
  for other in state.items:
   if other==id:continue
   var item:Dictionary=state.items[other]
