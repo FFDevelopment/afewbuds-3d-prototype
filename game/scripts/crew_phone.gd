@@ -30,16 +30,21 @@ func roster() -> Array[String]:
 	if host.packing_employee_hired and not names.has(host._critical_production_sender()):names.append(host._critical_production_sender())
 	return names
 func assignment(name: String) -> String:return str(host.location_state.staff_assignments.get(name,"apartment"))
+func reeves_available() -> bool:
+	return host.reeves_met or host.reeves_arrangement_active or host.reeves_arrangement_ended
+
 func contacts() -> void:
 	host.phone_title.text="Contacts"
 	label(host.phone_list,"Known clients and your crew. Open a contact for messages, appointments, recruiting and property assignment.")
 	var names: Array[String]=roster()
 	for client in host.customers:
 		if host._customer_is_known(client) and not names.has(str(client.name)):names.append(str(client.name))
+	if reeves_available() and not names.has("Agent Reeves"):names.append("Agent Reeves")
 	names.sort()
 	for name in names:
 		var job:=role(name)
-		button(host.phone_list,name+"\n"+(job.capitalize()+" · "+assignment(name).capitalize() if not job.is_empty() else "Client"),open_thread.bind(name))
+		var description:String="Reeves · Private contact" if name=="Agent Reeves" else (job.capitalize()+" · "+assignment(name).capitalize() if not job.is_empty() else "Client")
+		button(host.phone_list,name+"\n"+description,open_thread.bind(name))
 	if names.is_empty():label(host.phone_list,"Contacts appear as you get to know clients or hire staff.")
 func open_thread(name: String) -> void:
 	thread=name;actions=false;host.phone_current_app="texts";host.phone_open=true;host.phone_panel.show();host._refresh_phone();jump_latest.call_deferred()
@@ -67,6 +72,7 @@ func threads() -> void:
 		for i in range(host.phone_text_messages.size()-1,-1,-1):
 			var name:=peer(host.phone_text_messages[i])
 			if not names.has(name):names.append(name)
+		if reeves_available() and not names.has("Agent Reeves"):names.append("Agent Reeves")
 		for name in names:
 			var preview:=""
 			for i in range(host.phone_text_messages.size()-1,-1,-1):
@@ -92,6 +98,9 @@ func threads() -> void:
 		msg["read"]=true
 	recount();host._save_game()
 func render_actions() -> void:
+	if thread=="Agent Reeves":
+		render_reeves_actions()
+		return
 	var job:=role(thread)
 	if not job.is_empty():
 		label(host.phone_list,job.to_upper()+" · Assigned to "+assignment(thread).capitalize())
@@ -110,6 +119,66 @@ func render_actions() -> void:
 				button(host.phone_list,"OFFER PRODUCTION WORK · APARTMENT",recruit.bind(thread,"production"),host.grower_level<5 or host.packing_employee_hired)
 			elif str(client.get("tier",""))=="Friend":label(host.phone_list,"Recruiting requires %d loyalty and %d personal sales." % [host.FRIEND_RECRUIT_LOYALTY,host.FRIEND_RECRUIT_PLAYER_SALES])
 	button(host.phone_list,"BACK TO CONVERSATION",back)
+func render_reeves_actions() -> void:
+	if not reeves_available():
+		label(host.phone_list,"You haven't met Reeves yet.")
+		return
+	var remaining:int=host._reeves_remaining_balance()
+	label(host.phone_list,"PRIVATE · AGENT REEVES")
+	label(host.phone_list,"Heat: %d · Relationship: %d / 100 · Enforcement risk: %d%%" % [int(round(host.heat)),host.reeves_relationship,int(round(host.enforcement_risk))])
+	if host.reeves_arrangement_active:
+		label(host.phone_list,"Protection balance: $%d · Next payment: Day %d" % [remaining,host.reeves_next_payment_day])
+	elif host.reeves_arrangement_ended:
+		label(host.phone_list,"The protection arrangement is settled.")
+	else:
+		label(host.phone_list,"No recurring agreement. Reeves will discuss a formal arrangement in person.")
+	button(host.phone_list,"TEXT: HOW ARE THINGS LOOKING?",reeves_message.bind("status"))
+	var can_help:bool=host.reeves_met and not host.reeves_arrangement_active and (host.corrupt_contact_unlocked or host.heat_peak>=50.0) and host.heat>=host.HEAT_CONTACT_MINIMUM and host.cash>=host._heat_contact_cost()
+	if not host.reeves_arrangement_ended:
+		button(host.phone_list,"ASK REEVES TO REDUCE HEAT · $%d" % host._heat_contact_cost(),reeves_message.bind("help"),not can_help)
+	if host.reeves_arrangement_active and remaining>0:
+		var paid_today:bool=host.reeves_last_payment_day==host.game_day
+		var half:int=host._reeves_half_payment_amount()
+		button(host.phone_list,"TEXT: PAY HALF NOW · $%d" % half,reeves_message.bind("half"),paid_today or half<=0)
+		button(host.phone_list,"TEXT: SETTLE REMAINING $%d" % remaining,reeves_message.bind("full"),paid_today or host.cash<remaining)
+		var quiet_ready:bool=not host.business_open and host.heat<=10.0 and host.reeves_quiet_days>=host.REEVES_QUIET_EXIT_DAYS
+		button(host.phone_list,"REQUEST QUIET EXIT · %d/%d DAYS" % [host.reeves_quiet_days,host.REEVES_QUIET_EXIT_DAYS],reeves_message.bind("quiet"),not quiet_ready)
+	button(host.phone_list,"TEXT: CAN WE TALK?",reeves_message.bind("meeting"))
+	button(host.phone_list,"BACK TO CONVERSATION",back)
+
+func reeves_message(action:String) -> void:
+	if not reeves_available():return
+	var who:String="Agent Reeves"
+	match action:
+		"status":
+			outgoing(who,"How are things looking around me?")
+			send(who,"Heat %d. Risk %d%%. %s" % [int(round(host.heat)),int(round(host.enforcement_risk)),("Your next payment is Day %d."%host.reeves_next_payment_day) if host.reeves_arrangement_active else "Stay quiet if you want less attention."])
+		"meeting":
+			outgoing(who,"Can we talk?")
+			send(who,"We can talk when I'm at your door. A message won't start or erase a protection agreement.")
+		"help":
+			if not host.reeves_met or host.reeves_arrangement_active or host.reeves_arrangement_ended or not (host.corrupt_contact_unlocked or host.heat_peak>=50.0) or host.heat<host.HEAT_CONTACT_MINIMUM or host.cash<host._heat_contact_cost():return
+			var cost:int=host._heat_contact_cost()
+			var prior:int=host.corrupt_contact_calls
+			outgoing(who,"Can you make a few calls? I can pay $%d."%cost)
+			host.corrupt_contact_unlocked=true
+			host._use_heat_contact()
+			if host.corrupt_contact_calls>prior:send(who,"I made some calls. Attention should be lower. Don't make this a habit.")
+		"half","full":
+			if not host.reeves_arrangement_active or host.reeves_last_payment_day==host.game_day:return
+			var before:int=host.reeves_total_paid
+			if action=="half":host._reeves_pay_half(true)
+			else:host._reeves_pay_full(true)
+			if host.reeves_total_paid>before:
+				outgoing(who,"Sent you $%d."%(host.reeves_total_paid-before))
+				send(who,"Got the payment. $%d left."%host._reeves_remaining_balance())
+		"quiet":
+			if not host.reeves_arrangement_active or host.business_open or host.heat>10.0 or host.reeves_quiet_days<host.REEVES_QUIET_EXIT_DAYS:return
+			host._reeves_quiet_exit()
+			outgoing(who,"I've kept the shop shut. The arrangement is over.")
+			send(who,"We are square. Keep it that way.")
+	host._refresh_phone()
+
 func outgoing(name: String,body: String) -> void:
 	host.phone_text_messages.append({"sender":"You","contact":name,"body":body,"outgoing":true,"read":true,"day":host.game_day,"time":host._format_game_clock()})
 	while host.phone_text_messages.size()>120:host.phone_text_messages.pop_front()
