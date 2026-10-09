@@ -6,6 +6,7 @@ var shades: Dictionary = {}
 var states: Dictionary = {}
 var last_target := ""
 var last_time := -1000
+var grow_panel_label: Label3D
 
 func setup(owner_node: Node3D) -> void:
 	world=owner_node
@@ -31,12 +32,68 @@ func register_grow(lamps: Array, fixtures: Array) -> void:
 	var panel: MeshInstance3D=world._interior_piece("HouseGrowServicePanel",at,Vector3(0.12,0.85,0.7),"46534c")
 	panel.layers=2
 	panel.set_meta("no_collision",true)
-	world._label("GROW LIGHTS",at+Vector3(0.08,0.23,0),0.0015)
+	grow_panel_label=Label3D.new()
+	grow_panel_label.name="HouseGrowStatus"
+	grow_panel_label.position=at+Vector3(0.08,0.28,0)
+	grow_panel_label.font_size=20
+	grow_panel_label.pixel_size=0.00125
+	grow_panel_label.outline_size=4
+	grow_panel_label.modulate=Color("d4f5d2")
+	world.add_child(grow_panel_label)
 	var rocker: MeshInstance3D=world._interior_piece("GrowServiceRocker",at+Vector3(0.08,0,0),Vector3(0.035,0.18,0.15),"92a17d")
 	rocker.layers=2
 	rocker.set_meta("no_collision",true)
 	switches["grow_lights"]={"lamps":lamps,"fixtures":fixtures,"at":at,"rocker":rocker}
 	_set_light("grow_lights",bool(states.get("grow_lights",false)))
+
+func grow_snapshot() -> Dictionary:
+	# Placed HOUSE tents drive this panel. Legacy fixture arrays can be empty
+	# even when the player owns fully usable tents with planted slots.
+	var data:Dictionary={"tents":0,"capacity":0,"active":0,"ready":0,"dry":0,"dead":0,"ventilation":false}
+	if host.inventory_system==null or host.inventory_system.furniture==null:return data
+	var model:RefCounted=host.inventory_system.furniture.model
+	if model==null:return data
+	for entry in model.state.items.values():
+		if str(entry.get("property",""))!="house" or not entry.has("position"):continue
+		if str(entry.get("sku",""))=="ventilation":data.ventilation=true
+		if not model.is_tent(entry):continue
+		data.tents+=1
+		for slot_id in entry.get("slots",[]):
+			var index:int=int(slot_id)
+			if index<0 or index>=host.plant_slots.size():continue
+			data.capacity+=1
+			var plant:Dictionary=host.plant_slots[index]
+			if int(plant.get("stage",-1))<0:continue
+			data.active+=1
+			if bool(plant.get("dead",false)):data.dead+=1
+			elif int(plant.get("stage",-1))>=host.STAGES.size()-1 or float(plant.get("growth",0.0))>=100.0:data.ready+=1
+			elif float(plant.get("water",0.0))<=25.0:data.dry+=1
+	return data
+
+func grow_summary() -> String:
+	var status:Dictionary=grow_snapshot()
+	var air:String="INSTALLED" if status.ventilation else "NOT INSTALLED"
+	return "HOUSE GROW · %d TENT(S) · %d/%d PLANTS · %d READY · %d DRY · %d DEAD · LIGHTS %s · AIR %s" % [status.tents,status.active,status.capacity,status.ready,status.dry,status.dead,"ON" if bool(states.get("grow_lights",false)) else "OFF",air]
+
+func refresh_grow_panel() -> void:
+	if grow_panel_label==null:return
+	var status:Dictionary=grow_snapshot()
+	grow_panel_label.text="HOUSE GROW   %d TENT(S)\nPLANTS %d/%d   READY %d\nLIGHTS %s   AIR %s" % [status.tents,status.active,status.capacity,status.ready,"ON" if bool(states.get("grow_lights",false)) else "OFF","YES" if status.ventilation else "NO"]
+	grow_panel_label.modulate=Color("f0d18d") if status.dry>0 or status.dead>0 else Color("d4f5d2")
+
+func toggle_house_grow_lights() -> bool:
+	if grow_snapshot().tents<=0:
+		host.status_label.text="No tents are placed in the house grow room. Install a tent from Backpack first."
+		refresh_grow_panel()
+		return false
+	_set_light("grow_lights",not bool(states.get("grow_lights",false)))
+	host.house_control_state=states.duplicate(true)
+	if host.inventory_system!=null and host.inventory_system.furniture!=null:
+		host.inventory_system.furniture.equipment_world.sync()
+	refresh_grow_panel()
+	host._save_game()
+	host.status_label.text=grow_summary()
+	return true
 
 func register_shade(id: String, node: Node3D, at: Vector3, height: float) -> void:
 	node.position=at+Vector3.UP*height/2
@@ -57,6 +114,7 @@ func _set_light(id: String, on: bool) -> void:
 		spec.fixture.material_override=world._material("e7dfc1" if on else "868477",-1,0.2 if on else 0.0)
 	spec.rocker.material_override=world._material("92a17d" if on else "766b60")
 	states[id]=on
+	if id=="grow_lights":refresh_grow_panel()
 
 func _inside_room(point: Vector3) -> String:
 	if world._indoors(point): return "apartment"
@@ -98,7 +156,10 @@ func nearby() -> String:
 func title(target: String) -> String:
 	if target.begins_with("switch_"):
 		var id := target.trim_prefix("switch_")
-		if id=="grow_lights" and switches[id].lamps.is_empty(): return "INSPECT HOUSE GROW PANEL"
+		if id=="grow_lights":
+			refresh_grow_panel()
+			if grow_snapshot().tents<=0:return "INSPECT HOUSE GROW PANEL · NO TENTS PLACED"
+			return ("TURN OFF " if bool(states.get(id,false)) else "TURN ON ")+"HOUSE GROW LIGHTS · "+str(grow_snapshot().tents)+" TENT(S)"
 		return ("TURN OFF " if states.get(id,true) else "TURN ON ")+("GROW LIGHTS" if id=="grow_lights" else id.replace("_"," ").to_upper()+" LIGHT")
 	var id := target.trim_prefix("shade_")
 	return "OPEN WINDOW COVERING" if shades[id].closed else "CLOSE WINDOW COVERING"
@@ -107,8 +168,8 @@ func use(target: String) -> void:
 	if target!=nearby(): return
 	if target.begins_with("switch_"):
 		var id := target.trim_prefix("switch_")
-		if id=="grow_lights" and switches[id].lamps.is_empty():
-			host.status_label.text="No house grow equipment installed. House equipment has its own upgrades; apartment tents do not transfer automatically."
+		if id=="grow_lights":
+			toggle_house_grow_lights()
 			return
 		_set_light(id,not bool(states.get(id,true)))
 	else:
