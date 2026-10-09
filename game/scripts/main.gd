@@ -9152,75 +9152,11 @@ Last change: %s" % [int(round(heat_peak)), int(floor(heat_reduced_total)), last_
 	shutdown_note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	phone_list.add_child(shutdown_note)
 
-	if reeves_met and (corrupt_contact_unlocked or heat_peak >= 50.0) and not reeves_arrangement_active:
-		corrupt_contact_unlocked = true
-		var contact_card: PanelContainer = PanelContainer.new()
-		contact_card.add_theme_stylebox_override("panel", _style_box(Color("1a1718"), Color("78584f"), 16, 1))
-		phone_list.add_child(contact_card)
-		var contact_box: VBoxContainer = VBoxContainer.new()
-		contact_box.add_theme_constant_override("separation", 7)
-		contact_card.add_child(contact_box)
-		var contact_title: Label = Label.new()
-		contact_title.text = "CONTACT  |  REEVES"
-		contact_title.add_theme_font_size_override("font_size", 20)
-		contact_box.add_child(contact_title)
-		var contact_copy: Label = Label.new()
-		contact_copy.text = "Before or between formal arrangements, Reeves can sometimes reduce attention for a one-off favor. The recurring arrangement begins through an in-person visit."
-		contact_copy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		contact_box.add_child(contact_copy)
-		var call_button: Button = Button.new()
-		call_button.text = "PAY REEVES  |  $%d  |  HEAT -%d" % [_heat_contact_cost(), int(HEAT_CONTACT_REDUCTION)]
-		call_button.disabled = heat < HEAT_CONTACT_MINIMUM or cash < _heat_contact_cost()
-		call_button.custom_minimum_size.y = 52
-		call_button.pressed.connect(_use_heat_contact)
-		contact_box.add_child(call_button)
-
-	if reeves_met or reeves_arrangement_active:
-		var reeves_card: PanelContainer = PanelContainer.new()
-		reeves_card.add_theme_stylebox_override("panel", _style_box(Color("17191d"), Color("8d6e56"), 16, 1))
-		phone_list.add_child(reeves_card)
-		var reeves_box: VBoxContainer = VBoxContainer.new()
-		reeves_box.add_theme_constant_override("separation", 7)
-		reeves_card.add_child(reeves_box)
-		var reeves_title: Label = Label.new()
-		reeves_title.text = "AGENT REEVES - %s" % ("ACTIVE BALANCE" if reeves_arrangement_active else ("SETTLED" if reeves_arrangement_ended else "NO ARRANGEMENT"))
-		reeves_title.add_theme_font_size_override("font_size", 20)
-		reeves_box.add_child(reeves_title)
-		var remaining: int = _reeves_remaining_balance()
-		var half_now: int = _reeves_half_payment_amount()
-		var reeves_info: Label = Label.new()
-		reeves_info.text = "Relationship: %d / 100
-Enforcement risk: %d%%
-Missed/refused payments: %d
-Protection paid: $%d / $%d
-Remaining balance: $%d%s" % [reeves_relationship, int(round(enforcement_risk)), reeves_missed_payments, mini(reeves_total_paid, REEVES_TOTAL_OBLIGATION), REEVES_TOTAL_OBLIGATION, remaining, ("
-Next Reeves visit: Day %d" % reeves_next_payment_day) if reeves_arrangement_active and remaining > 0 else ""]
-		reeves_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		reeves_box.add_child(reeves_info)
-		if reeves_arrangement_active and remaining > 0:
-			var pay_half: Button = Button.new()
-			pay_half.text = "PAY HALF EARLY - $%d" % half_now
-			pay_half.disabled = half_now <= 0
-			pay_half.custom_minimum_size.y = 50
-			pay_half.pressed.connect(_reeves_pay_half.bind(true))
-			reeves_box.add_child(pay_half)
-			var pay_full: Button = Button.new()
-			pay_full.text = "PAY FULL BALANCE - $%d" % remaining
-			pay_full.disabled = cash < remaining
-			pay_full.custom_minimum_size.y = 50
-			pay_full.pressed.connect(_reeves_pay_full.bind(true))
-			reeves_box.add_child(pay_full)
-			var quiet_exit: Button = Button.new()
-			quiet_exit.text = "END ARRANGEMENT - GO QUIET (%d/%d DAYS)" % [reeves_quiet_days, REEVES_QUIET_EXIT_DAYS]
-			quiet_exit.disabled = business_open or heat > 10.0 or reeves_quiet_days < REEVES_QUIET_EXIT_DAYS
-			quiet_exit.custom_minimum_size.y = 50
-			quiet_exit.pressed.connect(_reeves_quiet_exit)
-			reeves_box.add_child(quiet_exit)
-		var legal_note: Label = Label.new()
-		legal_note.text = "REFUSE at the door if you want to keep your cash. Then use LAY LOW above to close the operation and cool pressure. Paying the full $8,000 balance settles Reeves completely."
-		legal_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		legal_note.modulate = Color("aeb9bf")
-		reeves_box.add_child(legal_note)
+	if reeves_met or reeves_arrangement_active or reeves_arrangement_ended:
+		var reeves_link:Label=Label.new()
+		reeves_link.text="AGENT REEVES · Open Phone → Contacts → Agent Reeves to text, request paid heat assistance, check balances, or settle an arrangement. Heat and enforcement risk are tracked here."
+		reeves_link.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+		phone_list.add_child(reeves_link)
 
 	if enforcement_report_pending and not last_enforcement_report.is_empty():
 		var report_card: PanelContainer = PanelContainer.new()
