@@ -63,3 +63,38 @@ Convert future-property interactions systematically:
 
 Never change public PWA/app storage keys, launcher data paths, account IDs,
 career IDs, or recorded purchases just to consolidate repositories.
+
+## Universal item and equipment registry (v1 development)
+- `game/scripts/item_registry.gd` is the canonical implementation mirrored
+  byte-for-byte into mobile at `tools/item_registry_v1/item_registry.gd`.
+- The original `property_furniture.gd` catalog remains the immutable
+  `LEGACY_CATALOG`. At startup the shared item registry makes an identical
+  runtime dictionary that the current shop, pricing, backpack weight,
+  furniture placement, and upgrade systems can read without changing save IDs.
+- New SKU definitions require price, shop, label, weight, dimensions and may
+  specify room-type restrictions, optional model path and interaction metadata.
+- A new item model is **not automatically modeled or animated**: its graphical
+  scene, UI art and any unique behavior still need to be supplied and tested.
+- Existing SKUs cannot be overwritten by content registration. Changed item
+  economics or renames require an explicit versioned migration with tests.
+- No new item definitions are written into player career saves, and this
+  development milestone does not touch live accounts.
+- Godot checks `prototype/item_registry_test.gd` on desktop and
+  `tools/item_registry_v1/check.gd` in mobile's reconstructed candidate
+  compare all legacy definitions and verify dynamic registration behavior.
+
+## Planned next stages — do not describe these as shipped
+1. Finish dynamic property services: placement, delivery/entry locations,
+   computers, grow panels, bills, utilities, inventory, workers, and access.
+2. Reuse the item registry for richer asset/model definitions, interactions
+   and upgrade graph validation (without removing old purchases).
+3. Standardize character identity, shared rigs and animation state to stop
+   NPC visual duplication, and preserve desktop/mobile controls.
+4. Add property-scoped worker work orders and station scheduling.
+5. Add data-defined stories, milestones and conversations with stable IDs.
+6. Extend the economy and business accounts with one consistent transaction
+   record for each property.
+7. Extend interaction registrations to doors, stations, computers and NPCs.
+8. Require explicit versioned save migrations, snapshots, idempotence,
+   corruption rollback, public-beta QA and platform parity at each release.
+
