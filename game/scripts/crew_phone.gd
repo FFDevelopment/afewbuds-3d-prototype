@@ -364,33 +364,46 @@ func update(delta: float) -> void:
 		alert(worker,"fertilizer",property_supply_empty(assignment(worker),"fertilizer"),"Fertilizer is out. I'll keep watering existing plants, but you'll need to restock fertilizer at Central Market.")
 
 func generic_manager_instance(name: String) -> Node3D:
-	# Only copy the primitive rig. Duplicating ProductionWorker also copies
-	# an attached Malik/Rod/Kobi glTF avatar, creating overlapped characters.
+	# Each generic character gets a fresh primitive visual hierarchy, independent
+	# of the production worker's current skin, hidden state, and custom GLB avatar.
 	var source: Node3D=host.production_worker_node
 	var instance:=Node3D.new()
 	instance.position=source.position
 	instance.rotation=source.rotation
+	for part_name in ["Torso","Head","ArmL","ArmR","LegL","LegR","ShoeL","ShoeR","FriendFaceWrap"]:
+		var original:MeshInstance3D=source.get_node_or_null(part_name) as MeshInstance3D
+		if original==null:continue
+		var part:=MeshInstance3D.new()
+		part.name=part_name
+		part.mesh=original.mesh
+		part.transform=original.transform
+		part.material_override=original.material_override
+		part.visible=true
+		instance.add_child(part)
+		if part_name=="Head":
+			var skin:=StandardMaterial3D.new()
+			skin.albedo_color=host._worker_skin_color(name)
+			part.material_override=skin
+		elif part_name=="FriendFaceWrap":
+			part.visible=false
+			var art:String=host._worker_face_texture_path(name)
+			if not art.is_empty() and ResourceLoader.exists(art):
+				var texture:Texture2D=load(art) as Texture2D
+				if texture!=null:
+					var face:=StandardMaterial3D.new()
+					face.albedo_texture=texture
+					face.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
+					face.cull_mode=BaseMaterial3D.CULL_DISABLED
+					face.roughness=0.74
+					face.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+					part.material_override=face
+					part.visible=true
+	var title:Label3D=source.get_node_or_null("ProductionWorkerTaskLabel") as Label3D
+	# Copy the label's appearance when possible, never a worker's model.
 	for child in source.get_children():
-		if child is MeshInstance3D or child is Label3D:
-			var part:Node=child.duplicate()
-			instance.add_child(part)
-			if part is MeshInstance3D:
-				if child.name=="FriendFaceWrap":
-					part.visible=false
-					var path:String=host._worker_face_texture_path(name)
-					if not path.is_empty() and ResourceLoader.exists(path):
-						var mat:=StandardMaterial3D.new()
-						mat.albedo_texture=load(path) as Texture2D
-						mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
-						mat.cull_mode=BaseMaterial3D.CULL_DISABLED
-						mat.roughness=0.74
-						mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
-						part.material_override=mat
-						part.visible=true
-				elif child.name=="Head":
-					var skin:=StandardMaterial3D.new()
-					skin.albedo_color=host._worker_skin_color(name)
-					part.material_override=skin
+		if child is Label3D:
+			var label_node:Label3D=child.duplicate()
+			instance.add_child(label_node)
 	return instance
 
 func malik_instance() -> Node3D:return character_instance("Malik")
