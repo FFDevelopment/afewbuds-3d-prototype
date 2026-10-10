@@ -284,21 +284,17 @@ func equipment() -> void:
 	b("Sell packed equipment",func():host.inventory_system.furniture.sell_menu())
 
 func computer(property: String) -> void:
-	if property=="apartment" and not apartment_lease_active():
-		host.status_label.text="Apartment lease released. You no longer have access to this property."
+	if not _property_controlled(property):
+		host.status_label.text="You do not currently control this property."
 		return
 	computer_context=property
-	if host.inventory_system!=null and _property_controlled(property):host.inventory_system.activate_adapters(property)
-	management_app=""
-	if property=="house" and not bool(host.property_opportunity_state.get("relocated",false)):
-		clear("HOUSE — OPERATION COMPUTER")
-		ui.label("Property inspection: %d / 6 rooms. This house is not your active operation yet." % world.property_opportunity.visited().size())
-		ui.button("REVIEW HOUSE",func():close();world.property_opportunity.show_details())
-		ui.button("CLOSE COMPUTER",func():computer_context="";close())
-		return
-	manage("business")
-const MANAGEMENT_TABS := ["business","employees","production","inventory","upgrades","bills"]
-const MANAGEMENT_TITLES := {"business":"OVERVIEW","employees":"EMPLOYEES","production":"PRODUCTION","inventory":"INVENTORY","upgrades":"EQUIPMENT","bills":"BILLS"}
+	clear(property.to_upper()+" — COMPUTER")
+	ui.label("MANAGEMENT MOVED TO THE PHONE",22)
+	ui.label(portfolio_name(property)+"\nWorkers, property bills, stock, and furniture are now organized in Phone > Properties.")
+	ui.label("This desk remains your owned furniture. You can move or remove it through Arrange Furniture while at this property.")
+	ui.button("OPEN "+portfolio_name(property).to_upper()+" IN PROPERTIES",func():close();computer_context="";host._open_phone_app("realestate");portfolio_select(property);host._refresh_phone();host.phone_open=true;host.phone_panel.show())
+	ui.button("CLOSE COMPUTER",func():close();computer_context="")
+
 func _management_navigation(section:String) -> void:
 	var property:String=computer_context
 	var banner:=PanelContainer.new()
