@@ -79,7 +79,7 @@ func sample(time:float):
     var waiting=people[donor]
     var rest:Transform3D=waiting.global_transform*waiting.cigarette_frame()
     rest.origin+=rest.basis.z*.018
-    waiting.pose_shared(exchange.interpolate_with(rest,smoothstep(0,1,(t-1.5)/1.3)),.018,1.0)
+    waiting.pose_shared(exchange.interpolate_with(rest,smoothstep(0,1,(t-1.5)/1.3)),.018,1-smoothstep(0,1,(t-1.5)/1.3))
   transfers=round_index+(1 if t>=1.5 else 0)
   phase="Offering / reaching" if t<1.5 else "Received / drawing back"
  else:

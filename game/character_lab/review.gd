@@ -46,7 +46,7 @@ func _ready():
  var scroll:=ScrollContainer.new();scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED;panel.add_child(scroll)
  var column:=VBoxContainer.new();column.add_theme_constant_override("separation",8);scroll.add_child(column)
  title=Label.new();title.add_theme_font_size_override("font_size",24);column.add_child(title)
- var note:=Label.new();note.text="ANIMATION LAB / REVIEW 07\nProps + shared actions";note.modulate=Color("9ac1b0");column.add_child(note)
+ var note:=Label.new();note.text="ANIMATION LAB / REVIEW 08\nProps + shared actions";note.modulate=Color("9ac1b0");column.add_child(note)
  var grid:=GridContainer.new();grid.columns=2;column.add_child(grid)
  for i in NAMES.size():
   var idx:=i;button(grid,NAMES[i],func():set_clip("idle");selected=idx;count=1;full_view();arrange())
@@ -163,4 +163,6 @@ func capture_session():
  paused=true;start_session()
  for t in [2.7,8.8,9.3,10.0,12.5,18.3]:
   session.sample(t);await shot("Session_"+str(t).replace(".","_"))
+ target=Vector3(0,1.65,0);distance=3.0;yaw=.35
+ session.sample(9.3);await shot("Session_handoff_close")
  print("SESSION_CAPTURE_COMPLETE");get_tree().quit()

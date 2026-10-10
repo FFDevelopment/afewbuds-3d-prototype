@@ -252,6 +252,20 @@ func arm(side:String,wrist:Vector3,finger_dir:Vector3,curl:float):
     q=q.slerp(grip_q,hold)
    sk.set_bone_pose_rotation(b,q)
 
+ # Keep the thumb itself lifted during an offer, not only the thumb edge of the palm.
+ if smoking and pass_roll>0:
+  sk.force_update_all_bone_transforms()
+  var tip_id:=sk.find_bone("Thumb3_R")
+  var tip:Transform3D=sk.get_bone_global_pose(tip_id)
+  var current_direction:Vector3=-tip.basis.x.normalized()
+  var lifted:=Vector3(current_direction.x,.55,current_direction.z).normalized()
+  var correction:=Quaternion(current_direction,lifted)
+  var limit:=minf(1.0,.85/maxf(.001,current_direction.angle_to(lifted)))
+  correction=Quaternion.IDENTITY.slerp(correction,limit*smoothstep(0,.1,pass_roll))
+  var parent_basis:Basis=sk.get_bone_global_pose(sk.get_bone_parent(tip_id)).basis
+  var local_basis:Basis=sk.get_bone_rest(tip_id).basis.inverse()*parent_basis.inverse()*Basis(correction)*tip.basis
+  sk.set_bone_pose_rotation(tip_id,local_basis.get_rotation_quaternion().normalized())
+
 func rest_wait():
  action="idle";pass_roll=0;reset_props()
  left=Vector3(.24,.90,-.03);right=Vector3(-.24,.90,-.03)
@@ -267,8 +281,11 @@ func pose_shared(prop_world:Transform3D, grip_distance:float, natural_weight:flo
  var target_point:Vector3=desired*Vector3(0,0,-grip_distance)
  var start_direction:Vector3=-sk.get_bone_global_pose(sk.find_bone("Hand_R")).basis.x.normalized()
  var shoulder:Vector3=sk.get_bone_global_rest(sk.find_bone("UpperArm_R")).origin
- var reach_direction:Vector3=(target_point-shoulder).normalized()
- var finger_direction:=start_direction.slerp(reach_direction,natural_weight).normalized()
+ var reach_direction:Vector3=target_point-shoulder
+ # Offer with a level handshake-like hand instead of aiming down from the shoulder.
+ reach_direction.y=.12
+ reach_direction=reach_direction.normalized()
+ var finger_direction:=start_direction.slerp(reach_direction,smoothstep(0,.25,natural_weight)).normalized()
  for iteration in 16:
   arm("R",right,finger_direction,1.0)
   sk.force_update_all_bone_transforms()
