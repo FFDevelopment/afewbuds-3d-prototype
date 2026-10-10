@@ -5,6 +5,7 @@ var ops: RefCounted:
 	get:return world.location_ops
 var thread := ""
 var actions := false
+var release_confirmation: String = ""
 var character_scenes: Dictionary = {}
 var malik_visitor: Node3D
 var malik_worker: Node3D
@@ -48,10 +49,11 @@ func contacts() -> void:
 		button(host.phone_list,name+"\n"+description,open_thread.bind(name))
 	if names.is_empty():label(host.phone_list,"Contacts appear as you get to know clients or hire staff.")
 func open_thread(name: String) -> void:
-	thread=name;actions=false;host.phone_current_app="texts";host.phone_open=true;host.phone_panel.show();host._refresh_phone();jump_latest.call_deferred()
+	thread=name;actions=false;release_confirmation="";host.phone_current_app="texts";host.phone_open=true;host.phone_panel.show();host._refresh_phone();jump_latest.call_deferred()
 func jump_latest() -> void:
 	host.phone_scroll.scroll_vertical=0
 func back() -> void:
+	release_confirmation=""
 	if actions:actions=false
 	else:thread=""
 	host._refresh_phone()
@@ -129,7 +131,31 @@ func render_actions() -> void:
 				button(host.phone_list,"OFFER DEALER WORK · APARTMENT",recruit.bind(thread,"dealer"),host._total_dealer_count()>=host._dealer_capacity())
 				button(host.phone_list,"OFFER PRODUCTION WORK · APARTMENT",recruit.bind(thread,"production"),host.grower_level<5 or host.packing_employee_hired)
 			elif str(client.get("tier",""))=="Friend":label(host.phone_list,"Recruiting requires %d loyalty and %d personal sales." % [host.FRIEND_RECRUIT_LOYALTY,host.FRIEND_RECRUIT_PLAYER_SALES])
+	if not host._friend_staff_role(thread).is_empty():
+		if release_confirmation==thread:
+			label(host.phone_list,"Confirm ending "+thread+"'s employment. They will no longer work at either property. Completed dealer sales and earned commission history remain recorded.")
+			button(host.phone_list,"CONFIRM FIRE "+thread.to_upper(),confirm_staff_release.bind(thread),host.dealer_arrested if job=="dealer" else host.production_worker_arrested)
+			button(host.phone_list,"CANCEL FIRING",cancel_staff_release)
+		else:
+			button(host.phone_list,"FIRE "+thread.to_upper()+" · END "+job.to_upper()+" ROLE",request_staff_release.bind(thread))
 	button(host.phone_list,"BACK TO CONVERSATION",back)
+
+func request_staff_release(name:String) -> void:
+	if host._friend_staff_role(name).is_empty():return
+	release_confirmation=name
+	host._refresh_phone()
+
+func cancel_staff_release() -> void:
+	release_confirmation=""
+	host._refresh_phone()
+
+func confirm_staff_release(name:String) -> void:
+	if release_confirmation!=name or host._friend_staff_role(name).is_empty():return
+	release_confirmation=""
+	host._release_friend_staff(name)
+	actions=false
+	host._refresh_phone()
+
 func toggle_crew_duty(job:String) -> void:
 	if job=="dealer" and host._total_dealer_count()>0:host._toggle_dealers()
 	elif job=="production" and host.packing_employee_hired:host._toggle_packing_employee()
