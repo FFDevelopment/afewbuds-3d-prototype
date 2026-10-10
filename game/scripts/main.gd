@@ -6256,7 +6256,7 @@ func _customer_favorite(customer: Dictionary) -> String:
 	var name: String = str(customer.get("name", ""))
 	var relationship: Dictionary = customer_relationships.get(name, {}) as Dictionary
 	var learned: String = str(relationship.get("preferred_strain", ""))
-	return learned if not learned.is_empty() and products.has(learned) else str(customer.get("favorite", ""))
+	return learned if not learned.is_empty() else str(customer.get("favorite", ""))
 
 func _record_customer_strain_experience(customer_name: String, requested: String, sold: String) -> void:
 	if customer_name.is_empty() or sold.is_empty():return
@@ -6271,6 +6271,8 @@ func _record_customer_strain_experience(customer_name: String, requested: String
 	customer_relationships[customer_name] = relationship
 
 func _dealer_product_amount(strain_name: String, doorstep: bool) -> int:
+	if not products.has(strain_name):return 0
+	if doorstep and not bool(products[strain_name].get("listed", false)):return 0
 	var result: int = maxi(0, int(locker_weed.get(strain_name, 0)))
 	if doorstep:
 		result += _available_amount(strain_name) + maxi(0, int(bagged_inventory.get(strain_name, 0)))
@@ -6305,13 +6307,13 @@ func _dealer_sell_one(show_feedback: bool, assigned_dealer_name: String = "", do
 	return _dealer_sell_one_local(show_feedback,assigned_dealer_name,door_customer,door_order)
 
 func _dealer_sell_one_local(show_feedback: bool, assigned_dealer_name: String = "", door_customer: Dictionary = {}, door_order: Dictionary = {}) -> bool:
-	if dealer_arrested:return false
+	if dealer_arrested and door_customer.is_empty():return false
 	if door_customer.is_empty() and neighborhood!=null and assigned_dealer_name==neighborhood.location_ops.crew.manager(inventory_system.staff_property(assigned_dealer_name)) and not assigned_dealer_name.is_empty():return false
 	var dedicated_door: bool = not door_customer.is_empty() and _friend_staff_role(assigned_dealer_name) == "door"
 	if dedicated_door and not bool(location_state.get("staff_duty", {}).get(assigned_dealer_name, true)):return false
 	if _simulation_blocked():
 		return false
-	if dealer_balance_due > 0:
+	if dealer_balance_due > 0 and not dedicated_door:
 		return false
 	if not dedicated_door and (not dealers_active or _total_dealer_count() <= 0):
 		return false
@@ -6353,7 +6355,7 @@ func _dealer_sell_one_local(show_feedback: bool, assigned_dealer_name: String = 
 		if qty<=0 or available<qty:return false
 	var dealer_roster: Array[String] = _active_dealer_roster()
 	if not dedicated_door and (dealer_roster.is_empty() or not dealer_roster.has(assigned_dealer_name)):return false
-	if dedicated_door and (assigned_dealer_name.is_empty() or not neighborhood.location_ops.crew.can_handle(inventory_system.staff_property(assigned_dealer_name))):return false
+	if dedicated_door and (assigned_dealer_name.is_empty() or neighborhood==null or not neighborhood.location_ops.crew.can_handle(inventory_system.staff_property(assigned_dealer_name))):return false
 	if door_customer.is_empty():
 		locker_weed[product_name]=available-qty
 	else:
@@ -6375,6 +6377,7 @@ func _dealer_sell_one_local(show_feedback: bool, assigned_dealer_name: String = 
 	_record_daily_sale(product_name, qty, gross_revenue, "dealer")
 	dealer_sales_today += 1
 	_record_friend_dealer_sale(sale_dealer_name, qty, gross_revenue, commission)
+	if not door_customer.is_empty():location_state["last_door_sale_strain"]=product_name
 	last_dealer_customer_name = str(chosen_customer.get("name", ""))
 	neighborhood.location_ops.record_dealer_sale(sale_dealer_name,last_dealer_customer_name,product_name,qty,gross_revenue,commission)
 	dealer_customers_served_today[last_dealer_customer_name] = sale_dealer_name
