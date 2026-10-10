@@ -7670,6 +7670,14 @@ func _build_employees_app() -> void:
 		packer_button.pressed.connect(_toggle_packing_employee)
 	packer_button.custom_minimum_size.y = 52
 	packer_box.add_child(packer_button)
+	if packing_employee_hired and not packing_employee_active:
+		var production_reason:String=_staff_duty_blocker("production")
+		if not production_reason.is_empty():
+			packer_button.disabled=true
+			var reason_note:=Label.new()
+			reason_note.text="WHY OFF DUTY: "+production_reason
+			reason_note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+			packer_box.add_child(reason_note)
 	if packing_employee_hired:
 		var auto_plant_button: Button = Button.new()
 		auto_plant_button.text = "AUTO-PLANT (WHILE PLAYING): %s" % ("ON" if production_worker_auto_plant else "OFF")
@@ -7733,6 +7741,14 @@ No daily sales cap. Every dealer shares one daily customer pool, so nobody can b
 		dealer_toggle.text = "SEND DEALERS HOME" if dealers_active else "PUT DEALERS ON DUTY"
 		dealer_toggle.custom_minimum_size.y = 52
 		dealer_toggle.pressed.connect(_toggle_dealers)
+		if not dealers_active:
+			var dealer_reason:String=_staff_duty_blocker("dealer")
+			if not dealer_reason.is_empty():
+				dealer_toggle.disabled=true
+				var why_note:=Label.new()
+				why_note.text="WHY OFF DUTY: "+dealer_reason
+				why_note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+				dealer_box.add_child(why_note)
 		dealer_box.add_child(dealer_toggle)
 
 	if dealer_count > 0:
@@ -7978,6 +7994,23 @@ func _build_clients_app() -> void:
 			text_button.custom_minimum_size.y = 48
 			text_button.pressed.connect(_text_known_customer.bind(str(customer.get("name", ""))))
 			box.add_child(text_button)
+
+func _staff_duty_blocker(kind:String) -> String:
+	# Keep the menu explanation aligned with the real clock-in checks.
+	if kind=="production":
+		if not packing_employee_hired:return "Hire a production worker first."
+		if packing_employee_active:return ""
+		if production_worker_arrested:return "Worker bail must be paid in Texts before returning."
+		if _staff_heat_locked():return "Heat is 75 or higher. The worker will not return yet."
+		return ""
+	if kind=="dealer":
+		if _total_dealer_count()<=0:return "Hire a dealer first."
+		if dealers_active:return ""
+		if dealer_arrested:return "Dealer bail must be paid in Texts before returning."
+		if _staff_heat_locked():return "Heat is 75 or higher. The dealer team will not work yet."
+		if dealer_balance_due>0:return "Pay the $%d dealer balance in Bills before clocking in." % dealer_balance_due
+		return ""
+	return "Unknown employee type."
 
 func _staff_heat_locked() -> bool:
 	return heat >= 75.0
