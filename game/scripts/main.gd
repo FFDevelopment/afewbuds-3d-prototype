@@ -262,6 +262,7 @@ var automation_timer: Timer
 var grow_save_accumulator: float = 0.0
 var auto_sale_accumulator: float = 0.0
 var phone_current_app: String = "home"
+var phone_business_focus: String = "" # UI-only selection; never changes the player's physical active property.
 var customer_relationships: Dictionary = {}
 var main_room_ring: Array[String] = ["main_grow_door", "main_workbench", "main_door", "main_storage"]
 var grow_room_ring: Array[String] = ["grow_room_tent2", "grow_room_tent", "grow_room_tent3", "grow_room_utility", "grow_room_exit", "grow_room_upgrades"]
@@ -6948,10 +6949,21 @@ func _cancel_phone_gesture() -> void:
 		if scroll != null:
 			scroll.cancel_touch()
 
+func _phone_business_selected() -> String:
+	if neighborhood==null or neighborhood.location_ops==null:return "apartment"
+	if phone_business_focus in ["apartment","house"] and neighborhood.location_ops._property_controlled(phone_business_focus):
+		return phone_business_focus
+	return neighborhood.location_ops.active_property()
+
+func _phone_business_select(property:String) -> void:
+	if neighborhood==null or neighborhood.location_ops==null:return
+	if property not in ["apartment","house"] or not neighborhood.location_ops._property_controlled(property):return
+	phone_business_focus=property
+	# A remote dashboard selection does not relocate the player or transfer stock.
+	_open_phone_app("budshop")
+
 func _build_budshop_app() -> void:
-	var current_property:String="apartment"
-	if neighborhood!=null and neighborhood.location_ops!=null:
-		current_property=neighborhood.location_ops.active_property()
+	var current_property:String=_phone_business_selected()
 	var operations:RefCounted=neighborhood.location_ops if neighborhood!=null else null
 	var intro:=PanelContainer.new()
 	intro.add_theme_stylebox_override("panel",_style_box(Color("152620"),Color("5b9a72"),16,1))
@@ -6971,7 +6983,7 @@ func _build_budshop_app() -> void:
 	status.text="Assigned staff: %d · Property balances: $%d\nDealer team: %s · Production: %s" % [active_staff,due,"ON DUTY" if dealers_active else "HOME","ON DUTY" if packing_employee_active else "HOME"]
 	box.add_child(status)
 	var details:=Label.new()
-	details.text="Manage your crew and business from the phone. Each property's computer provides its local equipment, grow controls and workstations."
+	details.text="Tap an operation below to view it remotely. Its physical property and stock stay where they are. Use Contacts to text workers for transfers."
 	details.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	details.modulate=Color("b3caba")
 	box.add_child(details)
@@ -6997,7 +7009,7 @@ func _build_budshop_app() -> void:
 			stack.add_theme_constant_override("separation",5)
 			property_card.add_child(stack)
 			var label_node:=Label.new()
-			label_node.text=property_id.capitalize()+" · "+("ACCESS" if access else "NOT ACQUIRED")+( " · CURRENT" if property_id==current_property else "")
+			label_node.text=property_id.capitalize()+" · "+("ACCESS" if access else "NOT ACQUIRED")+(" · SELECTED" if property_id==current_property else "")
 			label_node.add_theme_font_size_override("font_size",18)
 			stack.add_child(label_node)
 			if access:
@@ -7007,6 +7019,12 @@ func _build_budshop_app() -> void:
 				detail_node.text="%d assigned staff · %dg storage stock · $%d property bills" % [staff,stock,operations.computer_due(property_id)]
 				detail_node.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 				stack.add_child(detail_node)
+				var view_button:=Button.new()
+				view_button.text="VIEW "+property_id.to_upper()+" OPERATION"+(" · SELECTED" if property_id==current_property else "")
+				view_button.disabled=property_id==current_property
+				view_button.custom_minimum_size.y=50
+				view_button.pressed.connect(_phone_business_select.bind(property_id))
+				stack.add_child(view_button)
 			else:
 				var locked_note:=Label.new()
 				locked_note.text="Unlock or manage this property in Real Estate."
@@ -7576,16 +7594,25 @@ func _build_bills_app() -> void:
 func _build_employees_app() -> void:
 	if neighborhood!=null and neighborhood.location_ops!=null:
 		var property_label:Label=Label.new()
-		property_label.text="PROPERTY ASSIGNMENTS  ·  Current: "+neighborhood.location_ops.active_property().capitalize()+"\nDealer duty applies to the whole team. Individual dealer results and home property are shown in Contacts."
+		property_label.text="EMPLOYEES · Viewing "+_phone_business_selected().capitalize()+"\nDealer duty applies to the whole team. Individual earnings and text transfers are in Contacts."
 		property_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 		phone_list.add_child(property_label)
 		for person_name in neighborhood.location_ops.crew.roster():
 			var worker_role:String=neighborhood.location_ops.crew.role(person_name)
 			if worker_role.is_empty():continue
 			var person_label:Label=Label.new()
-			person_label.text=person_name+"  ·  "+worker_role.capitalize()+"  ·  "+neighborhood.location_ops.crew.assignment(person_name).capitalize()
+			var assigned:String=neighborhood.location_ops.crew.assignment(person_name)
+			person_label.text=person_name+"  ·  "+worker_role.capitalize()+"  ·  "+assigned.capitalize()
 			person_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 			phone_list.add_child(person_label)
+			if person_name!="Dealer Team" and not _friend_staff_role(person_name).is_empty():
+				var other_property:String="house" if assigned=="apartment" else "apartment"
+				if neighborhood.location_ops._property_controlled(other_property):
+					var move_button:=Button.new()
+					move_button.text="TEXT "+person_name.to_upper()+" · TRANSFER TO "+other_property.to_upper()
+					move_button.custom_minimum_size.y=44
+					move_button.pressed.connect(neighborhood.location_ops.crew.transfer_from_contact.bind(person_name,other_property))
+					phone_list.add_child(move_button)
 	var crew_contacts_button:Button=Button.new()
 	crew_contacts_button.text="OPEN CONTACTS · INDIVIDUAL WORKER ACTIONS"
 	crew_contacts_button.custom_minimum_size.y=48
