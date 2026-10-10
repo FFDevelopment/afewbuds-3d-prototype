@@ -98,3 +98,40 @@ career IDs, or recorded purchases just to consolidate repositories.
 8. Require explicit versioned save migrations, snapshots, idempotence,
    corruption rollback, public-beta QA and platform parity at each release.
 
+
+## Property spatial contract v2 (development)
+
+The shared registry accepts optional `set_room_height(property, room, floor,
+ceiling)` bounds, with the floor included and ceiling excluded. Both room and
+property lookup respect these bounds; overlapping floors resolve independently.
+Legacy rooms without authored heights retain their original behavior. This
+change does not change existing map geometry or guess legacy floor heights.
+
+`register_site` records stable named entry, curb, delivery, grow-panel, packing,
+supply and staff destinations. Interior destinations must lie in their declared
+room and floor. `sites_for` filters invalid/stale locations and returns copies.
+Sites do not grant access, teleport players, create stations or schedule workers.
+Those consumers still need conversion as part of the property-services stage.
+
+Schema 2 adds only optional height/site fields to existing registry records.
+Old property IDs, purchases, balances, staff and save identities are preserved.
+The shared 41-check registry fixture covers stacked floors, boundary edges,
+invalid destinations, access, JSON reload and repeated migration. The normal
+mobile release pipeline now gates on registry and item tests as desktop does.
+
+## Agreed advancement delivery order
+
+1. Complete property service routing from registered rooms and destinations.
+2. Extend the item/equipment registry and validate upgrades/asset definitions.
+3. Standardize NPC identity, shared rigs and animation contracts.
+4. Route worker work orders and business automation through property services.
+5. Move story/milestone/conversation definitions into a shared story engine.
+6. Consolidate property economy transactions and business records.
+7. Unify physical interaction registrations and access checks.
+8. Add explicit versioned career migrations and recovery across both platforms.
+
+The existing phone/desktop save-sync fix is a working baseline, not an
+unfinished prerequisite. Preserve it through every phase. Alongside these
+stages, finish verified update-before-play delivery for desktop and mobile.
+The eight stages are not all shipped; spatial v2 is the first additional slice
+of stage 1 after the phone UI work.
