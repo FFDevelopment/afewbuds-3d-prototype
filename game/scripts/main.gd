@@ -6791,13 +6791,9 @@ func _phone_go_home() -> void:
 	_open_phone_app("home")
 
 func _phone_parent_app(app_name: String) -> String:
-	if app_name in ["bills","stats","heat","business"]:return "budshop"
-	if app_name in ["seeds", "supplies"]:
-		return "shop"
-	if app_name in ["bills", "employees", "upgrades"]:
-		return "business"
-	if app_name == "account":
-		return "settings"
+	if app_name in ["bills","stats","heat","business","employees","upgrades","products","genetics"]:return "budshop"
+	if app_name in ["seeds","supplies"]:return "shop"
+	if app_name=="account":return "settings"
 	return "home"
 
 func _phone_go_back() -> void:
@@ -6953,52 +6949,74 @@ func _cancel_phone_gesture() -> void:
 			scroll.cancel_touch()
 
 func _build_budshop_app() -> void:
-	var card:=PanelContainer.new()
-	card.add_theme_stylebox_override("panel",_style_box(Color("152029"),Color("33434f"),16,1))
-	phone_list.add_child(card)
-	var box:=VBoxContainer.new()
-	card.add_child(box)
-	var property_name:String="Operation"
+	var current_property:String="apartment"
 	if neighborhood!=null and neighborhood.location_ops!=null:
-		property_name=neighborhood.location_ops.active_property().capitalize()
-	var status:=Label.new()
-	status.text="%s\nStorefront: %s" % [property_name.to_upper(),"LAYING LOW" if lay_low_active else ("OPEN" if business_open else "AWAY")]
-	status.add_theme_font_size_override("font_size",20)
-	status.modulate=Color("8ed6a3") if business_open and not lay_low_active else Color("e1b07a")
-	box.add_child(status)
-	var note:=Label.new()
-	note.text="Manage the active operation at its property computer. Property leases, ownership and access are in Real Estate."
-	note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(note)
-	var grid:GridContainer=_phone_category_grid()
-	_add_phone_app_tile(grid,"","Bills","Property utilities & balances","bills")
-	_add_phone_app_tile(grid,"","Heat","%s | %d/100" % [_heat_stage_name(),int(round(heat))],"heat")
-	_add_phone_app_tile(grid,"","Stats","Progress & revenue","stats")
-
-func _build_settings_app() -> void:
-	var intro: Label = Label.new()
-	intro.text = "Help, account, saves and system controls."
-	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		current_property=neighborhood.location_ops.active_property()
+	var operations:RefCounted=neighborhood.location_ops if neighborhood!=null else null
+	var intro:=PanelContainer.new()
+	intro.add_theme_stylebox_override("panel",_style_box(Color("152620"),Color("5b9a72"),16,1))
 	phone_list.add_child(intro)
-	var grid: GridContainer = _phone_category_grid()
-	_add_phone_app_tile(grid, "", "Help", "Basics & controls", "help")
-	_add_phone_app_tile(grid, "", "Account", "Username, password, email & updates", "account")
-	_add_phone_app_tile(grid, "", "System", "Save game & safe quit", "system")
-
-func _build_task_app() -> void:
-	_build_story_progress_section()
-	var grid: GridContainer = _phone_category_grid()
-	_add_phone_app_tile(grid, "", "Advancements", "Roadmap + %d reward%s ready" % [_advancement_ready_count(), "" if _advancement_ready_count() == 1 else "s"], "advancements")
-
-	# Task uses the same fixed-width containment as the Advancements page.
-	# Long chapter/objective copy must wrap inside the phone instead of
-	# increasing the minimum width of the phone/game viewport.
-	_constrain_advancement_phone_width(phone_list)
-	phone_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	phone_list.custom_minimum_size.x = 0.0
-	phone_list.queue_sort()
-	phone_scroll.queue_sort()
-
+	var box:=VBoxContainer.new()
+	box.add_theme_constant_override("separation",6)
+	intro.add_child(box)
+	var headline:=Label.new()
+	headline.text=current_property.to_upper()+" · BUSINESS OVERVIEW"
+	headline.add_theme_font_size_override("font_size",21)
+	headline.modulate=Color("9fe4b2")
+	box.add_child(headline)
+	var status:=Label.new()
+	status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	var active_staff:int=operations.computer_staff_names(current_property).size() if operations!=null else 0
+	var due:int=operations.computer_due(current_property) if operations!=null else 0
+	status.text="Assigned staff: %d · Property balances: $%d\nDealer team: %s · Production: %s" % [active_staff,due,"ON DUTY" if dealers_active else "HOME","ON DUTY" if packing_employee_active else "HOME"]
+	box.add_child(status)
+	var details:=Label.new()
+	details.text="Manage your crew and business from the phone. Each property's computer provides its local equipment, grow controls and workstations."
+	details.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	details.modulate=Color("b3caba")
+	box.add_child(details)
+	var grid:GridContainer=_phone_category_grid()
+	_add_phone_app_tile(grid,"","Employees","Staff assignments, duty and dealer commission","employees")
+	_add_phone_app_tile(grid,"","Inventory","Products, listings and stock","products")
+	_add_phone_app_tile(grid,"","Equipment","Owned equipment, upgrades and buying","upgrades")
+	_add_phone_app_tile(grid,"","Bills","Rent, utilities and dealer balance","bills")
+	_add_phone_app_tile(grid,"","Heat","Business pressure · %d/100" % int(round(heat)),"heat")
+	_add_phone_app_tile(grid,"","Stats","Revenue, milestones and career progress","stats")
+	var other:=Label.new()
+	other.text="PROPERTY ACCOUNTS"
+	other.add_theme_font_size_override("font_size",19)
+	other.modulate=Color("b6d3bd")
+	phone_list.add_child(other)
+	if operations!=null:
+		for property_id in ["apartment","house"]:
+			var access:bool=operations._property_controlled(property_id)
+			var property_card:=PanelContainer.new()
+			property_card.add_theme_stylebox_override("panel",_style_box(Color("17231e"),Color("374b40"),13,1))
+			phone_list.add_child(property_card)
+			var stack:=VBoxContainer.new()
+			stack.add_theme_constant_override("separation",5)
+			property_card.add_child(stack)
+			var label_node:=Label.new()
+			label_node.text=property_id.capitalize()+" · "+("ACCESS" if access else "NOT ACQUIRED")+( " · CURRENT" if property_id==current_property else "")
+			label_node.add_theme_font_size_override("font_size",18)
+			stack.add_child(label_node)
+			if access:
+				var stock:int=operations.computer_stock_total(property_id,"storage","product|")
+				var staff:int=operations.computer_staff_names(property_id).size()
+				var detail_node:=Label.new()
+				detail_node.text="%d assigned staff · %dg storage stock · $%d property bills" % [staff,stock,operations.computer_due(property_id)]
+				detail_node.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+				stack.add_child(detail_node)
+			else:
+				var locked_note:=Label.new()
+				locked_note.text="Unlock or manage this property in Real Estate."
+				locked_note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+				stack.add_child(locked_note)
+	var link:=Button.new()
+	link.text="OPEN REAL ESTATE · MANAGE PROPERTY ACCESS"
+	link.custom_minimum_size.y=52
+	link.pressed.connect(_open_phone_app.bind("realestate"))
+	phone_list.add_child(link)
 func _build_phone_home() -> void:
 	var summary: Label = Label.new()
 	summary.text = "DAY %d  |  %s\n$%d cash   |   Level %d   |   Storefront %s" % [game_day, _format_game_clock(), cash, grower_level, "LAYING LOW" if lay_low_active else ("OPEN" if business_open else "AWAY")]
@@ -7556,6 +7574,18 @@ func _build_bills_app() -> void:
 		dealer_box.add_child(pay_dealers)
 
 func _build_employees_app() -> void:
+	if neighborhood!=null and neighborhood.location_ops!=null:
+		var property_label:Label=Label.new()
+		property_label.text="PROPERTY ASSIGNMENTS  ·  Current: "+neighborhood.location_ops.active_property().capitalize()+"\nDealer duty applies to the whole team. Individual dealer results and home property are shown in Contacts."
+		property_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+		phone_list.add_child(property_label)
+		for person_name in neighborhood.location_ops.crew.roster():
+			var worker_role:String=neighborhood.location_ops.crew.role(person_name)
+			if worker_role.is_empty():continue
+			var person_label:Label=Label.new()
+			person_label.text=person_name+"  ·  "+worker_role.capitalize()+"  ·  "+neighborhood.location_ops.crew.assignment(person_name).capitalize()
+			person_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+			phone_list.add_child(person_label)
 	var crew_contacts_button:Button=Button.new()
 	crew_contacts_button.text="OPEN CONTACTS · INDIVIDUAL WORKER ACTIONS"
 	crew_contacts_button.custom_minimum_size.y=48
