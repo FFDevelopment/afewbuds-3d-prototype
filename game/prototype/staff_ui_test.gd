@@ -76,7 +76,7 @@ func run()->void:
 	var computer:String=labels(ops.ui.body)
 	check("OVERVIEW" in computer and "EMPLOYEES" in computer and "PRODUCTION" in computer and "INVENTORY" in computer and "EQUIPMENT" in computer and "BILLS" in computer,"Property computer uses six clear dashboard sections")
 	ops.manage("employees")
-	check("Malik" not in labels(ops.ui.body),"House shows only its assigned staff after a worker moved away")
+	check(ops.computer_staff_names("house").is_empty(),"House staff list does not include a worker moved to apartment")
 	ops.close()
 	var saved_staff:Dictionary=game.friend_staff_roles.duplicate(true)
 	var saved_location:Dictionary=game.location_state.staff_assignments.duplicate(true)
