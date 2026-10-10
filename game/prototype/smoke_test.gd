@@ -231,10 +231,13 @@ func run() -> void:
 	check(seed_buttons == game.seed_inventory.size(), "picker lists every owned seed including future genetics")
 	game._close_direct_plant()
 	var position_before: Vector3 = game.fp_player.position
+	root.size=Vector2i(800,500)
 	game._toggle_phone()
 	await frames()
 	check(game.phone_open and not game.fp_player.enabled, "phone releases cursor and locks movement")
-	check(game.phone_panel.size.y > game.phone_panel.size.x * 1.35, "desktop phone maintains portrait proportions")
+	var canvas_scale:float=minf(float(root.size.x)/root.get_visible_rect().size.x,float(root.size.y)/root.get_visible_rect().size.y)
+	check(game.phone_panel.scale.x*canvas_scale >= 0.99, "phone text retains readable physical scale in a short window")
+	check(game.phone_scroll.size.y*game.phone_panel.scale.y*canvas_scale >= 150, "short-window phone keeps usable scrolling space")
 	check(game.phone_panel.get_global_rect().end.y <= game.hud.size.y, "portrait phone fits viewport")
 	var phone_width_before_rewards: float = game.phone_panel.size.x
 	game._open_phone_app("advancements")
