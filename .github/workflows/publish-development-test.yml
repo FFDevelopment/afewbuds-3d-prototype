@@ -1,0 +1,76 @@
+name: Publish desktop development test (not public beta)
+
+on:
+  workflow_run:
+    workflows: ["Build desktop baseline"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  desktop-test:
+    if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Fetch validated Windows game build
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: AFewBuds-Desktop-*-Windows
+          path: game/windows
+          merge-multiple: true
+      - name: Fetch validated Linux game build
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: AFewBuds-Desktop-*-Linux
+          path: game/linux
+          merge-multiple: true
+      - name: Package separate desktop development test
+        run: |
+          set -euo pipefail
+          test -f game/windows/AFewBuds-3D-Prototype.exe
+          test -f game/linux/AFewBuds-3D-Prototype.x86_64
+          mkdir -p packages
+          ( cd game/windows && zip -q -r ../../packages/AFewBuds-Windows-Development-Test.zip . )
+          ( cd game/linux && zip -q -r ../../packages/AFewBuds-Linux-Development-Test.zip . )
+          sha256sum packages/*.zip > packages/SHA256SUMS.txt
+      - name: Publish test prerelease in prototype repository only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          source_sha="${{ github.event.workflow_run.head_sha }}"
+          tag="dev-shared-core-${source_sha:0:12}"
+          cat > test-notes.md <<EOF
+          ## AFewBuds desktop development test
+
+          This build comes from **FFDevelopment/afewbuds-3d-prototype/main**.
+          Source: \`${source_sha}\`
+
+          It includes the shared Property Registry and Item/Equipment Registry
+          with backward-compatible apartment/house data, plus existing playable
+          desktop gameplay. Dynamic computers, bills, grow panels and worker
+          navigation for arbitrary *future* buildings are not fully implemented.
+
+          This development test is **not** the official Windows beta:
+          https://github.com/FFDevelopment/AFewBuds-Desktop-Beta/releases
+
+          For safety, back up your career before trying experimental builds.
+          Avoid switching between test and tester builds mid-save until verified.
+          EOF
+          if gh release view "${tag}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Development prerelease already exists: ${tag}"
+            exit 0
+          fi
+          gh release create "${tag}" packages/AFewBuds-Windows-Development-Test.zip packages/AFewBuds-Linux-Development-Test.zip packages/SHA256SUMS.txt \
+            --repo "${{ github.repository }}" --target "${source_sha}" \
+            --prerelease --title "AFewBuds shared-core Windows/Linux development test (${source_sha:0:7})" \
+            --notes-file test-notes.md
