@@ -52,7 +52,7 @@ func contacts() -> void:
 	names.sort()
 	for name in names:
 		var job:=role(name)
-		var description:String="Reeves · Private contact" if name=="Agent Reeves" else (job.capitalize()+" · "+assignment(name).capitalize() if not job.is_empty() else "Client")
+		var description:String="Reeves · Private contact" if name=="Agent Reeves" else (("Door Dealer" if job=="door" else job.capitalize())+" · "+assignment(name).capitalize() if not job.is_empty() else "Client")
 		button(host.phone_list,name+"\n"+description,open_thread.bind(name))
 	if names.is_empty():label(host.phone_list,"Contacts appear as you get to know clients or hire staff.")
 func open_thread(name: String) -> void:
@@ -397,8 +397,6 @@ func update(delta: float) -> void:
 	if bool(host.location_state.get("crew_idle",false)) and not host.lay_low_active:host.location_state["crew_idle"]=false
 	var active_site:String=ops.active_property()
 	var name:=manager(active_site) if active_site=="apartment" else ""
-	if active_site=="house" and host.customer_waiting and can_handle("house") and not manager_attempted and not str(host.current_customer.get("special","")).is_empty():
-		pass
 	if active_site=="house" and host.customer_waiting and can_handle("house") and not manager_attempted and str(host.current_customer.get("special","")).is_empty():
 		manager_attempted=true
 		var visit_customer:Dictionary=host.current_customer.duplicate(true)
