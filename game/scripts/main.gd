@@ -6272,7 +6272,7 @@ func _record_customer_strain_experience(customer_name: String, requested: String
 			relationship["preferred_strain"] = sold
 	customer_relationships[customer_name] = relationship
 
-func _dealer_product_amount(strain_name: String, doorstep: bool, listed_only: bool = false) -> int:
+func _dealer_product_amount(strain_name: String, doorstep: bool, listed_only: bool = true) -> int:
 	if not products.has(strain_name):return 0
 	if doorstep and listed_only and not bool(products[strain_name].get("listed", false)):return 0
 	var result: int = maxi(0, int(locker_weed.get(strain_name, 0)))
@@ -6280,7 +6280,7 @@ func _dealer_product_amount(strain_name: String, doorstep: bool, listed_only: bo
 		result += _available_amount(strain_name) + maxi(0, int(bagged_inventory.get(strain_name, 0)))
 	return result
 
-func _dealer_best_offer(customer: Dictionary, requested: String, minimum_grams: int, doorstep: bool, listed_only: bool = false) -> String:
+func _dealer_best_offer(customer: Dictionary, requested: String, minimum_grams: int, doorstep: bool, listed_only: bool = true) -> String:
 	if products.has(requested) and _dealer_product_amount(requested, doorstep, listed_only) >= minimum_grams:
 		return requested
 	if doorstep:
