@@ -5703,6 +5703,16 @@ func _assign_production_worker_task_local() -> void:
 			_set_production_worker_task("harvest", "grow", slot_index, str(slot.get("strain", "")), "Harvesting %s" % str(slot.get("strain", "plant")))
 			return
 
+	for name_variant in untrimmed_inventory.keys():
+		var untrimmed_name: String = str(name_variant)
+		if int(untrimmed_inventory.get(untrimmed_name, 0)) > 0:
+			_set_production_worker_task("trim", "workbench", -1, untrimmed_name, "Trimming %s" % untrimmed_name)
+			return
+	for name_variant in trimmed_inventory.keys():
+		var trimmed_name: String = str(name_variant)
+		if int(trimmed_inventory.get(trimmed_name, 0)) > 0:
+			_set_production_worker_task("bag", "workbench", -1, trimmed_name, "Bagging %s" % trimmed_name)
+			return
 	for name_variant in bagged_inventory.keys():
 		var bagged_name: String = str(name_variant)
 		var normal_has_space: bool = _total_stored_stock() < _storage_capacity()
@@ -5710,16 +5720,6 @@ func _assign_production_worker_task_local() -> void:
 		if int(bagged_inventory.get(bagged_name, 0)) > 0 and (normal_has_space or dealer_overflow_available):
 			var stock_task: String = "Stocking %s" % bagged_name if normal_has_space else "Overflow stocking Dealer Locker"
 			_set_production_worker_task("store", "storage", -1, bagged_name, stock_task)
-			return
-	for name_variant in trimmed_inventory.keys():
-		var trimmed_name: String = str(name_variant)
-		if int(trimmed_inventory.get(trimmed_name, 0)) > 0:
-			_set_production_worker_task("bag", "workbench", -1, trimmed_name, "Bagging %s" % trimmed_name)
-			return
-	for name_variant in untrimmed_inventory.keys():
-		var untrimmed_name: String = str(name_variant)
-		if int(untrimmed_inventory.get(untrimmed_name, 0)) > 0:
-			_set_production_worker_task("trim", "workbench", -1, untrimmed_name, "Trimming %s" % untrimmed_name)
 			return
 
 	if production_worker_auto_plant:
