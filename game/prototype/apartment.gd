@@ -234,6 +234,7 @@ func _confirm_beta_reset() -> void:
 		AFBCloud.write_json(AFBCloud.settings_path(), {})
 
 func _save_game() -> void:
+	if phone_remote_stock_change:return
 	super._save_game()
 	if not reset_in_progress and FileAccess.file_exists(SAVE_PATH):
 		AFBCloud.queue_save(AFBCloud.read_json(SAVE_PATH))

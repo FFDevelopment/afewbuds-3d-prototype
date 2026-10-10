@@ -43,10 +43,11 @@ func route_arrival() -> bool:
 	_send_missed(client,request)
 	return true
 
-func _send_missed(client: Dictionary, request: Dictionary, body: String = "I stopped by and you weren't home. Let me know when you're available.") -> void:
+func _send_missed(client: Dictionary, request: Dictionary, body: String = "") -> void:
 	var name := str(client.get("name","Client"))
 	for message in host.phone_text_messages:
 		if message.get("sender","")==name and message.has("client_visit") and message.get("client_reply","")=="pending": return
+	if body.is_empty():body=world.location_ops.crew.say(name,"missed")
 	# Add the reply payload before refreshing the phone, so its first render has buttons.
 	host.phone_text_messages.append({"sender":name,"body":body,"day":host.game_day,"time":host._format_game_clock(),"read":false,"client_visit":client.duplicate(true),"client_request":request.duplicate(true),"client_reply":"pending"})
 	while host.phone_text_messages.size()>120: host.phone_text_messages.pop_front()
@@ -105,6 +106,7 @@ func _reply(index: int, minutes: float) -> void:
 		host.status_label.text="%s will stop by %s. Be at your apartment with your storefront open." % [message.sender,"soon" if minutes==10 else "at "+_appointment_label(message.client_due)]
 	host.phone_text_messages[index]=message
 	world.location_ops.crew.outgoing(str(message.sender),"Another time." if minutes<0 else ("Stop by now." if minutes==10 else "Stop by at "+_appointment_label(message.client_due)))
+	world.location_ops.crew.send(str(message.sender),world.location_ops.crew.say(str(message.sender),"declined" if minutes<0 else "scheduled",{"when":"soon" if minutes==10 else "at "+_appointment_label(float(message.get("client_due",clock())))}))
 	host._save_game()
 	if host.phone_open: host._refresh_phone()
 
@@ -132,12 +134,12 @@ func update(delta: float) -> void:
 		if not is_home() and not world.location_ops.crew.can_handle():
 			message.client_reply="missed"
 			host.phone_text_messages[index]=message
-			_send_missed(client,request,"I stopped by at our scheduled time and you weren't home. Let me know when you're available.")
+			_send_missed(client,request,world.location_ops.crew.say(str(client.get("name","Client")),"appointment_missed"))
 			return
 		if not host.business_open or not host._has_listed_stock() or not host._friend_staff_role(str(client.get("name",""))).is_empty():
 			message.client_reply="canceled"
 			host.phone_text_messages[index]=message
-			_send_missed(client,request,"Looks like you're not open for sales right now. Let me know when you're available.")
+			_send_missed(client,request,world.location_ops.crew.say(str(client.get("name","Client")),"unavailable"))
 			return
 		message.client_reply="arrived"
 		host.phone_text_messages[index]=message

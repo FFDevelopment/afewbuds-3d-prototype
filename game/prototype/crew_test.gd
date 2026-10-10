@@ -46,9 +46,13 @@ func run() -> void:
 	var client: Dictionary=game.customers[0].duplicate(true)
 	var product: String=str(client.favorite)
 	game.products[product]={"stock":5,"reserved":2,"listed":true,"price":20,"grade":"B"};game.locker_weed={};game.bagged_inventory={};game.dealer_locker_level=0;game.dealer_customers_served_today={};game.customer_relationships[str(client.name)]={"visits":1,"player_sales":0}
+	var text_count:int=game.phone_text_messages.size()
 	visit(game,client,product,2);var gross: int=game.lifetime_revenue
 	check(crew.serve_visit(client,game.active_request),"Door serves stored stock without locker or prior player sale")
 	check(game.products[product].stock==3 and game.lifetime_revenue==gross+40 and not game.customer_waiting,"Actual order consumes storage and settles original dealer accounting")
+	check(game.phone_text_messages.size()==text_count,"Routine dealer sale sends no phone text")
+	var history:Array=game.location_state.get("dealer_sale_history",{}).get(dealer,[])
+	check(history.size()==1 and int(history[0].grams)==2 and int(history[0].gross)==40 and history[0].client==client.name,"Dealer details retain real sale quantity, client and earnings")
 	check(not crew.serve_visit(client,{"product":product,"qty":2}),"Released visit cannot sell twice")
 	game.bagged_inventory[product]=2;game.locker_weed[product]=1
 	visit(game,client,product,3);check(crew.serve_visit(client,game.active_request),"Later legitimate repeat visit combines packaged sources")
