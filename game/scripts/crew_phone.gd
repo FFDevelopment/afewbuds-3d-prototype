@@ -116,6 +116,12 @@ func render_actions() -> void:
 		elif job=="production":
 			label(host.phone_list,"PRODUCTION: %s · Today: %d tasks · Current: %s" % ["ON DUTY" if host.packing_employee_active else "OFF DUTY",host.production_worker_tasks_today,host.production_worker_last_action])
 			button(host.phone_list,"SEND PRODUCTION WORKER HOME" if host.packing_employee_active else "PUT PRODUCTION WORKER ON DUTY",toggle_crew_duty.bind("production"))
+		if thread!="Dealer Team":
+			var alternate:String="house" if assignment(thread)=="apartment" else "apartment"
+			if ops._property_controlled(alternate):
+				button(host.phone_list,"TEXT: TRANSFER "+thread.to_upper()+" TO "+alternate.to_upper(),transfer_from_contact.bind(thread,alternate))
+			else:
+				label(host.phone_list,"Other operation locked — manage property access in Real Estate.")
 		button(host.phone_list,"ALL EMPLOYEES · FULL DUTY & PERFORMANCE",host._open_phone_app.bind("employees"))
 		if not host.lay_low_active:button(host.phone_list,"CLOSE SHOP" if host.business_open else "OPEN SHOP",command.bind(thread,"close" if host.business_open else "open"))
 		button(host.phone_list,"SET UP SHOP" if host.lay_low_active else "SHUT DOWN SHOP & LAY LOW",command.bind(thread,"reopen" if host.lay_low_active else "shutdown"))
@@ -139,6 +145,14 @@ func render_actions() -> void:
 		else:
 			button(host.phone_list,"FIRE "+thread.to_upper()+" · END "+job.to_upper()+" ROLE",request_staff_release.bind(thread))
 	button(host.phone_list,"BACK TO CONVERSATION",back)
+
+func transfer_from_contact(name:String,property:String) -> void:
+	# Text commands and property-computer transfers share one assignment route.
+	# Neither changes a crew member's role or historical dealer performance.
+	if role(name).is_empty() or not ops._property_controlled(property):return
+	if name=="Dealer Team" or assignment(name)==property:return
+	assign(name,property)
+	host._refresh_phone()
 
 func request_staff_release(name:String) -> void:
 	if host._friend_staff_role(name).is_empty():return
