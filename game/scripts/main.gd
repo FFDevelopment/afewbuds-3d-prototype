@@ -3372,11 +3372,18 @@ func _build_phone_panel() -> void:
 	right_space.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	status.add_child(right_space)
 	phone_status_label = Label.new()
-	phone_status_label.text = "5G  ▰"
-	phone_status_label.custom_minimum_size.x=100
+	phone_status_label.text = "5G"
+	phone_status_label.custom_minimum_size.x=72
 	phone_status_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT
 	phone_status_label.add_theme_font_size_override("font_size", 14)
 	status.add_child(phone_status_label)
+	var battery:=TextureRect.new()
+	battery.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
+	battery.texture=PhoneVisuals.icon("Battery")
+	battery.custom_minimum_size=Vector2(24,24)
+	battery.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	battery.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	status.add_child(battery)
 
 	var header: HBoxContainer = HBoxContainer.new()
 	header.add_theme_constant_override("separation", 8)
@@ -3431,9 +3438,12 @@ func _build_phone_panel() -> void:
 func _fit_phone_screen() -> void:
 	PhoneVisuals.fit(self)
 
-func _add_phone_dock_button(dock: HBoxContainer, label_text: String, app_name: String) -> void:
+func _add_phone_dock_button(dock: HBoxContainer, _label_text: String, app_name: String) -> void:
 	var dock_button: Button = Button.new()
-	dock_button.text = label_text
+	dock_button.icon = PhoneVisuals.icon(app_name.capitalize())
+	dock_button.expand_icon = true
+	dock_button.add_theme_constant_override("icon_max_width",24)
+	dock_button.tooltip_text = app_name.capitalize()
 	dock_button.custom_minimum_size = Vector2(0, 38)
 	dock_button.add_theme_stylebox_override("normal",StyleBoxEmpty.new())
 	dock_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -6907,7 +6917,7 @@ func _refresh_phone() -> void:
 		old_child.queue_free()
 	phone_back_button.visible = phone_current_app != "home"
 	phone_back_button.tooltip_text = "Back to " + _phone_parent_app(phone_current_app).capitalize()
-	phone_status_label.text = "5G  ▰"
+	phone_status_label.text = "5G"
 	phone_list.remove_meta("phone_visual")
 	phone_list.add_theme_constant_override("separation",12)
 	phone_title.get_parent().visible=phone_current_app!="home"
