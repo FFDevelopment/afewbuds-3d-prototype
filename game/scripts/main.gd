@@ -263,6 +263,7 @@ var grow_save_accumulator: float = 0.0
 var auto_sale_accumulator: float = 0.0
 var phone_current_app: String = "home"
 var phone_business_focus: String = "" # UI-only selection; never changes the player's physical active property.
+var phone_remote_stock_change: bool = false # Do not cloud-save while a temporary property inventory adapter is active.
 var customer_relationships: Dictionary = {}
 var main_room_ring: Array[String] = ["main_grow_door", "main_workbench", "main_door", "main_storage"]
 var grow_room_ring: Array[String] = ["grow_room_tent2", "grow_room_tent", "grow_room_tent3", "grow_room_utility", "grow_room_exit", "grow_room_upgrades"]
@@ -9396,7 +9397,10 @@ func _build_stats_app() -> void:
 func _toggle_product_listing(product_name: String) -> void:
 	if neighborhood!=null and neighborhood.location_ops!=null and not neighborhood.location_ops.portfolio_property.is_empty():
 		var local_property:String=neighborhood.location_ops.portfolio_property
+		phone_remote_stock_change=true
 		inventory_system.at_property(local_property,_toggle_product_listing_local.bind(product_name))
+		phone_remote_stock_change=false
+		_save_game()
 		_refresh_phone()
 		return
 	_toggle_product_listing_local(product_name)
@@ -9414,7 +9418,10 @@ func _on_product_toggled(listed: bool, product_name: String) -> void:
 
 func _on_reserved_changed(value: float, product_name: String) -> void:
 	if neighborhood!=null and neighborhood.location_ops!=null and not neighborhood.location_ops.portfolio_property.is_empty():
+		phone_remote_stock_change=true
 		inventory_system.at_property(neighborhood.location_ops.portfolio_property,_set_reserved.bind(product_name,int(value)))
+		phone_remote_stock_change=false
+		_save_game()
 		return
 	_set_reserved(product_name, int(value))
 
@@ -9449,7 +9456,7 @@ func _set_product_listed(product_name: String, listed: bool) -> void:
 			status_label.text = "%s is now listed for customers." % product_name
 	else:
 		status_label.text = "%s is now %s." % [product_name, "listed for customers" if listed else "hidden from the storefront"]
-	_save_game()
+	if not phone_remote_stock_change:_save_game()
 	_schedule_next_customer(true)
 
 func _unlist_all_products() -> void:
@@ -9538,7 +9545,7 @@ func _set_reserved(product_name: String, amount: int) -> void:
 	data["reserved"] = reserved
 	products[product_name] = data
 	status_label.text = "%dg of %s reserved." % [reserved, product_name]
-	_save_game()
+	if not phone_remote_stock_change:_save_game()
 
 func _buy_seed(seed_name: String) -> void:
 	if neighborhood!=null and neighborhood.location_ops!=null and not tutorial_active:
