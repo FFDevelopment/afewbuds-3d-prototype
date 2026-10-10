@@ -395,7 +395,15 @@ func update(delta: float) -> void:
 	update_malik()
 	update_seating(delta)
 	if bool(host.location_state.get("crew_idle",false)) and not host.lay_low_active:host.location_state["crew_idle"]=false
-	var name:=manager()
+	var active_site:String=ops.active_property()
+	var name:=manager(active_site) if active_site=="apartment" else ""
+	if active_site=="house" and host.customer_waiting and can_handle("house") and not manager_attempted and not str(host.current_customer.get("special","")).is_empty():
+		pass
+	if active_site=="house" and host.customer_waiting and can_handle("house") and not manager_attempted and str(host.current_customer.get("special","")).is_empty():
+		manager_attempted=true
+		var visit_customer:Dictionary=host.current_customer.duplicate(true)
+		var visit_request:Dictionary=host.active_request.duplicate(true)
+		if not serve_visit(visit_customer,visit_request):send(manager("house"),say(manager("house"),"short_stock",{"client":str(visit_customer.get("name","client")),"qty":int(visit_request.get("qty",0)),"product":str(visit_request.get("product",""))}))
 	if manager_node!=null and str(manager_node.get_meta("contact",""))!=name:manager_node.queue_free();manager_node=null
 	if not name.is_empty() and host.production_worker_node!=null:
 		if manager_node==null:
