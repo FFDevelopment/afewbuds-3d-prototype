@@ -6988,8 +6988,9 @@ func _phone_business_selected() -> String:
 
 func _phone_open_property_from_business(property:String) -> void:
 	if neighborhood==null or neighborhood.location_ops==null:return
-	neighborhood.location_ops.portfolio_select(property)
 	_open_phone_app("realestate")
+	neighborhood.location_ops.portfolio_select(property)
+	_refresh_phone()
 
 func _phone_business_select(property:String) -> void:
 	if neighborhood==null or neighborhood.location_ops==null:return
