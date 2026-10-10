@@ -12,6 +12,7 @@ func run()->void:
 	game.tutorial_panel.hide();game.pause_overlay.hide();game.daily_report_panel.hide();game.tutorial_phone_coach.hide()
 	game.phone_open=true;game.phone_panel.show()
 	if not desktop:root.size=Vector2i(720,1280)
+	elif OS.get_cmdline_user_args().size()>1:root.size=Vector2i(800,500)
 	game.status_label.hide()
 	var output:=OS.get_cmdline_user_args()[0]
 	DirAccess.make_dir_recursive_absolute(output)
