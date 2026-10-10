@@ -1,10 +1,16 @@
-# Map update handoff — Visual Lab 01.6
+# Map update handoff — Visual Lab 01.7
 
 Repository: `FFDevelopment/afewbuds-3d-prototype`
 
 Branch: `map/visual-lab-wood-basement-20261010`
 
 Integration base: `327b318b4b969e3fd5dd279ca74789e89c915408` (development main as fetched on 2026-10-10). The art preview originally used `2149be5b78e1eb17b88c595d54d127cb61059595`; these changes were merged onto the newer logic, preserving its phone and property updates.
+
+## Revision 01.7
+
+Added closed visual entrances 201 and 301 at the second- and third-floor fire-escape landings, with door frames, hardware, thresholds and unit plaques. Overlapping window pieces are hidden and masonry bands stop at the entrances. These doors do not open into new interiors. The wall-side support posts sit against the facade so they do not obscure the frames.
+
+Both front planters moved 0.7 m toward the building and have solid pot collision. Removed the floating basement stair label; B still toggles basement lights. Player collision against both planters was verified and the door views rendered in Godot.
 
 ## Included changes
 

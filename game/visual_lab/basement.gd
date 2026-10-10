@@ -71,7 +71,6 @@ func setup(owner_study:Node)->void:
  for x in [38,40]:
   var n=MeshInstance3D.new();var cyl=CylinderMesh.new();cyl.top_radius=.65;cyl.bottom_radius=.65;cyl.height=1.8;n.mesh=cyl;n.position=Vector3(x,FLOOR+.9,.5);n.material_override=study.plain("697e73");add_child(n)
   var body=StaticBody3D.new();var shape=CollisionShape3D.new();var box=BoxShape3D.new();box.size=Vector3(1.3,1.8,1.3);shape.shape=box;body.add_child(shape);n.add_child(body)
- var sign=Label3D.new();sign.text="BASEMENT GROW ROOM\nB  ·  LIGHTS";sign.position=Vector3(43.8,1.6,-8.25);sign.font_size=48;sign.pixel_size=.003;sign.outline_size=4;add_child(sign)
  set_room_lights(bool(game.house_control_state.get("basement_room_light",true)))
 func set_room_lights(on:bool)->void:
  room_lights_on=on

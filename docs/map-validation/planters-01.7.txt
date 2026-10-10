@@ -1,0 +1,3 @@
+Godot Engine v4.6.stable.official.89cea1439 - https://godotengine.org
+
+PLANTER_COLLISION_PASS both_pots=true basement_stair_text_removed=true

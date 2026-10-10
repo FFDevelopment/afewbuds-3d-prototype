@@ -1,4 +1,4 @@
-AFewBuds Visual Lab 01.6 — Muted wood, basement grow controls and tent placement
+AFewBuds Visual Lab 01.7 — Muted wood, basement grow controls and tent placement
 
 OPEN THIS AS A SEPARATE PROJECT
 1. Extract the entire ZIP into a new folder (do not copy over your game).
@@ -40,7 +40,11 @@ Worker navigation through the new basement has not been validated.
 The basement structure stays present when F6 compares the art pass.
 
 WHAT THIS IS
-Revision 01.6: continuous railing barriers prevent stair-exit snagging on
+Revision 01.7: closed visual apartment entrances 201 and 301 at the second-
+and third-floor fire-escape landings. No new accessible interiors. Front
+planters moved 0.7 m closer to the facade and given solid pot collision.
+Removed floating basement stair text; B still controls basement lighting.
+Revision 01.7: continuous railing barriers prevent stair-exit snagging on
 the fire escape and basement stairs.
 
 Wood/basement update: coordinated matte oak floors and wooden doors, including the

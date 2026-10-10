@@ -89,7 +89,7 @@ func build(mat: Material,roof_top: float) -> void:
  guard(Vector3(5.18,roof_top,-10.35),Vector3(5.18,roof_top,-8.05))
  guard(Vector3(5.18,roof_top,-6.75),Vector3(5.18,roof_top,6.15))
  # Grounded support columns connect all landings; no floating deck ends.
- for x in [5.28,8.5]:
+ for x in [5.1,8.5]:
   for z in [-7.9,2.7]:
    var height:=roof_top if z<0 else 7.9
    block(Vector3(x,height*.5,z),Vector3(.12,height,.12),true)

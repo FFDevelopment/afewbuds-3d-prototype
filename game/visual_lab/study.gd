@@ -159,6 +159,35 @@ func wood_pass()->void:
   if str(n.name)=="MainFloorPlanks":replace(n,plank_mat)
   elif str(n.name) in ["HouseFloor","MainFloor"]:replace(n,floor_mat)
   elif tile==6 or textured_wood:replace(n,door_mat)
+func landing_apartment_door(y:float,z:float,unit:String)->void:
+ var root=Node3D.new();root.name="LandingApartment"+unit;root.position=Vector3(5.1,y,z);detail.add_child(root)
+ root.set_meta("visual_entrance_only",true)
+ var frame=surface("b4aa94",8);var leaf=wood_material();var hardware=plain("a69f86",.65)
+ # Local +X faces the east-side fire escape. Keep the frame inside the landing width.
+ var parts=[
+  ["Recess",Vector3(.025,1.38,0),Vector3(.05,2.76,1.04),plain("252d2a")],
+  ["DoorLeaf",Vector3(.065,1.37,0),Vector3(.055,2.68,.86),leaf],
+  ["UpperPanel",Vector3(.102,1.93,0),Vector3(.025,.95,.63),leaf],
+  ["LowerPanel",Vector3(.102,.73,0),Vector3(.025,.88,.63),leaf],
+  ["LeftJamb",Vector3(.085,1.40,-.485),Vector3(.16,2.8,.09),frame],
+  ["RightJamb",Vector3(.085,1.40,.485),Vector3(.16,2.8,.09),frame],
+  ["Lintel",Vector3(.085,2.83,0),Vector3(.17,.12,1.1),frame],
+  ["Threshold",Vector3(.13,.025,0),Vector3(.26,.05,1.04),frame],
+  ["HandlePlate",Vector3(.115,1.27,.30),Vector3(.025,.23,.075),hardware],
+  ["Handle",Vector3(.16,1.28,.24),Vector3(.085,.04,.17),hardware],
+  ["UnitPlaque",Vector3(.115,2.43,0),Vector3(.025,.16,.30),plain("283e3e",.3)]
+ ]
+ for spec in parts:
+  var n=box(spec[1],spec[2],spec[3]);n.name=spec[0];n.reparent(root,false)
+ var number=Label3D.new();number.name="UnitNumber";number.text=unit;number.font_size=48;number.pixel_size=.0018
+ number.position=Vector3(.132,2.43,0);number.rotation.y=PI/2;number.modulate=Color("e7deca");number.outline_size=0;root.add_child(number)
+ # Replace only window parts that overlap this closed entrance, avoiding a door over glass.
+ for n in game.neighborhood.get_children():
+  if not n is MeshInstance3D or not str(n.name).begins_with("Window"):continue
+  if n.position.x<5.1 or n.position.x>5.5:continue
+  var bounds:AABB=n.global_transform*n.get_aabb()
+  if bounds.position.y<y+2.9 and bounds.end.y>y and bounds.position.z<z+.56 and bounds.end.z>z-.56:
+   hidden_originals.append(n)
 func setup(host: Node3D) -> void:
  game=host
  process_priority=100
@@ -180,7 +209,12 @@ func setup(host: Node3D) -> void:
  # Layered cornice and masonry bands, preserving the real door/window openings.
  for level in [4.35,UPPER_FLOOR_BASE+UPPER_STORY_HEIGHT,ROOFLINE-.04]:
   box(Vector3(0,level,6.24),Vector3(10.65,.22,.46),stone)
-  for x in [-5.25,5.25]:box(Vector3(x,level,-2.1),Vector3(.32,.22,16.8),stone)
+  for x in [-5.25,5.25]:
+   if x>0 and level<ROOFLINE-1:
+    var door_z:float=-7.4 if level<5 else 2.2
+    for span in [Vector2(-10.5,door_z-.60),Vector2(door_z+.60,6.3)]:
+     box(Vector3(x,level,(span.x+span.y)*.5),Vector3(.32,.22,span.y-span.x),stone)
+   else:box(Vector3(x,level,-2.1),Vector3(.32,.22,16.8),stone)
  for x in [-5.02,5.02]:
   box(Vector3(x,2.15,6.23),Vector3(.32,4.3,.26),stone)
   box(Vector3(x,(UPPER_FLOOR_BASE+ROOFLINE)*.5,6.23),Vector3(.32,ROOFLINE-UPPER_FLOOR_BASE,.26),stone)
@@ -197,6 +231,8 @@ func setup(host: Node3D) -> void:
  fire_escape.name="ConnectedFireEscape"
  detail.add_child(fire_escape)
  fire_escape.build(dark,ROOFLINE+.2)
+ landing_apartment_door(4.4,-7.4,"201")
+ landing_apartment_door(7.9,2.2,"301")
  # Central Market: deep sign fascia and fabric awning.
  box(Vector3(17,3.3,6.22),Vector3(10.15,.55,.24),dark)
  sign_text("CENTRAL  MARKET",Vector3(17,3.32,6.38),.0085,Color("eddfbe"))
@@ -207,12 +243,12 @@ func setup(host: Node3D) -> void:
  for x in [12.12,21.88]:box(Vector3(x,1.35,6.25),Vector3(.2,2.65,.27),stone)
  # Crates, low planters and a notice board provide small-scale street detail.
  for x in [-4.25,4.25]:
-  box(Vector3(x,.28,7.5),Vector3(1,.55,.65),surface("75674f",3))
-  box(Vector3(x,.57,7.5),Vector3(.88,.05,.54),plain("3b3024"))
+  var pot=solid_box(Vector3(x,.28,6.8),Vector3(1,.55,.65),surface("75674f",3));pot.name="FrontPlanterLeft" if x<0 else "FrontPlanterRight"
+  box(Vector3(x,.57,6.8),Vector3(.88,.05,.54),plain("3b3024"))
   for j in range(5):
    var n:=MeshInstance3D.new();var mesh:=SphereMesh.new();mesh.radius=.22;mesh.height=.45
    mesh.radial_segments=10;mesh.rings=5;n.mesh=mesh;n.material_override=plain("657b47")
-   n.position=Vector3(x-.34+j*.17,.74,7.5);detail.add_child(n)
+   n.position=Vector3(x-.34+j*.17,.74,6.8);detail.add_child(n)
  solid_box(Vector3(11.15,1.4,5.9),Vector3(.12,1.15,1.2),dark)
  for z in [5.4,6.4]:solid_box(Vector3(11.15,.75,z),Vector3(.09,1.5,.09),dark)
  for x in [12.35,17,21.65]:pipe(Vector3(x,2.95,6.08),Vector3(x,2.48,7.5),.035,dark)
@@ -261,7 +297,7 @@ func _process(_delta: float) -> void:
   env.ambient_light_energy=.28 if dusk else .32
   game.neighborhood.outdoor_sun.light_energy=.48 if dusk else .52
   game.neighborhood.outdoor_sun.light_color=Color("ffd1a1") if dusk else Color("fff0d6")
- label.text="AFB  /  VISUAL LAB 01.6  —  "+("REVISED" if revised else "ORIGINAL")+"\nF6 Compare   F7 "+("Light" if mobile else "Desktop")+" preset   F8 Time   F9 Viewpoint\nWASD Move   Mouse Look   E Interact   Esc Pause\nLocal test career  •  "+str(Engine.get_frames_per_second())+" FPS"
+ label.text="AFB  /  VISUAL LAB 01.7  —  "+("REVISED" if revised else "ORIGINAL")+"\nF6 Compare   F7 "+("Light" if mobile else "Desktop")+" preset   F8 Time   F9 Viewpoint\nWASD Move   Mouse Look   E Interact   Esc Pause\nLocal test career  •  "+str(Engine.get_frames_per_second())+" FPS"
 func _input(event: InputEvent) -> void:
  if not event is InputEventKey or not event.pressed or event.echo:return
  match event.physical_keycode:
