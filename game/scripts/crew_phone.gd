@@ -137,7 +137,7 @@ func render_actions() -> void:
 		if not shop.laying_low(assignment(thread)):button(host.phone_list,"CLOSE SHOP" if shop.is_open(assignment(thread)) else "OPEN SHOP",command.bind(thread,"close" if shop.is_open(assignment(thread)) else "open"))
 		button(host.phone_list,"SET UP SHOP" if shop.laying_low(assignment(thread)) else "SHUT DOWN SHOP & LAY LOW",command.bind(thread,"reopen" if shop.laying_low(assignment(thread)) else "shutdown"))
 		button(host.phone_list,"TEXT: "+assignment(thread).to_upper()+" STATUS",command.bind(thread,"status"))
-		if job=="dealer":button(host.phone_list,"GO BACK TO STREET DEALS" if manager(assignment(thread))==thread else "HANDLE PROPERTY DOOR",return_to_street.bind(thread) if manager(assignment(thread))==thread else assign_manager.bind(thread))
+		if job=="dealer":button(host.phone_list,"GO BACK TO STREET DEALS" if manager(assignment(thread))==thread else "HANDLE APARTMENT DOOR",return_to_street.bind(thread) if manager(assignment(thread))==thread else assign_manager.bind(thread))
 		if job=="dealer" and host.dealer_arrested:button(host.phone_list,"SEND DEALER BAIL · $%d" % host.dealer_bail_due,host._pay_dealer_bail,host.cash<host.dealer_bail_due)
 		if job=="production" and host.production_worker_arrested:button(host.phone_list,"SEND WORKER BAIL · $%d" % host.production_worker_bail_due,host._pay_production_bail,host.cash<host.production_worker_bail_due)
 	else:
