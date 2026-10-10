@@ -7556,6 +7556,11 @@ func _build_bills_app() -> void:
 		dealer_box.add_child(pay_dealers)
 
 func _build_employees_app() -> void:
+	var crew_contacts_button:Button=Button.new()
+	crew_contacts_button.text="OPEN CONTACTS · INDIVIDUAL WORKER ACTIONS"
+	crew_contacts_button.custom_minimum_size.y=48
+	crew_contacts_button.pressed.connect(_open_phone_app.bind("clients"))
+	phone_list.add_child(crew_contacts_button)
 	var staff_header: Label = Label.new()
 	staff_header.text = "STAFF / DEALERS\nDaily payroll if active: $%d\nAuto Water equipment: %s" % [_staff_daily_payroll(), _on_off(auto_water_unlocked)]
 	staff_header.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -7631,7 +7636,7 @@ No daily sales cap. Every dealer shares one daily customer pool, so nobody can b
 	for friend_dealer_name: String in friend_dealers:
 		var friend_stats: Dictionary = _ensure_friend_dealer_stats(friend_dealer_name)
 		var friend_line: Label = Label.new()
-		friend_line.text = "%s  |  Today: %d sales / %dg / $%d gross  |  Career: %d sales / %dg / $%d gross  |  Commission earned: $%d" % [friend_dealer_name, int(friend_stats.get("today_sales", 0)), int(friend_stats.get("today_grams", 0)), int(friend_stats.get("today_gross", 0)), int(friend_stats.get("sales", 0)), int(friend_stats.get("grams", 0)), int(friend_stats.get("gross", 0)), int(friend_stats.get("commission_earned", 0))]
+		friend_line.text = "%s  |  TODAY: %d deals / %dg / $%d gross / $%d commission  |  CAREER: %d deals / %dg / $%d gross / $%d commission" % [friend_dealer_name, int(friend_stats.get("today_sales", 0)), int(friend_stats.get("today_grams", 0)), int(friend_stats.get("today_gross", 0)), int(friend_stats.get("today_commission", 0)), int(friend_stats.get("sales", 0)), int(friend_stats.get("grams", 0)), int(friend_stats.get("gross", 0)), int(friend_stats.get("commission_earned", 0))]
 		friend_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		friend_line.modulate = Color("a8d389")
 		dealer_box.add_child(friend_line)
