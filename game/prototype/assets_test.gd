@@ -12,13 +12,13 @@ func run() -> void:
 	check(is_equal_approx(couch.SEAT_TOP,0.4682184907339378),"Uploaded lower couch replaces original")
 	check(couch.has_node("SeatLeft") and couch.has_node("SeatRight"),"Couch retains fitted seat markers")
 	var visuals: Array[Node3D]=[]
-	for name in ["Malik","Rod","Kobi"]:
+	for name in crew.FriendCharacters.NAMES:
 		var model: Node3D=crew.character_instance(name);root.add_child(model);visuals.append(model)
 		var rig: Skeleton3D=model.find_children("*","Skeleton3D",true,false)[0]
 		var player: AnimationPlayer=model.find_children("*","AnimationPlayer",true,false)[0]
 		var mesh: MeshInstance3D=model.find_children("*","MeshInstance3D",true,false)[0]
 		check(rig.get_bone_count()==56,name+" master rig retained")
-		check(mesh.material_override!=null and mesh.material_override.albedo_texture!=null,name+" supplied atlas applied")
+		check(mesh.get_active_material(0)!=null and mesh.get_active_material(0).albedo_texture!=null,name+" supplied atlas applied")
 		var bounds: AABB=mesh.global_transform*mesh.get_aabb();check(bounds.size.y>2.2 and bounds.size.y<2.5,name+" supplied 2.35-unit physical scale retained")
 		player.play("idle");player.advance(.3);var idle_root: Vector3=rig.get_bone_pose_position(rig.find_bone("Root"))
 		crew.seated_pose(model,true);check(player.current_animation.ends_with("sit"),name+" uses supplied sit animation")

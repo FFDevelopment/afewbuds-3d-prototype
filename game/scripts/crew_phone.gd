@@ -1,4 +1,5 @@
 extends RefCounted
+const FriendCharacters = preload("res://scripts/friend_characters.gd")
 var world: Node3D
 var host: Node3D
 var ops: RefCounted:
@@ -358,7 +359,7 @@ func update(delta: float) -> void:
 	if manager_node!=null and str(manager_node.get_meta("contact",""))!=name:manager_node.queue_free();manager_node=null
 	if not name.is_empty() and host.production_worker_node!=null:
 		if manager_node==null:
-			manager_node=character_instance(name) if name in ["Malik","Rod","Kobi"] else generic_manager_instance(name)
+			manager_node=character_instance(name) if FriendCharacters.has_character(name) else generic_manager_instance(name)
 			manager_node.name="ApartmentDoorManager";host.add_child(manager_node);manager_node.set_meta("contact",name)
 			for tag in manager_node.find_children("*","Label3D",true,false):tag.text=name+" · APARTMENT DEALER"
 		manager_node.visible=not host.dealer_arrested
@@ -483,7 +484,7 @@ func _complete_sit_tracks(avatar: Node3D) -> void:
 			lib.add_animation("sit",completed)
 
 func character_instance(name: String) -> Node3D:
-	if name not in ["Malik","Rod","Kobi"]:return Node3D.new()
+	if not FriendCharacters.has_character(name):return Node3D.new()
 	var scene: PackedScene=character_scenes.get(name)
 	if scene==null:
 		# Native exports resolve Godot's imported scenes/textures, not raw file bytes.
@@ -493,10 +494,7 @@ func character_instance(name: String) -> Node3D:
 	var instance: Node3D=scene.instantiate()
 	instance.set_meta("character",name)
 	_complete_sit_tracks(instance)
-	var material:=StandardMaterial3D.new()
-	material.albedo_texture=load("res://assets/characters/"+name+"_BaseColor.png")
-	material.roughness=.83;material.cull_mode=BaseMaterial3D.CULL_DISABLED
-	for mesh in instance.find_children("*","MeshInstance3D",true,false):mesh.material_override=material
+	# Use each approved GLB embedded material, including outfit and eye corrections.
 	for player in instance.find_children("*","AnimationPlayer",true,false):
 		for clip in player.get_animation_list():
 			if str(clip).ends_with("idle"):player.play(clip);break
@@ -516,7 +514,7 @@ func production_worker_animation(worker: Node3D) -> String:
 func update_malik() -> void:
 	var worker: Node3D=host.production_worker_node
 	var name: String=host.production_worker_friend_name
-	if name in ["Malik","Rod","Kobi"] and worker!=null:
+	if FriendCharacters.has_character(name) and worker!=null:
 		if malik_worker!=null and str(malik_worker.get_meta("character",""))!=name:malik_worker.queue_free();malik_worker=null
 		if malik_worker==null:malik_worker=character_instance(name);worker.add_child(malik_worker)
 		malik_worker.show()
@@ -534,7 +532,7 @@ func update_malik() -> void:
 			for child in worker.get_children():
 				if child is MeshInstance3D and child!=host.production_worker_face_shell:child.show()
 	var visitor: String=str(host.current_customer.get("name",""))
-	if host.customer_waiting and visitor in ["Malik","Rod","Kobi"]:
+	if host.customer_waiting and FriendCharacters.has_character(visitor):
 		if malik_visitor!=null and str(malik_visitor.get_meta("character",""))!=visitor:malik_visitor.queue_free();malik_visitor=null
 		if malik_visitor==null:malik_visitor=character_instance(visitor);host.add_child(malik_visitor);malik_visitor.position=Vector3(0,0,7.1)
 		malik_visitor.show()

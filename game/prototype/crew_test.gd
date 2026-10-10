@@ -30,8 +30,8 @@ func run() -> void:
 	crew.update(0.01)
 	check(crew.manager_node!=null and str(crew.manager_node.get_meta("contact",""))=="Tyler","Real apartment manager creates the Tyler avatar")
 	if crew.manager_node!=null:
-		check(crew.manager_node.find_children("*","Skeleton3D",true,false).is_empty(),"Real Tyler door manager contains no Malik/Rod/Kobi skeleton")
-		check((crew.manager_node.get_node("Torso") as MeshInstance3D).visible,"Real Tyler manager has visible independent primitive body")
+		check(crew.manager_node.get_meta("character","")=="Tyler" and crew.manager_node.find_children("*","Skeleton3D",true,false).size()==1,"Real Tyler manager loads his own approved skeleton")
+		check(crew.manager_node!=crew.malik_worker,"Tyler manager and Malik worker have independent character instances")
 		crew.manager_node.queue_free()
 		crew.manager_node=null
 	game.location_state["apartment_manager"]=""
@@ -39,7 +39,7 @@ func run() -> void:
 	game.friend_staff_roles.erase("Tyler")
 	game.production_worker_friend_name="Tyler"
 	crew.update_malik()
-	check(crew.malik_worker==null,"Switching production identity from Malik to Tyler frees the old custom GLB")
+	check(crew.malik_worker!=null and crew.malik_worker.get_meta("character","")=="Tyler","Switching production identity from Malik to Tyler loads Tyler appearance")
 	game.production_worker_friend_name=old_friend
 	crew.update_malik()
 	var dealer: String="Hired Dealer 1";crew.assign_manager(dealer)
