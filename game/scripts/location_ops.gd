@@ -1060,7 +1060,7 @@ func portfolio_phone_back(app:String) -> bool:
 	if app in ["employees","products"] and not portfolio_property.is_empty():
 		host._open_phone_app("realestate")
 		return true
-	if app=="realestate" and not portfolio_property.is_empty():
+	if app=="realestate" and (not portfolio_property.is_empty() or portfolio_page=="payments"):
 		if portfolio_page!="overview":portfolio_page="overview"
 		else:portfolio_reset()
 		host._refresh_phone()
@@ -1094,6 +1094,10 @@ func portfolio_furniture() -> void:
 func portfolio_ui(parent:VBoxContainer) -> void:
 	_property_label(parent,"PROPERTIES",24)
 	if portfolio_property.is_empty() or not _property_controlled(portfolio_property):
+		if portfolio_page=="payments":
+			property_bills_ui(parent)
+			_property_button(parent,"BACK TO PROPERTIES",portfolio_back_pressed)
+			return
 		portfolio_reset()
 		_property_label(parent,"Choose a property to manage its workers, stock, furniture, utility bills and lease. You can check balances from anywhere.",16)
 		var utility_due:int=utility_total_due()
@@ -1165,7 +1169,7 @@ func portfolio_legacy_payments() -> void:
 	host._refresh_phone()
 
 func portfolio_back_pressed() -> void:
-	if portfolio_page=="overview":portfolio_reset()
+	if portfolio_page=="overview" or portfolio_page=="payments":portfolio_reset()
 	else:portfolio_page="overview"
 	host._refresh_phone()
 
