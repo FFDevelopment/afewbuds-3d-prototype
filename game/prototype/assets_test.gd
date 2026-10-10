@@ -54,7 +54,10 @@ func run() -> void:
 	crew.seated_pose(crew.manager_node,false);check(manager_player.current_animation.ends_with("idle"),"Kobi manager stands back into idle")
 	var header: Material=game.get_node("FrontWallHeader").get_active_material(0)
 	var wall: Material=game.get_node("FrontWallR").get_active_material(0)
-	check(header.albedo_texture!=null and header.albedo_texture==wall.albedo_texture and header.albedo_color==wall.albedo_color and header.uv1_scale==wall.uv1_scale,"Door header matches adjoining painted-wall material")
+	if header is ShaderMaterial and wall is ShaderMaterial:
+		check(header.shader==wall.shader and header.get_shader_parameter("tint")==wall.get_shader_parameter("tint") and header.get_shader_parameter("finish")==wall.get_shader_parameter("finish"),"Door header matches adjoining procedural painted-wall material")
+	else:
+		check(header is StandardMaterial3D and wall is StandardMaterial3D and header.albedo_texture!=null and header.albedo_texture==wall.albedo_texture and header.albedo_color==wall.albedo_color and header.uv1_scale==wall.uv1_scale,"Door header matches adjoining painted-wall material")
 
 	for model in visuals:model.queue_free()
 
