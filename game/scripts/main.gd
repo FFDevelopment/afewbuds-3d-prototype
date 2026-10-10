@@ -5409,7 +5409,8 @@ func _build_production_worker_visual() -> void:
 	production_worker_task_label.text = "PRODUCTION WORKER"
 	production_worker_task_label.font_size = 22
 	production_worker_task_label.pixel_size = 0.0028
-	production_worker_task_label.position = Vector3(0, 2.10, 0)
+	production_worker_task_label.position = Vector3(0, 2.55, 0)
+	production_worker_task_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	production_worker_task_label.modulate = Color("e5f0e8")
 	production_worker_node.add_child(production_worker_task_label)
 
@@ -5651,8 +5652,10 @@ func _update_production_worker_visual(delta: float) -> void:
 		return
 	production_worker_action_dwell += delta
 	if production_worker_action_dwell >= preload("res://scripts/production_actions.gd").duration(production_worker_pending_action):
+		var finished_action:String=production_worker_pending_action
 		production_worker_action_dwell = 0.0
 		_execute_production_worker_action()
+		if finished_action=="trim":_assign_production_worker_task()
 
 func _set_production_worker_task(action_id: String, station_name: String, slot_index: int = -1, strain_name: String = "", task_text: String = "Working") -> void:
 	production_worker_pending_action = action_id
