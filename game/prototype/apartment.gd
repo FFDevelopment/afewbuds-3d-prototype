@@ -571,7 +571,7 @@ func _build_fp_hud() -> void:
 	fp_hud.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	fp_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(fp_hud)
-	fp_info = _fp_label(Vector2(28, 24), 20)
+	fp_info = _fp_label(Vector2(28, 16), 16)
 	fp_info.add_theme_color_override("font_color", Color("d2efc9"))
 	fp_crosshair = _fp_label(Vector2.ZERO, 24)
 	fp_crosshair.set_anchors_and_offsets_preset(Control.PRESET_CENTER)

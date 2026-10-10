@@ -101,10 +101,26 @@ func run()->void:
 	game._save_game()
 	var disk:Dictionary=JSON.parse_string(FileAccess.get_file_as_string(game.SAVE_PATH))
 	check(disk.friend_dealer_stats.Tyler.commission_earned==56 and disk.location_state.staff_assignments.get("Hired Dealer 1","")=="house","Save preserves staff records and distinct property assignments")
+	var hardware=game.phone_panel.get_node("PhoneHardware")
+	var knock_db:float=game.knock_player.volume_db
+	hardware.change_volume(-100)
+	check(hardware.level==0 and game.neighborhood.text_player.volume_db<=-80,"Side volume down can mute the phone ringer")
+	hardware.get_node("VolumeUp").pressed.emit()
+	check(hardware.level==10 and game.neighborhood.text_player.volume_db> -80,"Side volume up controls the actual notification audio")
+	hardware.change_volume(100);check(hardware.level==100,"Phone volume clamps at maximum")
+	var audio_config:=ConfigFile.new();audio_config.load(hardware.PATH)
+	check(int(audio_config.get_value("phone","ring_volume",-1))==100,"Ring volume is saved as a device preference")
+	check(game.knock_player.volume_db==knock_db,"Phone volume leaves physical door knocks unchanged")
+	game.phone_open=true;game.phone_panel.show();hardware.get_node("Power").pressed.emit()
+	check(not game.phone_open and not game.phone_panel.visible,"Power side button closes the handset")
+	hardware=null
 	# Let pending phone-scroll frame callbacks finish before destroying their host.
 	game.phone_open=false;game.phone_panel.hide();game.inventory_system.set_process(false)
 	await process_frame;await process_frame
 	crew=null;ops=null
 	game.queue_free();await process_frame;await process_frame
+	# Timed station callbacks may outlive a frame-only teardown on fast CI runners.
+	await create_timer(0.5).timeout
+	await process_frame
 	print("STAFF_UI_RESULT: ","PASS" if failures==0 else "FAIL"," checks=",checks," failures=",failures)
 	quit(0 if failures==0 else 1)

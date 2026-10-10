@@ -88,7 +88,7 @@ with tempfile.TemporaryDirectory(prefix='afb-prototype-test-') as temp:
         if os.name == 'nt':
             env.update(APPDATA=str(suite_data), LOCALAPPDATA=str(suite_data))
         try:
-            run = subprocess.run([godot, '--headless', *(['--verbose'] if script in ['prototype/visits_test.gd','prototype/progression_test.gd'] else []), '--path', str(fixture), '--script', script], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=90)
+            run = subprocess.run([godot, '--headless', *(['--verbose'] if script in ['prototype/visits_test.gd','prototype/progression_test.gd','prototype/staff_ui_test.gd'] else []), '--path', str(fixture), '--script', script], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=90)
         except subprocess.TimeoutExpired as exc:
             print(exc.stdout or exc.output or '')
             print(f'TEST_TIMEOUT: {script}', flush=True)

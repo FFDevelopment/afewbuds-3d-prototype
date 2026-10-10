@@ -3341,7 +3341,7 @@ func _build_phone_panel() -> void:
 
 	var shell: StyleBoxFlat = StyleBoxFlat.new()
 	shell.bg_color = Color("101b16")
-	shell.border_color = Color("526257")
+	shell.border_color = Color("a7b0bd")
 	shell.set_border_width_all(8)
 	shell.set_corner_radius_all(49)
 	shell.content_margin_left = 28
@@ -3423,6 +3423,10 @@ func _build_phone_panel() -> void:
 	_add_phone_dock_button(dock, "?", "help")
 	PhoneVisuals.fit(self)
 	get_viewport().size_changed.connect(_fit_phone_screen)
+	var hardware:=preload("res://scripts/phone_hardware.gd").new()
+	hardware.name="PhoneHardware"
+	phone_panel.add_child(hardware)
+	hardware.setup(self)
 
 func _fit_phone_screen() -> void:
 	PhoneVisuals.fit(self)
