@@ -1,0 +1,23 @@
+name: Verify real scene career parity - desktop
+on:
+  push:
+    branches: [fix/real-career-boot-parity]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  desktop-save-boot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Godot 4.7.2
+        run: |
+          curl -fL --retry 3 -o /tmp/godot.zip https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot
+      - name: Restore scene assets
+        run: python3 tools/recover_assets.py /tmp/godot/Godot_v4.7.2-stable_linux.x86_64
+      - name: Import game
+        run: /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --editor --import --quit
+      - name: Reproduce phone tent/crew save in real Windows 3D scene
+        run: python3 tools/test.py /tmp/godot/Godot_v4.7.2-stable_linux.x86_64
