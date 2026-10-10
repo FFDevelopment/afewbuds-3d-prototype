@@ -5868,6 +5868,22 @@ func _active_dealer_roster() -> Array[String]:
 	return roster
 
 func _record_friend_dealer_sale(customer_name: String, grams: int, gross: int, commission: int) -> void:
+	if customer_name.begins_with("Hired Dealer "):
+		var generic:Dictionary=location_state.get("hired_dealer_stats",{})
+		var record:Dictionary=generic.get(customer_name,{}).duplicate(true)
+		for key in ["sales","grams","gross","commission_earned","today_sales","today_grams","today_gross","today_commission"]:
+			if not record.has(key):record[key]=0
+		record["sales"]+=1
+		record["grams"]+=grams
+		record["gross"]+=gross
+		record["commission_earned"]+=commission
+		record["today_sales"]+=1
+		record["today_grams"]+=grams
+		record["today_gross"]+=gross
+		record["today_commission"]+=commission
+		generic[customer_name]=record
+		location_state["hired_dealer_stats"]=generic
+		return
 	if customer_name.is_empty() or _friend_staff_role(customer_name) != "dealer":
 		return
 	var stats: Dictionary = _ensure_friend_dealer_stats(customer_name)
@@ -5897,6 +5913,12 @@ func _friend_dealer_daily_report(_pay_wages: bool) -> Array[Dictionary]:
 	return rows
 
 func _reset_friend_dealer_daily_stats() -> void:
+	var generic:Dictionary=location_state.get("hired_dealer_stats",{})
+	for dealer_name in generic:
+		var record:Dictionary=generic[dealer_name]
+		for key in ["today_sales","today_grams","today_gross","today_commission"]:
+			record[key]=0
+	location_state["hired_dealer_stats"]=generic
 	for name_variant: Variant in friend_dealer_stats.keys():
 		var friend_name: String = str(name_variant)
 		var stats: Dictionary = _ensure_friend_dealer_stats(friend_name)
@@ -7906,6 +7928,7 @@ func _toggle_dealers() -> void:
 	_refresh_phone()
 
 func _fire_generic_dealer() -> void:
+	# Generic dealer shift data is retained in a separate career record when fired.
 	if dealer_arrested:
 		status_label.text = "Resolve the dealer bail first."
 		return
