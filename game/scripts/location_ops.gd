@@ -1093,7 +1093,7 @@ func portfolio_ui(parent:VBoxContainer) -> void:
 	_property_label(parent,"PROPERTIES",24)
 	if portfolio_property.is_empty() or not _property_controlled(portfolio_property):
 		if portfolio_page=="payments":
-			property_bills_ui(parent)
+			_legacy_real_estate_ui(parent)
 			_property_button(parent,"BACK TO PROPERTIES",portfolio_back_pressed)
 			return
 		portfolio_reset()
@@ -1114,7 +1114,7 @@ func portfolio_ui(parent:VBoxContainer) -> void:
 			_property_label(parent,"Starter Apartment lease released. Past-due balances and reacquisition remain available in Property Payments.",15)
 		if not bool(house_state().get("acquired",false)):
 			_property_label(parent,"More properties unlock as you progress.",15)
-		_property_button(parent,"PROPERTY PAYMENTS / RELEASED LEASES",portfolio_legacy_payments)
+		_property_button(parent,"PROPERTY AGREEMENTS & RELEASED LEASES",portfolio_legacy_payments)
 		return
 	var property:String=portfolio_property
 	_property_label(parent,portfolio_name(property),22)
