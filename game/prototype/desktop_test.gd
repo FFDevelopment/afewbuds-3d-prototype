@@ -104,12 +104,13 @@ func run() -> void:
 	var joy:=InputEventJoypadButton.new();joy.button_index=JOY_BUTTON_DPAD_UP;joy.pressed=true
 	game._input(joy);await frames()
 	check(game.phone_open and not game.fp_player.enabled,"Controller phone action opens modal and stops movement")
-	for dimensions in [Vector2i(1280,720),Vector2i(1280,800),Vector2i(1920,1080),Vector2i(2560,1080)]:
+	for dimensions in [Vector2i(800,500),Vector2i(1280,720),Vector2i(1280,800),Vector2i(1920,1080),Vector2i(2560,1080)]:
 		root.size=dimensions;await frames()
 		for app in ["home","advancements","settings","products","shop","contacts"]:
 			game._open_phone_app(app);await frames()
 			var rect:Rect2=game.phone_panel.get_global_rect()
-			check(rect.size.y>rect.size.x*1.5,"Portrait aspect at %s in %s" % [dimensions,app])
+			var canvas_scale:float=minf(float(root.size.x)/root.get_visible_rect().size.x,float(root.size.y)/root.get_visible_rect().size.y)
+			check(game.phone_panel.scale.x*canvas_scale>=0.99,"Readable phone text at %s in %s" % [dimensions,app])
 			check(rect.position.x>=0 and rect.end.x<=root.get_visible_rect().size.x and rect.end.y<=root.get_visible_rect().size.y,"Phone fits %s in %s" % [dimensions,app])
 			if "--capture-desktop" in OS.get_cmdline_user_args() and app=="home":
 				await RenderingServer.frame_post_draw
