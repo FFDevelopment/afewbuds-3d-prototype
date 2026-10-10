@@ -369,8 +369,19 @@ func computer_employees() -> void:
 	for name in local:
 		var role_name:String=crew.role(name)
 		ui.label(name+" · "+role_name.capitalize()+" · "+("ON DUTY" if host.packing_employee_active else "OFF DUTY") if role_name=="production" else name+" · "+role_name.capitalize())
+		if role_name=="dealer":
+			var performance:Dictionary=host.friend_dealer_stats.get(name,{})
+			ui.label("  Today: %d deals · %dg · $%d earned · $%d commission" % [int(performance.get("today_sales",0)),int(performance.get("today_grams",0)),int(performance.get("today_gross",0)),int(performance.get("today_commission",0))])
+			ui.label("  Career: %d deals · %dg · $%d gross · $%d commission earned" % [int(performance.get("sales",0)),int(performance.get("grams",0)),int(performance.get("gross",0)),int(performance.get("commission_earned",0))])
 		b("MOVE "+name.to_upper()+" TO "+("HOUSE" if property=="apartment" else "APARTMENT"),move_computer_staff.bind(name,"house" if property=="apartment" else "apartment"))
 	if local.is_empty():ui.label("No workers are assigned to this property. Apartment staff are not shown here.")
+	var local_dealer_count:int=0
+	for staff_name in local:
+		if crew.role(staff_name)=="dealer":local_dealer_count+=1
+	if local_dealer_count>0:
+		ui.label("ALL DEALERS · %s · %d deals today · $%d cash held · $%d commission held · $%d balance due" % ["ON DUTY" if host.dealers_active else "OFF DUTY",host.dealer_sales_today,host.dealer_cash_held,host.dealer_commission_held,host.dealer_balance_due])
+		ui.label("Dealer duty is a team-wide setting across properties; each dealer's assignment remains unchanged.")
+		b("SEND ALL DEALERS HOME" if host.dealers_active else "PUT ALL DEALERS ON DUTY",toggle_computer_dealers)
 	var other:String="house" if property=="apartment" else "apartment"
 	for name in computer_staff_names(other):
 		b("ASSIGN "+name.to_upper()+" TO "+property.to_upper(),move_computer_staff.bind(name,property))
@@ -392,6 +403,15 @@ func hire_computer_worker(property:String) -> void:
 	host._hire_packing_employee()
 	if host.packing_employee_hired:crew.assign(host._critical_production_sender(),property)
 	manage("employees")
+func toggle_computer_dealers() -> void:
+	var local_staff:Array[String]=computer_staff_names(computer_context)
+	var has_dealer:bool=false
+	for staff_name in local_staff:
+		if crew.role(staff_name)=="dealer":has_dealer=true
+	if not has_dealer:return
+	host._toggle_dealers()
+	manage("employees")
+
 func toggle_computer_worker() -> void:
 	if crew.assignment(host._critical_production_sender())!=computer_context:return
 	host._toggle_packing_employee()
