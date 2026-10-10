@@ -1,14 +1,13 @@
-# AFewBuds desktop — playable baseline
+# AFewBuds 3D Prototype — Windows development test
 
-This repository's `main` branch tracks the tested gameplay source of **AFewBuds Desktop Beta 0.16.0-beta.9**.
+This is the **desktop development build** (`FFDevelopment/afewbuds-3d-prototype`), not the public Windows tester beta. Its underlying game version is `0.16.0-beta.9`, based on the public beta.9 gameplay, with shared Property and Item Registries.
 
-- Release source commit: `4dfdb0d4d2bce60afdc18aa0b3d460d122a33d75`
-- Public Windows/Linux downloads and launcher: https://github.com/FFDevelopment/AFewBuds-Desktop-Beta/releases
-- `main` is the **playable source baseline**, not the universal-property experiment.
-- Ongoing universal property/shared-core work: `feature/dynamic-property-registry-v1` (starts from this beta.9 gameplay source). Do not mistake its draft PR for a release.
-- Pre-alignment baseline remains available at `archive/pre-beta9-main-baseline`.
-- Every push to `main` builds and runs desktop Godot tests and produces Windows/Linux test artifacts. Public beta publishing is controlled by the separate distribution repository and its pinned source commit.
+**Development download:** https://github.com/FFDevelopment/afewbuds-3d-prototype/releases (prereleases tagged `dev-shared-core-...`). Download `AFewBuds-Windows-Development-Test.zip`, extract the entire ZIP, and run `AFewBuds-3D-Prototype.exe`. This standalone test **does not use the public auto-update launcher** and its Windows title reads `AFewBuds Desktop Development`.
 
-The desktop game retains Windows keyboard/mouse, controller and phone UI controls, login and cloud career, house and apartment inventory isolation, bills, furniture, equipment, and NPCs.
+## Save and account protection
+Both phone and desktop use the same Supabase `afb_begin_play` / `afb_save_career` server session and revision protocol. The desktop **can load and write the regular account career**. Before testing, save and close the phone game; avoid running both simultaneously. Back up important saves and use a separate account for destructive testing. The desktop preserves its current custom Godot user-data directory `AFewBuds-Inventory-Preview`, so a new window title does not migrate player files.
 
-**Do not change an existing player's save directory, account ID, session, character progress, or cloud save to align repository baselines.** Shared gameplay systems belong in both development repositories and should be tested on both platforms before public promotion.
+The desktop fixture test `game/account/career_parity_test.gd` validates phone-to-desktop tent placement and packing, named dealer/production workers, property-separated stock, unknown fields, session handoff, and stale revision rejection using **fictional local data only**. It is part of the normal `tools/test.py` regression suite, followed by verified Windows and Linux exports and an exported-world smoke test.
+
+The current core registry does not yet make arbitrary future properties fully functional. Computers, utilities, grow systems, and workers for unknown new buildings still require adapters.
+
