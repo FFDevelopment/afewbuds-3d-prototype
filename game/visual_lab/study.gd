@@ -299,7 +299,7 @@ func _process(_delta: float) -> void:
   env.ambient_light_energy=.28 if dusk else .32
   game.neighborhood.outdoor_sun.light_energy=.48 if dusk else .52
   game.neighborhood.outdoor_sun.light_color=Color("ffd1a1") if dusk else Color("fff0d6")
- label.text="AFB  /  VISUAL LAB 01.9  —  "+("REVISED" if revised else "ORIGINAL")+"\nF6 Compare   F7 "+("Light" if mobile else "Desktop")+" preset   F8 Time   F9 Viewpoint\nWASD Move   Mouse Look   E Interact   Esc Pause\nLocal test career  •  "+str(Engine.get_frames_per_second())+" FPS"
+ label.text="AFB  /  VISUAL LAB 01.10  —  "+("REVISED" if revised else "ORIGINAL")+"\nF6 Compare   F7 "+("Light" if mobile else "Desktop")+" preset   F8 Time   F9 Viewpoint\nWASD Move   Mouse Look   E Interact   Esc Pause\nLocal test career  •  "+str(Engine.get_frames_per_second())+" FPS"
 func _input(event: InputEvent) -> void:
  if not event is InputEventKey or not event.pressed or event.echo:return
  match event.physical_keycode:

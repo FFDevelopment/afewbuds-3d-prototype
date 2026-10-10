@@ -84,3 +84,15 @@ Original procedural sedan, pickup and black/white police variants replace the sl
 Both market cars are centered between the parking lines. Three curbside sedans sit parallel to the curbs with pedestrian and driving clearance. The rear-alley car has moved into a public parking bay. Patrol cars face their central aisle; the lightbars and door markings belong to each vehicle. A single collider per vehicle avoids snagging on small trim, and obstacle footprints follow vehicle rotation. Existing property IDs and gameplay saves are unchanged.
 
 Validation: Godot 4.6 import; runtime checks of all 12 cars, their bay/curb bounds and physical colliders; four rendered views. Godot 4.7.2 and mobile export performance are not verified.
+
+## Visual Lab 01.10 — grow equipment, wall mounting and stash placement
+
+All four existing tent SKUs retain dimensions, plant-slot IDs and prices. The shared procedural visual module adds fabric panels, reflective liners, frame poles, zipped edges, trays, duct ports and suspended fixtures. Quality 1 uses a basic tube fixture; the existing $320 per-tent light-kit upgrade (quality 2) replaces it with LED bars. Existing quality saves and yield rules are preserved. Property-specific light switches control beam visibility and fixture emission, without hiding the fixture. One shadowless spotlight per tent avoids adding multiple overlapping real lights.
+
+Auto Water Kit now has a reservoir, lid, gauge, pump, timer and manifold. Ventilation has a carbon-filter cylinder, fan, grille and controller. Both retain their catalog footprints and existing game effects. Floor placement remains supported. A Floor / Wall toggle in placement controls snaps utilities to actual solid wall faces, with mounting height following the aim point within bounded limits. Wall mounting includes brackets and persists through existing position/yaw save fields. Unsupported/floating mounts, doors/windows and invalid rooms are rejected. Basement walls explicitly identify their mounting surfaces. Moving and packing preserve item ownership and upgrades.
+
+The apartment hidden stash previously tested a full-height box down to the floor, so baseboards blocked its placement. Placement and item-overlap checks now use its actual raised cabinet bounds (bottom 1.04 m), retaining collision checks for real furniture and structures.
+
+Integration: include `scripts/grow_equipment_visuals.gd`, `equipment_world.gd`, `furniture_editor.gd`, `property_furniture.gd` and `visual_lab/basement.gd`. Merge the editor/model changes alongside newer phone/logic work; do not replace newer full files wholesale. Mobile adapters still require the corresponding mount-placement integration and export QA before promotion.
+
+Validation: Godot 4.6 import; four sizes, basic-to-upgraded replacement on the selected tent, lights off, wall aiming and support rejection, moved/packed utilities, JSON height/quality retention, apartment stash/baseboard and self-collision checks; existing equipment regression suite. Screenshots are staged examples from an isolated test career. Not a Godot 4.7.2 or mobile performance certification.

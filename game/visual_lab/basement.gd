@@ -10,6 +10,7 @@ var room_lights_on=true
 func block(at:Vector3,size:Vector3,mat:Material,solid:bool=true)->MeshInstance3D:
  var n=MeshInstance3D.new();var mesh=BoxMesh.new();mesh.size=size;n.mesh=mesh;n.position=at;n.material_override=mat;n.layers=3;add_child(n)
  if solid:
+  if size.y>2.0 and minf(size.x,size.z)<.3:n.set_meta("wall_mount_surface",true)
   var body=StaticBody3D.new();body.collision_layer=1;body.collision_mask=4
   var shape=CollisionShape3D.new();var box=BoxShape3D.new();box.size=size;shape.shape=box;body.add_child(shape);n.add_child(body)
  return n

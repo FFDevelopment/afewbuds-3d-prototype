@@ -103,6 +103,10 @@ func sync() -> void:
   var entry:Dictionary=model.state.items[id]
   var house_grow_on:bool=bool(host.house_control_state.get("grow_lights",false))
   var grow_on:bool=house_grow_on if entry.get("property","")=="house" else host.grow_lights_on
+  var visual=rendered[id].get_node_or_null("GrowEquipmentVisual")
+  if visual!=null:
+   var vent_on:bool=bool(host.house_control_state.get("grow_ventilation",false)) if entry.get("property","")=="house" else host.ventilation_on
+   visual.set_power(vent_on if entry.sku=="ventilation" else grow_on)
   var tent_light:Node3D=rendered[id].get_node_or_null("TentGrowLight")
   if tent_light!=null:tent_light.visible=grow_on
   var light:Node3D=rendered[id].get_node_or_null("ItemLight")
@@ -165,22 +169,10 @@ func colliders(node:Node,id:String) -> void:
  for child in node.get_children():
   if not child is CollisionObject3D:colliders(child,id)
 func tent(root:Node3D,id:String) -> void:
- var s:Vector3=model.size_of(id)
- editor.piece(root,id,Vector3(0,s.y*.5,-s.z*.5+.04),Vector3(s.x,s.y,.08),"191c23")
- for side in [-1,1]:
-  editor.piece(root,id,Vector3(side*(s.x*.5-.04),s.y*.5,0),Vector3(.08,s.y,s.z),"20232c")
-  editor.piece(root,id,Vector3(side*(s.x*.5-.06),s.y*.5,s.z*.5-.06),Vector3(.06,s.y,.06),"5a6770")
- editor.piece(root,id,Vector3(0,s.y-.04,0),Vector3(s.x,.08,s.z),"232833")
- editor.piece(root,id,Vector3(0,.2,0),Vector3(s.x-.14,.08,s.z-.12),"353441")
- editor.piece(root,id,Vector3(0,s.y-.3,0),Vector3(s.x*.75,.05,.3),"d7f5d7")
- var bulb:=OmniLight3D.new()
- bulb.name="TentGrowLight"
- bulb.position=Vector3(0,s.y-.38,0)
- bulb.light_color=Color("e5f8d5")
- bulb.light_energy=.65
- bulb.omni_range=3.0
- root.add_child(bulb)
- label(root,model.item_name(id),Vector3(0,s.y+.12,0))
+ var entry:Dictionary=model.state.items[id]
+ var visual=load("res://scripts/grow_equipment_visuals.gd").new();visual.name="GrowEquipmentVisual";root.add_child(visual)
+ visual.build_tent(id,model.size_of(id),int(entry.get("quality",1)),int(model.CATALOG[entry.sku].plants))
+
 func label(root:Node3D,text:String,position:Vector3) -> void:
  var caption:=Label3D.new();caption.text=text;caption.font_size=24;caption.pixel_size=.004;caption.position=position;caption.billboard=BaseMaterial3D.BILLBOARD_ENABLED;root.add_child(caption)
 func sync_levels() -> void:

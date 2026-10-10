@@ -118,3 +118,7 @@ See visual_lab/validate.gd. Render-review evidence is included under review/.
 01.8: Three full stories and aligned exterior windows on background residences; matching garage brick and roof materials.
 
 01.9: Restyled sedan, pickup and police cars, centered parking bays, curb-aligned street cars, and cleared rear alley. Vehicles are static scenery.
+
+01.10: Restyled grow tents and utilities. Each tent includes a basic light; its existing improved-light-kit upgrade replaces it with LED bars.
+To wall-mount auto water or ventilation: empty/unlock as needed, Move/Place, press Tab for controls and choose Mount: wall, then aim at a clear grow-room wall. Aim higher/lower to change height. Mount: floor restores normal placement.
+Hidden wall storage now places above baseboards using its actual cabinet bounds.

@@ -10,6 +10,8 @@ var layout_hint:Label
 var layout_move:Button
 var layout_pickup:Button
 var wall_found:=false
+var wall_mount:=false
+var mount_button:Button
 var chapter:RefCounted
 var equipment_world:Node
 var portfolio_property:=""
@@ -57,6 +59,7 @@ func setup(owner:Node3D,inv:Node) -> void:
  placement_hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
  var row:=HBoxContainer.new();placement_box.add_child(row)
  inventory.button("Rotate",rotate_item,row)
+ mount_button=inventory.button("Mount: floor",toggle_mount,row);mount_button.hide()
  place_button=inventory.button("Place",confirm,row,true)
  inventory.button("Cancel",cancel_placement,row)
  placement_panel.hide()
@@ -178,6 +181,8 @@ func begin(id:String) -> void:
  var e:Dictionary=model.state.items[id]
  if e.get("property","") not in [property,"backpack"]:hint.text="Pick up this item at its property first.";selected="";return
  if not model.empty_reason(id).is_empty():hint.text=model.empty_reason(id);selected="";return
+ wall_mount=model.wall_mountable(id) and e.has("position") and absf(float(e.position[1])-placement_floor())>.05
+ mount_button.visible=model.wall_mountable(id);mount_button.text="Mount: wall" if wall_mount else "Mount: floor"
  controls_active=false
  editing_camera=true
  layout_panel.hide();build_preview()
@@ -203,6 +208,7 @@ func aim() -> void:
  point=origin+flat*distance;point.y=placement_floor()
  point.x=snappedf(point.x,.05);point.z=snappedf(point.z,.05)
  if model.state.items[selected].sku=="storage_5":snap_stash_to_wall()
+ elif model.wall_mountable(selected) and wall_mount:snap_utility_to_wall()
 func handle_placement_input(event:InputEvent) -> bool:
  if panel.visible or (not is_placing() and not layout_mode) or host.session_paused:return false
  if not event.is_pressed() or event.is_echo():return false
@@ -236,12 +242,14 @@ func handle_placement_input(event:InputEvent) -> bool:
  elif event is InputEventKey and event.keycode in [KEY_P,KEY_I]:return true
  return false
 func obstacle() -> String:
+ if not selected.is_empty() and model.wall_mountable(selected) and wall_mount and not wall_found:return "Aim at a solid grow-room wall to mount this unit."
  if not selected.is_empty() and model.state.items[selected].sku=="storage_5" and not wall_found:return "Aim at a clear wall to mount the hidden stash."
  if not inside(property):return "Enter this property before placing furniture."
  var problem:String=model.validate(selected,property,point,yaw)
  if not problem.is_empty():return problem
  var size:Vector3=model.size_of(selected,yaw)
- var box:=AABB(point+Vector3(-size.x/2,.08,-size.z/2),Vector3(size.x,size.y-.08,size.z))
+ var box:AABB=model.occupied_box(selected,point,yaw)
+ if model.state.items[selected].sku!="storage_5":box.position.y+=.08;box.size.y-=.08
  if box.grow(.35).has_point(Vector3(host.camera.global_position.x,placement_floor()+.5,host.camera.global_position.z)):return "Leave room for yourself to stand."
  var shape:=BoxShape3D.new();shape.size=box.size
  var query:=PhysicsShapeQueryParameters3D.new();query.shape=shape;query.transform=Transform3D(Basis.IDENTITY,box.get_center());query.collision_mask=1
@@ -353,8 +361,8 @@ func build_prop(root:Node3D,id:String,sku:String) -> void:
   for x in [-1,1]:piece(root,id,Vector3(x*.6,.4,0),Vector3(.08,.8,.65),"344440")
   piece(root,id,Vector3(0,1.2,-.15),Vector3(.85,.5,.06),"285d44")
  elif sku in ["water_kit","ventilation"]:
-  piece(root,id,Vector3(0,s.y/2,0),s,"526466")
-  piece(root,id,Vector3(0,s.y*.6,s.z/2),Vector3(s.x*.6,s.y*.4,.025),"253532")
+  var visual=load("res://scripts/grow_equipment_visuals.gd").new();visual.name="GrowEquipmentVisual";root.add_child(visual)
+  visual.build_utility(id,sku,s)
  elif sku in ["coffee_table","dining_table"]:
   piece(root,id,Vector3(0,s.y-.04,0),Vector3(s.x,.08,s.z),"98734d")
   for x in [-1,1]:
@@ -461,3 +469,31 @@ func snap_stash_to_wall() -> void:
    hit.x=clampf(hit.x,wall.position.x+half_width+.06,wall.end.x-half_width-.06)
   nearest=origin.distance_to(hit);point=hit+normal*(model.size_of(selected).z*.5+.025);point.y=placement_floor()
   yaw=posmod(int(round(rad_to_deg(atan2(normal.x,normal.z))/90))*90,360);wall_found=true
+
+func toggle_mount()->void:
+ if selected.is_empty() or not model.wall_mountable(selected):return
+ wall_mount=not wall_mount;mount_button.text="Mount: wall" if wall_mount else "Mount: floor"
+ aim();preview()
+func snap_utility_to_wall()->void:
+ wall_found=false
+ var origin:Vector3=host.camera.global_position;var direction:Vector3=-host.camera.global_basis.z
+ var size:Vector3=model.size_of(selected);var nearest:=5.5;var floor_y=placement_floor()
+ for wall in model.mounting_walls():
+  var hit=wall.intersects_ray(origin,direction)
+  if hit==null or origin.distance_to(hit)>=nearest:continue
+  var normal=Vector3.ZERO
+  if wall.size.x<wall.size.z:
+   if wall.size.z<size.x+.12:continue
+   normal.x=1 if origin.x>wall.get_center().x else -1
+   hit.x=wall.end.x if normal.x>0 else wall.position.x
+   hit.z=clampf(hit.z,wall.position.z+size.x/2+.06,wall.end.z-size.x/2-.06)
+  else:
+   if wall.size.x<size.x+.12:continue
+   normal.z=1 if origin.z>wall.get_center().z else -1
+   hit.z=wall.end.z if normal.z>0 else wall.position.z
+   hit.x=clampf(hit.x,wall.position.x+size.x/2+.06,wall.end.x-size.x/2-.06)
+  var candidate:Vector3=hit+normal*(size.z*.5+.025)
+  candidate.y=clampf(snappedf(hit.y-size.y*.5,.05),floor_y+.85,floor_y+2.65-size.y)
+  var turn=posmod(int(round(rad_to_deg(atan2(normal.x,normal.z))/90))*90,360)
+  if not model.has_mount_support(selected,candidate,turn):continue
+  nearest=origin.distance_to(hit);point=candidate;yaw=turn;wall_found=true
