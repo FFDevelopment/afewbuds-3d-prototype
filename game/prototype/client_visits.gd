@@ -36,7 +36,7 @@ func route_arrival() -> bool:
 		if message.get("client_reply","")=="scheduled" or float(message.get("declined_until",0))>clock():
 			_release_visit()
 			return true
-	if world.location_ops.crew.can_handle():return false
+	if world.location_ops.crew.can_handle(world.location_ops.active_property()):return false
 	if is_home(): return false
 	var request: Dictionary=host.active_request.duplicate(true)
 	_release_visit()
@@ -131,7 +131,7 @@ func update(delta: float) -> void:
 		if host.customer_waiting: return
 		var client: Dictionary=message.get("client_visit",{}).duplicate(true)
 		var request: Dictionary=message.get("client_request",{}).duplicate(true)
-		if not is_home() and not world.location_ops.crew.can_handle():
+		if not is_home() and not world.location_ops.crew.can_handle(world.location_ops.active_property()):
 			message.client_reply="missed"
 			host.phone_text_messages[index]=message
 			_send_missed(client,request,world.location_ops.crew.say(str(client.get("name","Client")),"appointment_missed"))
