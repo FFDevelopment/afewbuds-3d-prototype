@@ -520,6 +520,10 @@ func update_malik() -> void:
 		malik_worker.show()
 		for child in worker.get_children():
 			if child is MeshInstance3D:child.hide()
+		var work_pose:Node3D=malik_worker.get_node_or_null("ProductionActions")
+		if work_pose==null:
+			work_pose=load("res://scripts/production_actions.gd").new();work_pose.name="ProductionActions";malik_worker.add_child(work_pose);work_pose.setup(host,malik_worker)
+		work_pose.sync()
 		for player in malik_worker.find_children("*","AnimationPlayer",true,false):
 			var wanted: String=production_worker_animation(worker)
 			for clip in player.get_animation_list():

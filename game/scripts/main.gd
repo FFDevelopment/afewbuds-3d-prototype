@@ -2287,6 +2287,8 @@ func _build_bagging_station() -> void:
 			(shifted_child as Node3D).position.z += 0.48
 			shifted_child.set_meta("equipment_template_group","packing")
 
+	load("res://scripts/bench_layout.gd").original(self)
+
 func _inventory_grams(inventory: Dictionary) -> int:
 	var total: int = 0
 	for value_variant: Variant in inventory.values():
@@ -5515,6 +5517,8 @@ func _refresh_production_worker_friend_face() -> void:
 	production_worker_face_shell.set_meta("friend_name", assigned_name)
 
 func _production_worker_station_position(station_name: String) -> Vector3:
+	var action_target:Variant=preload("res://scripts/production_actions.gd").target(self,production_worker_pending_action,production_worker_pending_slot)
+	if action_target is Vector3 and station_name in ["workbench","grow"]:return action_target
 	if inventory_system!=null and inventory_system.furniture!=null and inventory_system.worker_property()=="house":
 		var model:RefCounted=inventory_system.furniture.model
 		if station_name=="entry":return Vector3(28.5,0.0,-0.8)
@@ -5646,7 +5650,7 @@ func _update_production_worker_visual(delta: float) -> void:
 		production_worker_action_dwell = 0.0
 		return
 	production_worker_action_dwell += delta
-	if production_worker_action_dwell >= PRODUCTION_WORKER_DWELL_SECONDS:
+	if production_worker_action_dwell >= preload("res://scripts/production_actions.gd").duration(production_worker_pending_action):
 		production_worker_action_dwell = 0.0
 		_execute_production_worker_action()
 

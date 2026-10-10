@@ -334,6 +334,7 @@ func build_prop(root:Node3D,id:String,sku:String) -> void:
    for z in [-1,1]:piece(root,id,Vector3(x*(s.x/2-.1),s.y/2, z*(s.z/2-.1)),Vector3(.08,s.y,.08),"384344")
   piece(root,id,Vector3(-.35,s.y,.05),Vector3(.4,.08,.35),"a5afad")
   piece(root,id,Vector3(.35,s.y,.05),Vector3(.35,.06,.25),"465246")
+  load("res://scripts/bench_layout.gd").purchased(root)
  elif sku.begins_with("shelf_") or sku.begins_with("storage_") or sku.begins_with("dealer_"):
   for x in [-1,1]:piece(root,id,Vector3(x*(s.x/2-.04),s.y/2,0),Vector3(.08,s.y,s.z),"354443")
   for i in range(4):piece(root,id,Vector3(0,.1+i*(s.y-.15)/3,0),Vector3(s.x,.07,s.z),"82917c")
