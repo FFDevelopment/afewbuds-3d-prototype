@@ -433,14 +433,18 @@ func computer_employees() -> void:
 	if local_dealer_count>0:
 		ui.label("ALL DEALERS · %s · %d deals today · $%d cash held · $%d commission held · $%d balance due" % ["ON DUTY" if host.dealers_active else "OFF DUTY",host.dealer_sales_today,host.dealer_cash_held,host.dealer_commission_held,host.dealer_balance_due])
 		ui.label("Dealer duty is a team-wide setting across properties; each dealer's assignment remains unchanged.")
-		b("SEND ALL DEALERS HOME" if host.dealers_active else "PUT ALL DEALERS ON DUTY",toggle_computer_dealers)
+		var duty_reason:String=host._staff_duty_blocker("dealer")
+		if not host.dealers_active and not duty_reason.is_empty():ui.label("WHY OFF DUTY: "+duty_reason)
+		b("SEND ALL DEALERS HOME" if host.dealers_active else "PUT ALL DEALERS ON DUTY",toggle_computer_dealers,not host.dealers_active and not duty_reason.is_empty())
 	var other:String="house" if property=="apartment" else "apartment"
 	for name in computer_staff_names(other):
 		b("ASSIGN "+name.to_upper()+" TO "+property.to_upper(),move_computer_staff.bind(name,property))
 	if not host.packing_employee_hired:
 		b("HIRE PRODUCTION WORKER FOR "+property.to_upper(),hire_computer_worker.bind(property),host.grower_level<5 or host.cash<host.PACKER_HIRE_COST)
 	elif computer_staff_names(property).has(host._critical_production_sender()):
-		b("SEND PRODUCTION WORKER HOME" if host.packing_employee_active else "PUT PRODUCTION WORKER ON DUTY",toggle_computer_worker)
+		var worker_reason:String=host._staff_duty_blocker("production")
+		if not host.packing_employee_active and not worker_reason.is_empty():ui.label("WHY OFF DUTY: "+worker_reason)
+		b("SEND PRODUCTION WORKER HOME" if host.packing_employee_active else "PUT PRODUCTION WORKER ON DUTY",toggle_computer_worker,not host.packing_employee_active and not worker_reason.is_empty())
 	if property=="apartment":
 		ui.label("Apartment storefront sales and door coverage are managed here.")
 		b("APARTMENT DEALER / DOOR CONTROLS",crew.computer_controls)
