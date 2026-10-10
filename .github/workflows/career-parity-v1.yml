@@ -1,0 +1,26 @@
+name: Verify cross-platform career parity (desktop)
+on:
+  push:
+    branches: [fix/shared-career-parity-v1]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  career-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Godot 4.7.2
+        run: |
+          curl -fL --retry 3 -o /tmp/godot.zip https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot
+      - name: Restore pinned test assets
+        run: python3 tools/recover_assets.py /tmp/godot/Godot_v4.7.2-stable_linux.x86_64
+      - name: Validate game scripts and import
+        run: |
+          set -euo pipefail
+          /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --editor --import --quit 2>&1 | tee /tmp/afb-import.log
+          if grep -E 'SCRIPT ERROR|^ERROR:' /tmp/afb-import.log; then exit 1; fi
+      - name: Run complete regression suite including phone-to-desktop career parity
+        run: python3 tools/test.py /tmp/godot/Godot_v4.7.2-stable_linux.x86_64
