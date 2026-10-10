@@ -10,6 +10,10 @@ var rendering_management := false
 var grow_panel_poll_seconds:float=0.0
 var last_notice := -1
 var apartment_release_confirm := false
+var portfolio_property: String = "" # UI-only focus, not physical location.
+var portfolio_page: String = "overview"
+var portfolio_employee: String = ""
+var portfolio_fire_confirm: String = ""
 const APT_PC := Vector3(4.15,1.35,4.35)
 const HOUSE_PC := Vector3(26.35,1.35,1.65)
 const CHECKOUT := Vector3(14,1.3,3)
@@ -1024,6 +1028,327 @@ func property_activity(property_id:String) -> String:
 	return ("RUNNING" if working or growing>0 else "IDLE")+" · %d furniture items · %d planted pots\nProduction worker: %s" % [furniture_count,growing,"working here" if working else ("assigned here / paused" if host.packing_employee_hired and inventory.worker_property()==property_id else "none assigned")]
 
 func real_estate_ui(parent:VBoxContainer) -> void:
+	portfolio_ui(parent)
+	return
+
+
+# One property management hub, using existing worker, utility and inventory records.
+# UI focus must never change the player's physical property or their save namespace.
+func portfolio_reset() -> void:
+	portfolio_property=""
+	portfolio_page="overview"
+	portfolio_employee=""
+	portfolio_fire_confirm=""
+
+func portfolio_select(property:String) -> void:
+	if property not in ["apartment","house"] or not _property_controlled(property):return
+	portfolio_property=property
+	portfolio_page="overview"
+	portfolio_employee=""
+	portfolio_fire_confirm=""
+
+func portfolio_phone_back(app:String) -> bool:
+	if app=="employees" and portfolio_page=="dealer_stats":
+		portfolio_page="overview"
+		host._refresh_phone()
+		return true
+	if app=="employees" and not portfolio_property.is_empty() and not portfolio_employee.is_empty():
+		portfolio_employee=""
+		portfolio_fire_confirm=""
+		host._refresh_phone()
+		return true
+	if app in ["employees","products"] and not portfolio_property.is_empty():
+		host._open_phone_app("realestate")
+		return true
+	if app=="realestate" and not portfolio_property.is_empty():
+		if portfolio_page!="overview":portfolio_page="overview"
+		else:portfolio_reset()
+		host._refresh_phone()
+		return true
+	return false
+
+func portfolio_page_open(next_page:String) -> void:
+	if portfolio_property.is_empty() or not _property_controlled(portfolio_property):return
+	portfolio_page=next_page
+	host._refresh_phone()
+
+func portfolio_app_open(app:String) -> void:
+	if portfolio_property.is_empty() or not _property_controlled(portfolio_property):return
+	portfolio_employee=""
+	portfolio_fire_confirm=""
+	host._open_phone_app(app)
+
+func portfolio_name(property:String) -> String:
+	return "Starter Apartment" if property=="apartment" else "Maple Flats House"
+
+func portfolio_on_site(property:String) -> bool:
+	return property==active_property() and not placement_room(property,host.camera.global_position).is_empty()
+
+func portfolio_furniture() -> void:
+	if portfolio_property.is_empty() or not _property_controlled(portfolio_property):return
+	if not portfolio_on_site(portfolio_property):
+		host.status_label.text="Visit "+portfolio_name(portfolio_property)+" to arrange furniture."
+		return
+	host.inventory_system.furniture.open_property(portfolio_property)
+
+func portfolio_ui(parent:VBoxContainer) -> void:
+	_property_label(parent,"PROPERTIES",24)
+	if portfolio_property.is_empty() or not _property_controlled(portfolio_property):
+		portfolio_reset()
+		_property_label(parent,"Choose a property to manage its workers, stock, furniture, utility bills and lease. You can check balances from anywhere.",16)
+		var utility_due:int=utility_total_due()
+		_property_label(parent,"ALL PROPERTIES · ELECTRIC & WATER\nTotal utilities owed: $%d" % utility_due,19)
+		if utility_due>0:
+			_property_button(parent,"PAY ALL UTILITIES · $%d" % utility_due,pay_all_portfolio_utilities,host.cash<utility_due)
+		for property in ["apartment","house"]:
+			if not _property_controlled(property):
+				continue
+			var due:Dictionary=utility_state(property)
+			var debt:int=int(due.get("power_due",0))+int(due.get("water_due",0))
+			var staff:int=computer_staff_names(property).size()
+			var summary:String="%s\n%d workers · $%d utilities due\n%s" % [portfolio_name(property),staff,debt,property_activity(property)]
+			_property_button(parent,summary,portfolio_open_property.bind(property))
+		if not apartment_lease_active():
+			_property_label(parent,"Starter Apartment lease released. Past-due balances and reacquisition remain available in Property Payments.",15)
+		if not bool(house_state().get("acquired",false)):
+			_property_label(parent,"More properties unlock as you progress.",15)
+		_property_button(parent,"PROPERTY PAYMENTS / RELEASED LEASES",portfolio_legacy_payments)
+		return
+	var property:String=portfolio_property
+	_property_label(parent,portfolio_name(property),22)
+	_property_label(parent,"Workers: %d · Utilities due: $%d\n%s" % [computer_staff_names(property).size(),property_utility_due(property,"power")+property_utility_due(property,"water"),property_activity(property)],16)
+	if portfolio_page=="overview":
+		_property_button(parent,"EMPLOYEES · Assigned crew & dealer stats",portfolio_app_open.bind("employees"))
+		_property_button(parent,"STOCK · Products, listings & inventory",portfolio_app_open.bind("products"))
+		_property_button(parent,"ARRANGE FURNITURE"+("" if portfolio_on_site(property) else " · VISIT PROPERTY"),portfolio_furniture,not portfolio_on_site(property))
+		_property_button(parent,"BILLS · Water, electricity & agreement",portfolio_page_open.bind("bills"))
+		_property_button(parent,"PROPERTY AGREEMENT · Rent, ownership & access",portfolio_page_open.bind("agreement"))
+		_property_label(parent,"Staff can be hired by texting Contacts. Furniture can only be rearranged while you are physically inside this property.",15)
+	elif portfolio_page=="bills":
+		var bill:Dictionary=utility_state(property)
+		_property_label(parent,"ELECTRICITY  $%d\nWATER  $%d" % [int(bill.get("power_due",0)),int(bill.get("water_due",0))],19)
+		if int(bill.get("power_due",0))>0:
+			_property_button(parent,"PAY ELECTRIC · $%d" % int(bill.get("power_due",0)),pay_property_utility.bind(property,"power"),host.cash<int(bill.get("power_due",0)))
+		if int(bill.get("water_due",0))>0:
+			_property_button(parent,"PAY WATER · $%d" % int(bill.get("water_due",0)),pay_property_utility.bind(property,"water"),host.cash<int(bill.get("water_due",0)))
+		_property_label(parent,"Today so far: $%d electric · $%d water. Charges are calculated using this property's own equipment and usage." % [int(ceil(float(bill.get("today_power",0.0)))),int(ceil(float(bill.get("today_water",0.0))))],15)
+		var rent_due:int=apartment_balance() if property=="apartment" else house_balance()
+		_property_label(parent,"Rent / Agreement owed: $%d" % rent_due,17)
+		if rent_due>0:
+			_property_button(parent,"PAY AGREEMENT · $%d" % rent_due,pay_apartment_rent if property=="apartment" else pay_house_payment,host.cash<rent_due)
+	elif portfolio_page=="agreement":
+		if property=="apartment":
+			_property_label(parent,"APARTMENT · "+("LEASE ACTIVE" if apartment_lease_active() else "LEASE RELEASED"),19)
+			_property_label(parent,"Rent: $600 every 14 game days · Next due Day %d\nExisting balance: $%d" % [int(host.apartment_rent_state.get("next_due",host.game_day+14)),apartment_balance()],16)
+			if apartment_lease_active() and bool(house_state().get("relocated",false)):
+				var blockers:Array[String]=apartment_release_blockers()
+				if not blockers.is_empty():
+					_property_label(parent,"CANNOT RELEASE LEASE\n" + "\n".join(PackedStringArray(blockers)),16)
+				elif apartment_release_confirm:
+					_property_label(parent,"Release the apartment? Future rent stops and apartment access locks. Unpaid balances remain.",16)
+					_property_button(parent,"CONFIRM RELEASE LEASE",confirm_apartment_release)
+					_property_button(parent,"CANCEL",cancel_apartment_release)
+				else:
+					_property_button(parent,"RELEASE APARTMENT LEASE",request_apartment_release)
+		else:
+			var h:Dictionary=house_state()
+			var agreement:String=str(h.get("agreement",""))
+			_property_label(parent,"HOUSE · "+({"rent":"RENT","lease":"LEASE TO OWN","purchase":"OWNED"}.get(agreement,"ACQUIRED")),19)
+			_property_label(parent,"Outstanding: $%d · Next payment: Day %d" % [house_balance(),int(h.get("next_due",0))],16)
+			if agreement=="lease":
+				_property_label(parent,"Equity paid: $%d / $%d" % [int(h.get("equity_paid",0)),int(h.get("ownership_total",18500))],16)
+	_property_button(parent,"BACK TO "+("PROPERTY LIST" if portfolio_page=="overview" else "PROPERTY OVERVIEW"),portfolio_back_pressed)
+
+func portfolio_legacy_payments() -> void:
+	portfolio_reset()
+	portfolio_page="payments"
+	host._refresh_phone()
+
+func portfolio_back_pressed() -> void:
+	if portfolio_page=="overview":portfolio_reset()
+	else:portfolio_page="overview"
+	host._refresh_phone()
+
+func portfolio_open_property(property:String) -> void:
+	portfolio_select(property)
+	host._refresh_phone()
+
+func pay_all_portfolio_utilities() -> void:
+	var amount:int=utility_total_due()
+	if amount<=0 or host.cash<amount:return
+	# One deduction with separate per-property records. Past debts remain payable
+	# after a property is released; payment is not an ownership transfer.
+	host.cash-=amount
+	for property in ["apartment","house"]:
+		var ledger:Dictionary=utility_state(property)
+		for kind in ["power","water"]:
+			var key:String=kind+"_due"
+			var paid:int=maxi(0,int(ledger.get(key,0)))
+			if paid<=0:continue
+			ledger[key]=0
+			host._record_daily_expense(property.capitalize()+(" electricity" if kind=="power" else " water"),paid)
+			host._increment_advancement_stat("power_bills_paid" if kind=="power" else "water_bills_paid")
+			if property=="house":host.location_state["house_bills_paid"]=int(host.location_state.get("house_bills_paid",0))+1
+	_sync_legacy_utility_totals()
+	host._update_cash_ui()
+	host._save_game()
+	host.status_label.text="All property utility bills paid: $%d." % amount
+	host._refresh_phone()
+
+func portfolio_stock_ui(parent:VBoxContainer) -> void:
+	if portfolio_property.is_empty() or not _property_controlled(portfolio_property):return
+	_property_label(parent,portfolio_name(portfolio_property)+" · STOCK",20)
+	_property_label(parent,"Only this property's inventory and listings are shown. Stock at other properties stays separate.",15)
+	if host.inventory_system!=null:
+		host.inventory_system.at_property(portfolio_property,host._build_products_local)
+	else:
+		_property_label(parent,"Stock unavailable.",16)
+
+func portfolio_staff_duty(name:String) -> bool:
+	var duty:Dictionary=host.location_state.get("staff_duty",{})
+	return bool(duty.get(name,true))
+
+func portfolio_set_duty(name:String) -> void:
+	if portfolio_property.is_empty() or not computer_staff_names(portfolio_property).has(name):return
+	var job:String=crew.role(name)
+	if job=="production":
+		host._toggle_packing_employee()
+	elif job=="dealer":
+		var was_on:bool=portfolio_staff_duty(name)
+		if not was_on and not host.dealers_active:
+			if not host._staff_duty_blocker("dealer").is_empty():return
+			host._toggle_dealers()
+		var duty:Dictionary=host.location_state.get("staff_duty",{})
+		if not was_on and (host.dealer_arrested or host.heat>=75.0 or host.dealer_balance_due>0):return
+		duty[name]=not was_on
+		host.location_state["staff_duty"]=duty
+		host._save_game()
+	host._refresh_phone()
+
+func portfolio_transfer(name:String,target:String) -> void:
+	if portfolio_property.is_empty() or not computer_staff_names(portfolio_property).has(name):return
+	if not _property_controlled(target) or name=="Dealer Team":return
+	crew.assign(name,target)
+	portfolio_employee=""
+	host._refresh_phone()
+
+func portfolio_fire(name:String) -> void:
+	if portfolio_employee!=name or portfolio_fire_confirm!=name:return
+	if crew.role(name)=="dealer" and host.dealer_arrested:return
+	if crew.role(name)=="production" and host.production_worker_arrested:return
+	portfolio_fire_confirm=""
+	if name.begins_with("Hired Dealer "):
+		var slot:int=int(name.trim_prefix("Hired Dealer "))-1
+		if slot<0 or slot>=host.dealer_count:return
+		var duty:Dictionary=host.location_state.get("staff_duty",{})
+		var assignments:Dictionary=host.location_state.get("staff_assignments",{})
+		var stats:Dictionary=host.location_state.get("hired_dealer_stats",{})
+		for idx in range(slot+1,host.dealer_count):
+			var old_name:String="Hired Dealer %d" % (idx+1)
+			var new_name:String="Hired Dealer %d" % idx
+			duty[new_name]=bool(duty.get(old_name,true))
+			assignments[new_name]=str(assignments.get(old_name,"apartment"))
+			stats[new_name]=stats.get(old_name,{}).duplicate(true)
+		var last:String="Hired Dealer %d" % host.dealer_count
+		duty.erase(last);assignments.erase(last);stats.erase(last)
+		host.location_state["staff_duty"]=duty
+		host.location_state["staff_assignments"]=assignments
+		host.location_state["hired_dealer_stats"]=stats
+		host._fire_generic_dealer()
+	elif not host._friend_staff_role(name).is_empty():
+		host._release_friend_staff(name)
+	elif crew.role(name)=="production":
+		host._fire_packing_employee()
+	portfolio_employee=""
+	host._save_game()
+	host._refresh_phone()
+
+func portfolio_employee_open(name:String) -> void:
+	if not computer_staff_names(portfolio_property).has(name):return
+	portfolio_employee=name
+	portfolio_fire_confirm=""
+	host._refresh_phone()
+
+func portfolio_employees_ui(parent:VBoxContainer) -> void:
+	if portfolio_property.is_empty() or not _property_controlled(portfolio_property):return
+	if portfolio_page=="dealer_stats":
+		portfolio_dealer_stats_ui(parent)
+		return
+	var prop:String=portfolio_property
+	_property_label(parent,portfolio_name(prop)+" · EMPLOYEES",20)
+	if portfolio_employee.is_empty():
+		_property_label(parent,"Hire by texting a recruit in Contacts. Select a worker to see their duties, performance, transfer and firing options.",15)
+		var staff:Array[String]=computer_staff_names(prop)
+		for worker_name in staff:
+			var job:String=crew.role(worker_name)
+			var working:bool=(host.dealers_active and portfolio_staff_duty(worker_name)) if job=="dealer" else host.packing_employee_active
+			_property_button(parent,worker_name+" · "+job.capitalize()+"\n"+("ON DUTY" if working else "HOME"),portfolio_employee_open.bind(worker_name))
+		if staff.is_empty():_property_label(parent,"No workers assigned here yet.",16)
+		_property_button(parent,"CONTACTS · HIRE BY TEXT",host._open_phone_app.bind("clients"))
+		return
+	var name:String=portfolio_employee
+	if not computer_staff_names(prop).has(name):
+		portfolio_employee=""
+		portfolio_employees_ui(parent)
+		return
+	var job:String=crew.role(name)
+	_property_label(parent,name+" · "+job.capitalize(),20)
+	var working:bool=(host.dealers_active and portfolio_staff_duty(name)) if job=="dealer" else host.packing_employee_active
+	_property_label(parent,"Assigned: "+portfolio_name(prop)+"\nStatus: "+("ON DUTY" if working else "HOME"),16)
+	if job=="dealer":
+		_property_button(parent,"DEALER STATS · VIEW DEALS & COMMISSION",portfolio_page_dealer_stats)
+		if name!="Dealer Team":
+			_property_button(parent,"HANDLE APARTMENT DOOR" if crew.manager()!=name else "RETURN TO STREET DEALS",crew.assign_manager.bind(name) if crew.manager()!=name else crew.return_to_street.bind(name),prop!="apartment")
+	elif job=="production":
+		_property_label(parent,"Tasks today: %d\nCurrent task: %s" % [host.production_worker_tasks_today,host.production_worker_last_action],16)
+		_property_button(parent,"AUTO PLANT: "+("ON" if host.production_worker_auto_plant else "OFF"),host._toggle_production_worker_auto_plant)
+	var reason:String=host._staff_duty_blocker(job)
+	_property_button(parent,"SEND HOME" if working else "PUT ON DUTY",portfolio_set_duty.bind(name),not working and not reason.is_empty())
+	if not working and not reason.is_empty():_property_label(parent,"Cannot start work: "+reason,15)
+	var other:String="house" if prop=="apartment" else "apartment"
+	if _property_controlled(other):
+		_property_button(parent,"TRANSFER TO "+portfolio_name(other),portfolio_transfer.bind(name,other))
+	if portfolio_fire_confirm==name:
+		_property_label(parent,"Confirm firing "+name+"? Sales history stays recorded.",16)
+		_property_button(parent,"CONFIRM FIRE",portfolio_fire.bind(name))
+		_property_button(parent,"CANCEL",portfolio_cancel_fire)
+	else:
+		_property_button(parent,"FIRE "+name.to_upper(),portfolio_request_fire.bind(name))
+	_property_button(parent,"BACK TO EMPLOYEES",portfolio_employee_back)
+
+func portfolio_employee_back() -> void:
+	portfolio_employee=""
+	portfolio_fire_confirm=""
+	host._refresh_phone()
+
+func portfolio_request_fire(name:String) -> void:
+	portfolio_fire_confirm=name
+	host._refresh_phone()
+
+func portfolio_cancel_fire() -> void:
+	portfolio_fire_confirm=""
+	host._refresh_phone()
+
+func portfolio_page_dealer_stats() -> void:
+	if portfolio_employee.is_empty() or crew.role(portfolio_employee)!="dealer":return
+	portfolio_page="dealer_stats"
+	host._refresh_phone()
+
+func portfolio_dealer_stats_ui(parent:VBoxContainer) -> void:
+	var name:String=portfolio_employee
+	var stats:Dictionary={}
+	if name.begins_with("Hired Dealer "):stats=host.location_state.get("hired_dealer_stats",{}).get(name,{})
+	else:stats=host.friend_dealer_stats.get(name,{})
+	_property_label(parent,name+" · DEALER STATS",22)
+	_property_label(parent,"TODAY\nDeals: %d · Grams: %dg\nGross sales: $%d · Commission: $%d" % [int(stats.get("today_sales",0)),int(stats.get("today_grams",0)),int(stats.get("today_gross",0)),int(stats.get("today_commission",0))],18)
+	_property_label(parent,"LIFETIME\nDeals: %d · Grams: %dg\nGross sales: $%d · Commission earned: $%d" % [int(stats.get("sales",0)),int(stats.get("grams",0)),int(stats.get("gross",0)),int(stats.get("commission_earned",0))],18)
+	_property_button(parent,"BACK TO "+name.to_upper(),portfolio_dealer_stats_back)
+
+func portfolio_dealer_stats_back() -> void:
+	portfolio_page="overview"
+	host._refresh_phone()
+
+func _legacy_real_estate_ui(parent:VBoxContainer) -> void:
 	_property_label(parent,"PROPERTY PORTFOLIO",24)
 	utility_bills_ui(parent)
 
