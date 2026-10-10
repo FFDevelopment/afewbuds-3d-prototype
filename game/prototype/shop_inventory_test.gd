@@ -85,8 +85,9 @@ func run():
  game.camera.position=inv.furniture.model.CURBS.apartment+Vector3.UP*2.16
  check(inv.transfer("apartment:delivery","backpack",key,1).ok,"Delivered equipment collects into backpack")
  stand("apartment:storage")
- check(inv.transfer("backpack","apartment:storage",key,1).ok,"Packed equipment can be stored without losing ownership")
- check(inv.transfer("apartment:storage","backpack",key,1).ok,"Stored equipment can be taken back")
+ check(not inv.transfer("backpack","apartment:storage",key,1).ok and int(inv.contents("backpack").get(key,0))==1,"Packed furniture is rejected by general storage and stays in backpack")
+ inv.set_amount("backpack",key,0);inv.set_amount("apartment:storage",key,1)
+ check(inv.transfer("apartment:storage","backpack",key,1).ok,"Legacy stored furniture can still be taken back")
  check(inv.furniture.model.place(equipment,"apartment",Vector3(2,0,-5.5),0) and game.cash==paid_cash,"Placement consumes owned item without charging again")
  game.camera.position=Vector3(3,1.64,4.35);game.camera.look_at(ops.APT_PC)
  ops.computer("apartment")

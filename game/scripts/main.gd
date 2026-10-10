@@ -80,7 +80,7 @@ const WATER_BILL_MAX_BALANCE: int = 2000
 const BUILD_VERSION: String = "0.7.9-beta.19"
 const SAVE_SCHEMA_VERSION: int = 2
 const FRAME_GAP_PAUSE_MSEC: int = 2000
-const SEED_ORDER: Array[String] = ["Street Green", "Purple Dream", "Citrus Rush", "Blue Frost", "Velvet Haze", "Frozen Purple", "Golden Ember", "Cherry Glow", "Neon Berry", "Moon Cake", "Midnight Crown", "Black Cherry", "Aurora Reserve", "Solar Frost", "Citrus Velvet", "Cherry Frost", "Ember Berry", "Crown Cake"]
+var SEED_ORDER: Array[String] = ["Street Green", "Purple Dream", "Citrus Rush", "Blue Frost", "Velvet Haze", "Frozen Purple", "Golden Ember", "Cherry Glow", "Neon Berry", "Moon Cake", "Midnight Crown", "Black Cherry", "Aurora Reserve", "Solar Frost", "Citrus Velvet", "Cherry Frost", "Ember Berry", "Crown Cake"]
 const SUPPLY_SEED_CAPACITY_BY_LEVEL: Array[int] = [0, 12, 24, 48]
 const SUPPLY_FERTILIZER_CAPACITY_BY_LEVEL: Array[int] = [0, 20, 40, 80]
 
@@ -263,6 +263,7 @@ var grow_save_accumulator: float = 0.0
 var auto_sale_accumulator: float = 0.0
 var phone_current_app: String = "home"
 var phone_business_focus: String = "" # UI-only selection; never changes the player's physical active property.
+var phone_remote_stock_change: bool = false # Do not cloud-save while a temporary property inventory adapter is active.
 var customer_relationships: Dictionary = {}
 var main_room_ring: Array[String] = ["main_grow_door", "main_workbench", "main_door", "main_storage"]
 var grow_room_ring: Array[String] = ["grow_room_tent2", "grow_room_tent", "grow_room_tent3", "grow_room_utility", "grow_room_exit", "grow_room_upgrades"]
@@ -380,15 +381,15 @@ var advancement_catalog: Array[Dictionary] = [
 
 	{"id": "buy_three_seeds", "category": "Genetics", "tier": 1, "title": "Seed Collector", "description": "Buy 3 seeds from the Seed Shop.", "metric": "seeds_bought", "target": 3, "reward_cash": 75, "reward_xp": 30, "reward_rep": 1},
 	{"id": "four_varieties", "category": "Genetics", "tier": 2, "title": "Variety Pack", "description": "Own seeds from 4 different strains at once.", "state": "seed_varieties", "target": 4, "reward_cash": 200, "reward_xp": 65, "reward_rep": 4, "requires": [{"metric": "seeds_bought", "target": 10, "label": "Seeds purchased"}]},
-	{"id": "first_hybrid", "category": "Genetics", "tier": 2, "title": "First Cross", "description": "Create your first hybrid seed batch.", "metric": "hybrids_created", "target": 1, "reward_cash": 250, "reward_xp": 80, "reward_rep": 6, "reward_seed": "Frozen Purple", "reward_seed_count": 1, "requires": [{"metric": "harvests", "target": 15, "label": "Harvests"}, {"metric": "seeds_bought", "target": 12, "label": "Seeds purchased"}]},
+	{"id": "first_hybrid", "category": "Genetics", "tier": 2, "title": "First Cross", "description": "Find your first hybrid seed by harvesting mixed strains grown together.", "metric": "hybrids_created", "target": 1, "reward_cash": 250, "reward_xp": 80, "reward_rep": 6, "reward_seed": "Frozen Purple", "reward_seed_count": 1, "requires": [{"metric": "harvests", "target": 15, "label": "Harvests"}, {"metric": "seeds_bought", "target": 12, "label": "Seeds purchased"}]},
 	{"id": "seed_shop_regular", "category": "Genetics", "tier": 2, "title": "Seed Shop Regular", "description": "Buy 15 seeds total.", "metric": "seeds_bought", "target": 15, "reward_cash": 225, "reward_xp": 75, "reward_rep": 3},
 	{"id": "six_varieties", "category": "Genetics", "tier": 3, "title": "Genetics Shelf", "description": "Own seeds from 6 different strains at once.", "state": "seed_varieties", "target": 6, "reward_cash": 75, "reward_xp": 150, "reward_rep": 8},
 	{"id": "twentyfive_seeds", "category": "Genetics", "tier": 3, "title": "Seed Vault", "description": "Buy 25 seeds total.", "metric": "seeds_bought", "target": 25, "reward_cash": 100, "reward_xp": 175, "reward_rep": 8, "reward_seed": "Aurora Reserve", "reward_seed_count": 1},
-	{"id": "three_hybrids", "category": "Genetics", "tier": 4, "title": "Breeding Program", "description": "Create 3 hybrid seed batches.", "metric": "hybrids_created", "target": 3, "reward_cash": 100, "reward_xp": 250, "reward_rep": 15},
-	{"id": "recipe_citrus_velvet", "category": "Genetics", "tier": 2, "title": "Flavor Notes", "description": "Complete a hybrid batch and build a five-variety seed shelf.", "metric": "hybrids_created", "target": 1, "reward_cash": 0, "reward_xp": 90, "reward_rep": 5, "reward_recipe": "Citrus Velvet", "requires": [{"state": "seed_varieties", "target": 5, "label": "Seed varieties"}]},
-	{"id": "recipe_cherry_frost", "category": "Genetics", "tier": 3, "title": "Cold & Sweet", "description": "Create 3 hybrid batches and reach Grower Level 7.", "metric": "hybrids_created", "target": 3, "reward_cash": 0, "reward_xp": 150, "reward_rep": 8, "reward_recipe": "Cherry Frost", "requires": [{"state": "grower_level", "target": 7, "label": "Grower Level"}]},
-	{"id": "recipe_ember_berry", "category": "Genetics", "tier": 3, "title": "Color Theory", "description": "Create 5 hybrid batches and reach Grower Level 9.", "metric": "hybrids_created", "target": 5, "reward_cash": 0, "reward_xp": 200, "reward_rep": 10, "reward_recipe": "Ember Berry", "requires": [{"state": "grower_level", "target": 9, "label": "Grower Level"}]},
-	{"id": "recipe_crown_cake", "category": "Genetics", "tier": 4, "title": "Crown Lab", "description": "Create 8 hybrid batches, reach Grower Level 11, and complete 50 harvests.", "metric": "hybrids_created", "target": 8, "reward_cash": 0, "reward_xp": 300, "reward_rep": 15, "reward_recipe": "Crown Cake", "requires": [{"state": "grower_level", "target": 11, "label": "Grower Level"}, {"metric": "harvests", "target": 50, "label": "Harvests"}]},
+	{"id": "three_hybrids", "category": "Genetics", "tier": 4, "title": "Breeding Program", "description": "Find hybrid seeds from 3 successful tent crosses.", "metric": "hybrids_created", "target": 3, "reward_cash": 100, "reward_xp": 250, "reward_rep": 15},
+	{"id": "recipe_citrus_velvet", "category": "Genetics", "tier": 2, "title": "Flavor Notes", "description": "Find a hybrid seed and own five seed varieties to reveal a promising parent pairing.", "metric": "hybrids_created", "target": 1, "reward_cash": 0, "reward_xp": 90, "reward_rep": 5, "reward_recipe": "Citrus Velvet", "requires": [{"state": "seed_varieties", "target": 5, "label": "Seed varieties"}]},
+	{"id": "recipe_cherry_frost", "category": "Genetics", "tier": 3, "title": "Cold & Sweet", "description": "Find 3 hybrid seeds and reach Grower Level 7 to reveal a cold-fruit parent pairing.", "metric": "hybrids_created", "target": 3, "reward_cash": 0, "reward_xp": 150, "reward_rep": 8, "reward_recipe": "Cherry Frost", "requires": [{"state": "grower_level", "target": 7, "label": "Grower Level"}]},
+	{"id": "recipe_ember_berry", "category": "Genetics", "tier": 3, "title": "Color Theory", "description": "Find 5 hybrid seeds and reach Grower Level 9 to reveal a gold-and-berry pairing.", "metric": "hybrids_created", "target": 5, "reward_cash": 0, "reward_xp": 200, "reward_rep": 10, "reward_recipe": "Ember Berry", "requires": [{"state": "grower_level", "target": 9, "label": "Grower Level"}]},
+	{"id": "recipe_crown_cake", "category": "Genetics", "tier": 4, "title": "Crown Lab", "description": "Find 8 hybrid seeds, reach Grower Level 11, and complete 50 harvests to reveal a prestige pairing.", "metric": "hybrids_created", "target": 8, "reward_cash": 0, "reward_xp": 300, "reward_rep": 15, "reward_recipe": "Crown Cake", "requires": [{"state": "grower_level", "target": 11, "label": "Grower Level"}, {"metric": "harvests", "target": 50, "label": "Harvests"}]},
 	{"id": "supply_runner", "category": "Business", "tier": 1, "title": "Supply Run", "description": "Buy 10 supplies or upgrades.", "metric": "supplies_bought", "target": 10, "reward_cash": 175, "reward_xp": 55, "reward_rep": 2, "reward_fertilizer": 3, "requires": [{"metric": "sales", "target": 10, "label": "Personal sales"}]},
 
 	{"id": "heat_radar", "category": "Heat", "tier": 2, "title": "On the Radar", "description": "Reach 25 Heat for the first time.", "state": "heat_peak", "target": 25, "reward_cash": 0, "reward_xp": 80, "reward_rep": 4},
@@ -498,6 +499,7 @@ var seed_inventory: Dictionary = {
 	"Crown Cake": 0
 }
 
+var genetics_system:RefCounted
 var seed_catalog: Dictionary = {
 	"Street Green": {"unlock": 1, "cost": 12, "price": 12, "grade": "B", "profile": "budget", "harvest": 10, "description": "Reliable starter genetics with forgiving yields."},
 	"Purple Dream": {"unlock": 1, "cost": 18, "price": 19, "grade": "A", "profile": "purple", "harvest": 8, "description": "Balanced quality and demand for an early signature product."},
@@ -733,6 +735,7 @@ func _ready() -> void:
 	rng.randomize()
 	_apply_cloud_boot_save()
 	_load_game()
+	genetics_system=load("res://scripts/tent_genetics.gd").new();genetics_system.setup(self)
 	_ensure_tent_capacity()
 	_build_world()
 	_apply_visual_upgrades()
@@ -1627,13 +1630,11 @@ func _start_lay_low() -> void:
 	_refresh_phone()
 
 func _stop_lay_low_and_reopen() -> void:
-	lay_low_active = false
-	reeves_quiet_pause_seconds = 0.0
-	if not business_open:
-		_reopen_business()
-	status_label.text = "AFewBuds is active again. Keep an eye on Heat as business picks back up."
-	_save_game()
-	_refresh_phone()
+	if neighborhood!=null and neighborhood.location_ops.crew.shop!=null:
+		if not neighborhood.location_ops.crew.shop.reopen("apartment"):
+			status_label.text="Heat or raid restrictions still prevent reopening."
+		return
+	_reopen_business()
 
 func _use_heat_contact() -> void:
 	if not reeves_met or reeves_arrangement_active or not (corrupt_contact_unlocked or _reeves_is_friendly()) or heat <= 0.0 or (heat < HEAT_CONTACT_MINIMUM and not _reeves_is_friendly()):
@@ -3338,8 +3339,8 @@ func _build_phone_panel() -> void:
 	hud.add_child(phone_panel)
 
 	var shell: StyleBoxFlat = StyleBoxFlat.new()
-	shell.bg_color = Color("0b0e12")
-	shell.border_color = Color("2d333b")
+	shell.bg_color = Color("101d16")
+	shell.border_color = Color("526257")
 	shell.set_border_width_all(6)
 	shell.set_corner_radius_all(34)
 	shell.content_margin_left = 18
@@ -3408,7 +3409,7 @@ func _build_phone_panel() -> void:
 	dock.add_theme_constant_override("separation", 12)
 	root.add_child(dock)
 	_add_phone_dock_button(dock, "HOME", "home")
-	_add_phone_dock_button(dock, "BUSINESSES", "budshop")
+	_add_phone_dock_button(dock, "PROPERTIES", "realestate")
 	_add_phone_dock_button(dock, "TASKS", "task")
 
 func _add_phone_dock_button(dock: HBoxContainer, label_text: String, app_name: String) -> void:
@@ -5004,6 +5005,7 @@ func _plant_seed_local(slot_index: int, strain_name: String, use_backpack: bool 
 		return
 	if not _consume_seed(strain_name, use_backpack):return
 	plant_slots[slot_index] = {"strain": strain_name, "stage": 0, "growth": 0.0, "water": 72.0, "health": 100.0, "fertilizer": 0.0, "dead": false}
+	if genetics_system!=null:genetics_system.planted(slot_index)
 	_increment_advancement_stat("plants_planted")
 	_tutorial_record("plant", slot_index)
 	_update_plant_visual(slot_index)
@@ -5140,7 +5142,7 @@ func _offline_crops_enabled() -> bool:
 	return not _guide_protects_plants() and not tutorial_active and (tutorial_panel == null or not tutorial_panel.visible)
 
 func _offline_worker_care_enabled() -> bool:
-	return packing_employee_hired and packing_employee_active and game_day >= raid_lockdown_until_day and _offline_crops_enabled()
+	return packing_employee_hired and packing_employee_active and game_day >= raid_lockdown_until_day and _offline_crops_enabled() and (neighborhood==null or neighborhood.location_ops.crew.shop==null or neighborhood.location_ops.crew.shop.production_allowed())
 
 func _simulate_offline_plants(elapsed_seconds: float, worker_care: bool = false) -> void:
 	if inventory_system!=null and inventory_system.furniture!=null and inventory_system.controlled(inventory_system.worker_property()+":packing"):
@@ -5551,7 +5553,7 @@ func _update_production_worker_visual(delta: float) -> void:
 		return
 	if production_worker_node == null:
 		return
-	var on_duty: bool = packing_employee_hired and packing_employee_active
+	var on_duty: bool = packing_employee_hired and packing_employee_active and (neighborhood==null or neighborhood.location_ops.crew.shop.production_allowed())
 	production_worker_node.visible = packing_employee_hired and not production_worker_arrested
 	if not on_duty:
 		if production_worker_node.visible and not bool(production_worker_node.get_meta("seated",false)):
@@ -5630,6 +5632,8 @@ func _production_worker_find_seed() -> String:
 
 
 func _assign_production_worker_task() -> void:
+	if neighborhood!=null and neighborhood.location_ops.crew.shop!=null and not neighborhood.location_ops.crew.shop.production_allowed():
+		production_worker_pending_action="";production_worker_pending_slot=-1;return
 	if inventory_system!=null:
 		inventory_system.at_property(inventory_system.worker_property(),_assign_production_worker_task_local)
 	else:_assign_production_worker_task_local()
@@ -5689,6 +5693,8 @@ func _assign_production_worker_task_local() -> void:
 
 
 func _execute_production_worker_action() -> void:
+	if neighborhood!=null and neighborhood.location_ops.crew.shop!=null and not neighborhood.location_ops.crew.shop.production_allowed():
+		production_worker_pending_action="";production_worker_pending_slot=-1;return
 	if inventory_system!=null:
 		inventory_system.at_property(inventory_system.worker_property(),_execute_production_worker_action_local)
 	else:_execute_production_worker_action_local()
@@ -5859,13 +5865,31 @@ func _ensure_friend_dealer_stats(customer_name: String) -> Dictionary:
 
 func _active_dealer_roster() -> Array[String]:
 	var roster: Array[String] = []
+	var duty:Dictionary=location_state.get("staff_duty",{})
 	for friend_name: String in _friend_staff_names("dealer"):
-		roster.append(friend_name)
+		if bool(duty.get(friend_name,true)) and (neighborhood==null or neighborhood.location_ops.crew.shop.is_open(inventory_system.staff_property(friend_name))):roster.append(friend_name)
 	for index: int in range(dealer_count):
-		roster.append("Hired Dealer %d" % (index + 1))
+		var dealer_name:String="Hired Dealer %d" % (index + 1)
+		if bool(duty.get(dealer_name,true)) and (neighborhood==null or neighborhood.location_ops.crew.shop.is_open(inventory_system.staff_property(dealer_name))):roster.append(dealer_name)
 	return roster
 
 func _record_friend_dealer_sale(customer_name: String, grams: int, gross: int, commission: int) -> void:
+	if customer_name.begins_with("Hired Dealer "):
+		var generic:Dictionary=location_state.get("hired_dealer_stats",{})
+		var record:Dictionary=generic.get(customer_name,{}).duplicate(true)
+		for key in ["sales","grams","gross","commission_earned","today_sales","today_grams","today_gross","today_commission"]:
+			if not record.has(key):record[key]=0
+		record["sales"]+=1
+		record["grams"]+=grams
+		record["gross"]+=gross
+		record["commission_earned"]+=commission
+		record["today_sales"]+=1
+		record["today_grams"]+=grams
+		record["today_gross"]+=gross
+		record["today_commission"]+=commission
+		generic[customer_name]=record
+		location_state["hired_dealer_stats"]=generic
+		return
 	if customer_name.is_empty() or _friend_staff_role(customer_name) != "dealer":
 		return
 	var stats: Dictionary = _ensure_friend_dealer_stats(customer_name)
@@ -5895,6 +5919,12 @@ func _friend_dealer_daily_report(_pay_wages: bool) -> Array[Dictionary]:
 	return rows
 
 func _reset_friend_dealer_daily_stats() -> void:
+	var generic:Dictionary=location_state.get("hired_dealer_stats",{})
+	for dealer_name in generic:
+		var record:Dictionary=generic[dealer_name]
+		for key in ["today_sales","today_grams","today_gross","today_commission"]:
+			record[key]=0
+	location_state["hired_dealer_stats"]=generic
 	for name_variant: Variant in friend_dealer_stats.keys():
 		var friend_name: String = str(name_variant)
 		var stats: Dictionary = _ensure_friend_dealer_stats(friend_name)
@@ -6176,6 +6206,11 @@ func _dealer_eligible_customers() -> Array[Dictionary]:
 	return eligible
 
 func _dealer_sell_one(show_feedback: bool, assigned_dealer_name: String = "", door_customer: Dictionary = {}, door_order: Dictionary = {}) -> bool:
+	if assigned_dealer_name.is_empty():
+		var candidates:Array[String]=_active_dealer_roster()
+		if candidates.is_empty():return false
+		assigned_dealer_name=candidates[dealer_sales_today % candidates.size()]
+	if neighborhood!=null and not neighborhood.location_ops.crew.shop.dealer_allowed(assigned_dealer_name):return false
 	if inventory_system!=null:
 		return bool(inventory_system.at_property(inventory_system.staff_property(assigned_dealer_name),_dealer_sell_one_local.bind(show_feedback,assigned_dealer_name,door_customer,door_order)))
 	return _dealer_sell_one_local(show_feedback,assigned_dealer_name,door_customer,door_order)
@@ -6187,7 +6222,7 @@ func _dealer_sell_one_local(show_feedback: bool, assigned_dealer_name: String = 
 		return false
 	if dealer_balance_due > 0:
 		return false
-	if not business_open or not dealers_active or _total_dealer_count() <= 0:
+	if not dealers_active or _total_dealer_count() <= 0:
 		return false
 	if door_customer.is_empty() and (dealer_locker_level <= 0 or _dealer_locker_total() <= 0):
 		return false
@@ -6252,6 +6287,8 @@ func _dealer_sell_one_local(show_feedback: bool, assigned_dealer_name: String = 
 	var gross_revenue: int = qty * _effective_price(product_name)
 	var commission: int = int(ceil(float(gross_revenue) * DEALER_COMMISSION_RATE))
 	var dealer_roster: Array[String] = _active_dealer_roster()
+	if dealer_roster.is_empty():return false
+	if not assigned_dealer_name.is_empty() and not dealer_roster.has(assigned_dealer_name):return false
 	var sale_dealer_name: String = assigned_dealer_name
 	if sale_dealer_name.is_empty() and not dealer_roster.is_empty():
 		sale_dealer_name = dealer_roster[dealer_sales_today % dealer_roster.size()]
@@ -6262,6 +6299,7 @@ func _dealer_sell_one_local(show_feedback: bool, assigned_dealer_name: String = 
 	dealer_sales_today += 1
 	_record_friend_dealer_sale(sale_dealer_name, qty, gross_revenue, commission)
 	last_dealer_customer_name = str(chosen_customer.get("name", ""))
+	neighborhood.location_ops.record_dealer_sale(sale_dealer_name,last_dealer_customer_name,product_name,qty,gross_revenue,commission)
 	dealer_customers_served_today[last_dealer_customer_name] = sale_dealer_name
 	_increment_advancement_stat("dealer_sales")
 	if inventory_system!=null and inventory_system.guide!=null:inventory_system.guide.record("sale")
@@ -6334,6 +6372,7 @@ func _harvest_plant_local(slot_index: int) -> void:
 		if not inventory_system.equipment_harvest(slot_index,strain_name,harvest_amount):
 			status_label.text="Make room in your backpack or place an empty packing bench before harvesting.";return
 	else:_add_inventory(untrimmed_inventory, strain_name, harvest_amount)
+	var discovered:Array[String]=genetics_system.harvest(slot_index) if genetics_system!=null else []
 	_increment_advancement_stat("harvests")
 	_tutorial_record("harvest", slot_index, strain_name)
 	plant_slots[slot_index] = {"strain": "", "stage": -1, "growth": 0.0, "water": 0.0, "health": 0.0, "fertilizer": 0.0, "dead": false}
@@ -6341,6 +6380,7 @@ func _harvest_plant_local(slot_index: int) -> void:
 	_add_progress(15, 2)
 	_save_game()
 	status_label.text = "Harvested %dg of %s. Take it to the bagging station to trim it." % [harvest_amount, strain_name]
+	if not discovered.is_empty():status_label.text+=" Hybrid seed found: "+", ".join(discovered)+". See Genetics for lineage and any seeds awaiting backpack space."
 	_refresh_grow_panel()
 
 func _fictional_harvest_amount(strain_name: String) -> int:
@@ -6792,12 +6832,16 @@ func _phone_go_home() -> void:
 	_open_phone_app("home")
 
 func _phone_parent_app(app_name: String) -> String:
-	if app_name in ["bills","stats","heat","business","employees","upgrades","products","genetics"]:return "budshop"
+	if app_name in ["employees","products","upgrades"]:return "realestate"
+	if app_name in ["bills","business"]:return "realestate"
+	if app_name in ["stats","heat","genetics"]:return "home"
 	if app_name in ["seeds","supplies"]:return "shop"
 	if app_name=="account":return "settings"
 	return "home"
 
 func _phone_go_back() -> void:
+	if neighborhood!=null and neighborhood.location_ops!=null:
+		if neighborhood.location_ops.portfolio_phone_back(phone_current_app):return
 	if neighborhood!=null and neighborhood.location_ops!=null and neighborhood.location_ops.crew!=null and phone_current_app=="texts" and not neighborhood.location_ops.crew.thread.is_empty():
 		neighborhood.location_ops.crew.back()
 		return
@@ -6807,6 +6851,8 @@ func _open_phone_app(app_name: String) -> void:
 	if neighborhood!=null and neighborhood.location_ops!=null and neighborhood.location_ops.crew!=null and app_name=="texts":neighborhood.location_ops.crew.thread=""
 	if neighborhood!=null and neighborhood.location_ops!=null and neighborhood.location_ops.redirect(app_name):return
 	if app_name in ["lights","business"]:app_name="budshop"
+	if neighborhood!=null and neighborhood.location_ops!=null and app_name=="realestate" and phone_current_app!="realestate" and phone_current_app not in ["employees","products"]:
+		neighborhood.location_ops.portfolio_reset()
 	_cancel_phone_gesture()
 	phone_scroll.scroll_vertical = 0
 	phone_current_app = app_name
@@ -6854,7 +6900,7 @@ func _refresh_phone() -> void:
 			phone_title.text = "Leaderboard"
 			_build_leaderboard_app()
 		"realestate":
-			phone_title.text = "Real Estate"
+			phone_title.text = "Properties"
 			_build_real_estate_app()
 		"settings":
 			phone_title.text = "Settings"
@@ -6869,13 +6915,13 @@ func _refresh_phone() -> void:
 			phone_title.text = "Bills"
 			_build_bills_app()
 		"employees":
-			phone_title.text = ("%s · Employees" % (neighborhood.location_ops.active_property().capitalize() if neighborhood!=null and neighborhood.location_ops!=null else "Operation"))
+			phone_title.text = ("%s · Employees" % (neighborhood.location_ops.portfolio_property.capitalize() if neighborhood!=null and neighborhood.location_ops!=null and not neighborhood.location_ops.portfolio_property.is_empty() else "Operation"))
 			_build_employees_app()
 		"upgrades":
 			phone_title.text = ("%s · Equipment" % (neighborhood.location_ops.active_property().capitalize() if neighborhood!=null and neighborhood.location_ops!=null else "Operation"))
 			_build_upgrades_app()
 		"products":
-			phone_title.text = ("%s · Inventory" % (neighborhood.location_ops.active_property().capitalize() if neighborhood!=null and neighborhood.location_ops!=null else "Operation"))
+			phone_title.text = ("%s · Stock" % (neighborhood.location_ops.portfolio_property.capitalize() if neighborhood!=null and neighborhood.location_ops!=null and not neighborhood.location_ops.portfolio_property.is_empty() else "Operation"))
 			_build_products_app()
 		"seeds":
 			phone_title.text = "Seeds"
@@ -6955,6 +7001,12 @@ func _phone_business_selected() -> String:
 		return phone_business_focus
 	return neighborhood.location_ops.active_property()
 
+func _phone_open_property_from_business(property:String) -> void:
+	if neighborhood==null or neighborhood.location_ops==null:return
+	_open_phone_app("realestate")
+	neighborhood.location_ops.portfolio_select(property)
+	_refresh_phone()
+
 func _phone_business_select(property:String) -> void:
 	if neighborhood==null or neighborhood.location_ops==null:return
 	if property not in ["apartment","house"] or not neighborhood.location_ops._property_controlled(property):return
@@ -6983,15 +7035,12 @@ func _build_budshop_app() -> void:
 	status.text="Assigned staff: %d · Property balances: $%d\nDealer team: %s · Production: %s" % [active_staff,due,"ON DUTY" if dealers_active else "HOME","ON DUTY" if packing_employee_active else "HOME"]
 	box.add_child(status)
 	var details:=Label.new()
-	details.text="Tap an operation below to view it remotely. Its physical property and stock stay where they are. Use Contacts to text workers for transfers."
+	details.text="Manage each property, its assigned workers, stock and bills through Properties. Hire people through Contacts and texts."
 	details.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	details.modulate=Color("b3caba")
 	box.add_child(details)
 	var grid:GridContainer=_phone_category_grid()
-	_add_phone_app_tile(grid,"","Employees","Staff assignments, duty and dealer commission","employees")
-	_add_phone_app_tile(grid,"","Inventory","Products, listings and stock","products")
-	_add_phone_app_tile(grid,"","Equipment","Owned equipment, upgrades and buying","upgrades")
-	_add_phone_app_tile(grid,"","Bills","Rent, utilities and dealer balance","bills")
+	_add_phone_app_tile(grid,"","Properties","Workers, stock, equipment and all bills","realestate")
 	_add_phone_app_tile(grid,"","Heat","Business pressure · %d/100" % int(round(heat)),"heat")
 	_add_phone_app_tile(grid,"","Stats","Revenue, milestones and career progress","stats")
 	var other:=Label.new()
@@ -7023,7 +7072,7 @@ func _build_budshop_app() -> void:
 				view_button.text="VIEW "+property_id.to_upper()+" OPERATION"+(" · SELECTED" if property_id==current_property else "")
 				view_button.disabled=property_id==current_property
 				view_button.custom_minimum_size.y=50
-				view_button.pressed.connect(_phone_business_select.bind(property_id))
+				view_button.pressed.connect(_phone_open_property_from_business.bind(property_id))
 				stack.add_child(view_button)
 			else:
 				var locked_note:=Label.new()
@@ -7031,7 +7080,7 @@ func _build_budshop_app() -> void:
 				locked_note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 				stack.add_child(locked_note)
 	var link:=Button.new()
-	link.text="OPEN REAL ESTATE · MANAGE PROPERTY ACCESS"
+	link.text="OPEN PROPERTIES · MANAGE PROPERTY ACCESS"
 	link.custom_minimum_size.y=52
 	link.pressed.connect(_open_phone_app.bind("realestate"))
 	phone_list.add_child(link)
@@ -7060,19 +7109,24 @@ func _build_task_app() -> void:
 	phone_scroll.queue_sort()
 
 func _build_phone_home() -> void:
-	var summary: Label = Label.new()
-	summary.text = "DAY %d  |  %s\n$%d cash   |   Level %d   |   Storefront %s" % [game_day, _format_game_clock(), cash, grower_level, "LAYING LOW" if lay_low_active else ("OPEN" if business_open else "AWAY")]
-	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	summary.add_theme_font_size_override("font_size", 21)
+	var summary:=PanelContainer.new()
+	summary.add_theme_stylebox_override("panel",_style_box(Color("1d3427"),Color("3d624b"),20,1))
 	phone_list.add_child(summary)
-	var grid: GridContainer = _phone_category_grid()
-	_add_phone_app_tile(grid, "", "Illegal Businesses", "Storefront status, bills & stats", "budshop")
-	_add_phone_app_tile(grid, "", "Real Estate", "Properties, leases & payments", "realestate")
-	_add_phone_app_tile(grid, "", "Store", "Seed orders & market info", "shop")
-	_add_phone_app_tile(grid, "", "Contacts", "Clients, crew & messages", "clients")
-	_add_phone_app_tile(grid, "", "Messages", ("%d unread" % phone_text_unread) if phone_text_unread > 0 else "Crew & story messages", "texts")
-	_add_phone_app_tile(grid, "", "Tasks & Rewards", "Chapters, goals & rewards", "task")
-	_add_phone_app_tile(grid, "", "Leaderboard", "Weekly & lifetime rankings", "leaderboard")
+	var details:=VBoxContainer.new();details.add_theme_constant_override("separation",8);summary.add_child(details)
+	var greeting:=Label.new();greeting.text="YOUR WORLD. WITHIN REACH.";greeting.add_theme_font_size_override("font_size",13);greeting.modulate=Color("b4d2bd");details.add_child(greeting)
+	var balance:=Label.new();balance.text="$%d  ·  Day %d" % [cash,game_day];balance.add_theme_font_size_override("font_size",26);details.add_child(balance)
+	var status:=Label.new();status.text="Grower %d · Heat %d/100" % [grower_level,int(round(heat))];status.modulate=Color("b4d2bd");details.add_child(status)
+	var grid:GridContainer=_phone_category_grid()
+	_add_phone_app_tile(grid,"","Properties","Your spaces & operations","realestate")
+	_add_phone_app_tile(grid,"","Contacts","Clients & recruiting","clients")
+	_add_phone_app_tile(grid,"","Shop","Seeds & supplies","shop")
+	_add_phone_app_tile(grid,"","Genetics","Discoveries & parent hints","genetics")
+	_add_phone_app_tile(grid,"","Messages",("%d unread" % phone_text_unread) if phone_text_unread>0 else "Your conversations","texts")
+	_add_phone_app_tile(grid,"","Tasks & Rewards","Story & milestones","task")
+	_add_phone_app_tile(grid,"","Heat","Pressure & laying low","heat")
+	_add_phone_app_tile(grid,"","Stats","Your career","stats")
+	_add_phone_app_tile(grid,"","Leaderboard","Weekly & lifetime","leaderboard")
+	_add_phone_app_tile(grid,"","Settings","Help, account & saves","settings")
 
 func _build_real_estate_app() -> void:
 	if neighborhood!=null and neighborhood.location_ops!=null:
@@ -7204,7 +7258,7 @@ func _phone_category_grid() -> GridContainer:
 func _build_shop_app() -> void:
 	if neighborhood!=null and neighborhood.location_ops!=null:neighborhood.location_ops.order_summary(phone_list)
 	var intro: Label = Label.new()
-	intro.text = "Order seeds and fertilizer here for Central Market pickup. Equipment is sold at its checkout. Detailed operation management is at your property computer."
+	intro.text = "Order seeds and fertilizer here for Central Market pickup. Equipment is sold at its checkout. Manage operations in Properties. Stock, employees, bills and furniture belong to their selected property."
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	phone_list.add_child(intro)
 	var grid: GridContainer = _phone_category_grid()
@@ -7214,7 +7268,7 @@ func _build_shop_app() -> void:
 func _add_phone_app_tile(parent: GridContainer, icon_text: String, title_text: String, detail_text: String, app_name: String) -> void:
 	var tile: Button = Button.new()
 	tile.set_meta("phone_app", app_name)
-	tile.text = "%s   %s\n%s" % [icon_text, title_text.to_upper(), detail_text]
+	tile.text = "%s   %s\n%s" % [icon_text, title_text, detail_text]
 	tile.custom_minimum_size = Vector2(0, 116)
 	tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -7222,14 +7276,20 @@ func _add_phone_app_tile(parent: GridContainer, icon_text: String, title_text: S
 	tile.add_theme_font_size_override("font_size", 17)
 	tile.add_theme_color_override("font_color", Color("edf2f4"))
 	tile.add_theme_color_override("font_hover_color", Color("ffffff"))
-	tile.add_theme_stylebox_override("normal", _style_box(Color("151d24"), Color("354550"), 18, 2))
-	tile.add_theme_stylebox_override("hover", _style_box(Color("1b2831"), Color("5c7685"), 18, 2))
-	tile.add_theme_stylebox_override("pressed", _style_box(Color("22333d"), Color("88a3b1"), 18, 2))
-	tile.add_theme_stylebox_override("focus", _style_box(Color("18232b"), Color("88a3b1"), 18, 2))
+	tile.add_theme_stylebox_override("normal", _style_box(Color("1c3327"), Color("42634e"), 18, 2))
+	tile.add_theme_stylebox_override("hover", _style_box(Color("284734"), Color("7aac89"), 18, 2))
+	tile.add_theme_stylebox_override("pressed", _style_box(Color("355640"), Color("b1e6bd"), 18, 2))
+	tile.add_theme_stylebox_override("focus", _style_box(Color("284734"), Color("b1e6bd"), 18, 2))
 	tile.pressed.connect(_open_phone_app.bind(app_name))
 	parent.add_child(tile)
 
 func _build_products_app() -> void:
+	if neighborhood!=null and neighborhood.location_ops!=null and not neighborhood.location_ops.portfolio_property.is_empty():
+		neighborhood.location_ops.portfolio_stock_ui(phone_list)
+		return
+	_build_products_local()
+
+func _build_products_local() -> void:
 	var intro: Label = Label.new()
 	intro.text = "Manage bagged inventory, storefront listings, prices and reserved stock here."
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -7616,6 +7676,12 @@ func _build_bills_app() -> void:
 		dealer_box.add_child(pay_dealers)
 
 func _build_employees_app() -> void:
+	if neighborhood!=null and neighborhood.location_ops!=null and not neighborhood.location_ops.portfolio_property.is_empty():
+		neighborhood.location_ops.portfolio_employees_ui(phone_list)
+		return
+	_build_employees_legacy()
+
+func _build_employees_legacy() -> void:
 	if neighborhood!=null and neighborhood.location_ops!=null:
 		var property_label:Label=Label.new()
 		property_label.text="EMPLOYEES · Viewing "+_phone_business_selected().capitalize()+"\nDealer duty applies to the whole team. Individual earnings and text transfers are in Contacts."
@@ -7883,6 +7949,7 @@ func _toggle_dealers() -> void:
 	_refresh_phone()
 
 func _fire_generic_dealer() -> void:
+	# Generic dealer shift data is retained in a separate career record when fired.
 	if dealer_arrested:
 		status_label.text = "Resolve the dealer bail first."
 		return
@@ -8282,77 +8349,10 @@ func _genetics_recipe_unlocked(recipe: Dictionary) -> bool:
 	return unlock_task.is_empty() or bool(advancement_claimed.get(unlock_task, false))
 
 func _build_genetics_app() -> void:
-	var intro: Label = Label.new()
-	intro.text = "GENETICS LAB - combine two parent seeds to create hybrid seeds. Reward recipes unlock here after you claim the matching Story / Rewards task; they are never sold in Shop > Seeds."
-	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	phone_list.add_child(intro)
-	for recipe: Dictionary in _genetics_recipe_catalog():
-		var parent_a: String = str(recipe.get("parent_a", ""))
-		var parent_b: String = str(recipe.get("parent_b", ""))
-		var output_name: String = str(recipe.get("output", ""))
-		var min_level: int = int(recipe.get("min_level", 1))
-		var unlocked: bool = _genetics_recipe_unlocked(recipe)
-		var a_owned: int = int(seed_inventory.get(parent_a, 0))
-		var b_owned: int = int(seed_inventory.get(parent_b, 0))
-		var card: PanelContainer = PanelContainer.new()
-		card.add_theme_stylebox_override("panel", _style_box(Color("171d1a"), Color("496b55") if unlocked else Color("3e4541"), 14, 1))
-		phone_list.add_child(card)
-		var box: VBoxContainer = VBoxContainer.new()
-		box.add_theme_constant_override("separation", 7)
-		card.add_child(box)
-		var title: Label = Label.new()
-		title.text = str(recipe.get("title", output_name))
-		title.add_theme_font_size_override("font_size", 20)
-		box.add_child(title)
-		var detail: Label = Label.new()
-		detail.text = "%s + %s
-Owned: %s %d | %s %d
-Produces: %dx %s seed" % [parent_a, parent_b, parent_a, a_owned, parent_b, b_owned, int(recipe.get("count", 2)), output_name]
-		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		box.add_child(detail)
-		var action: Button = Button.new()
-		action.custom_minimum_size.y = 50
-		if not unlocked:
-			action.text = "LOCKED - CLAIM %s" % str(recipe.get("unlock_label", "STORY REWARD")).to_upper()
-			action.disabled = true
-		elif grower_level < min_level:
-			action.text = "REQUIRES GROWER LEVEL %d" % min_level
-			action.disabled = true
-		elif a_owned < 1 or b_owned < 1:
-			action.text = "NEED BOTH PARENT SEEDS"
-			action.disabled = true
-		else:
-			action.text = "CREATE %s" % output_name.to_upper()
-			action.pressed.connect(_create_genetics_cross.bind(str(recipe.get("id", ""))))
-		box.add_child(action)
+	if genetics_system!=null:genetics_system.render(phone_list)
 
-func _create_genetics_cross(recipe_id: String) -> void:
-	var selected: Dictionary = {}
-	for recipe: Dictionary in _genetics_recipe_catalog():
-		if str(recipe.get("id", "")) == recipe_id:
-			selected = recipe
-			break
-	if selected.is_empty() or not _genetics_recipe_unlocked(selected):
-		return
-	var min_level: int = int(selected.get("min_level", 1))
-	if grower_level < min_level:
-		return
-	var parent_a: String = str(selected.get("parent_a", ""))
-	var parent_b: String = str(selected.get("parent_b", ""))
-	var a_owned: int = int(seed_inventory.get(parent_a, 0))
-	var b_owned: int = int(seed_inventory.get(parent_b, 0))
-	if a_owned < 1 or b_owned < 1:
-		return
-	var output_name: String = str(selected.get("output", ""))
-	var output_count: int = maxi(1, int(selected.get("count", 2)))
-	seed_inventory[parent_a] = a_owned - 1
-	seed_inventory[parent_b] = b_owned - 1
-	seed_inventory[output_name] = int(seed_inventory.get(output_name, 0)) + output_count
-	_increment_advancement_stat("hybrids_created")
-	_add_progress(30, 5)
-	status_label.text = "Genetics discovery: %s. %d hybrid seeds were added to your grow shelf." % [output_name, output_count]
-	_save_game()
-	_refresh_phone()
+func _create_genetics_cross(_recipe_id: String) -> void:
+	status_label.text="Discover hybrids by growing different strains together in a multi-plant tent. Genetics is now your discovery journal."
 
 func _max_friend_loyalty() -> int:
 	var highest: int = 0
@@ -8603,7 +8603,7 @@ func _advancement_reward_text(entry: Dictionary) -> String:
 	if not reward_seed.is_empty() and reward_seed_count > 0:
 		parts.append("%dx %s seed" % [reward_seed_count, reward_seed])
 	if not reward_recipe.is_empty():
-		parts.append("GENETICS RECIPE: %s" % reward_recipe)
+		parts.append("GENETICS PARENT HINT: %s" % reward_recipe)
 	if not reward_unlock.is_empty():
 		parts.append("UNLOCK: %s" % reward_unlock)
 	return "   |   ".join(parts)
@@ -8832,7 +8832,7 @@ func _build_story_progress_section() -> void:
 			_story_checkmark(_story_chapter_four_distribution_complete(), "Distribution Network - Dealer Storage IV + 20 dealer sales"),
 			_story_checkmark(_story_chapter_four_crew_complete(), "Crew Operations - 3 staff + 50 production-worker tasks"),
 			_story_checkmark(_story_chapter_four_demand_complete(), "Demand Outgrows the Space - $15,000 revenue + 175 reputation + 12 known customers"),
-			_story_checkmark(_story_chapter_four_operation_complete(), "Proven Operation - Grower 10 + 3 hybrid batches + 250g moved into storage"),
+			_story_checkmark(_story_chapter_four_operation_complete(), "Proven Operation - Grower 10 + 3 successful crosses + 250g moved into storage"),
 			_story_checkmark(bool(property_opportunity_state.get("inspection_complete", false)), "Inspect the house - tour all 6 rooms"),
 			_story_checkmark(bool(property_opportunity_state.get("agreement_signed", false)), "Choose your next base - sign Rent, Lease to Own or Purchase"),
 			_story_checkmark(bool(property_opportunity_state.get("relocated", false)), "Move Operation - confirm relocation to the house"),
@@ -9347,6 +9347,17 @@ func _build_stats_app() -> void:
 	phone_list.add_child(reset)
 
 func _toggle_product_listing(product_name: String) -> void:
+	if neighborhood!=null and neighborhood.location_ops!=null and not neighborhood.location_ops.portfolio_property.is_empty():
+		var local_property:String=neighborhood.location_ops.portfolio_property
+		phone_remote_stock_change=true
+		inventory_system.at_property(local_property,_toggle_product_listing_local.bind(product_name))
+		phone_remote_stock_change=false
+		_save_game()
+		_refresh_phone()
+		return
+	_toggle_product_listing_local(product_name)
+
+func _toggle_product_listing_local(product_name: String) -> void:
 	if not products.has(product_name):
 		return
 	var data: Dictionary = products[product_name]
@@ -9358,6 +9369,12 @@ func _on_product_toggled(listed: bool, product_name: String) -> void:
 	_set_product_listed(product_name, listed)
 
 func _on_reserved_changed(value: float, product_name: String) -> void:
+	if neighborhood!=null and neighborhood.location_ops!=null and not neighborhood.location_ops.portfolio_property.is_empty():
+		phone_remote_stock_change=true
+		inventory_system.at_property(neighborhood.location_ops.portfolio_property,_set_reserved.bind(product_name,int(value)))
+		phone_remote_stock_change=false
+		_save_game()
+		return
 	_set_reserved(product_name, int(value))
 
 func _set_product_listed(product_name: String, listed: bool) -> void:
@@ -9391,7 +9408,7 @@ func _set_product_listed(product_name: String, listed: bool) -> void:
 			status_label.text = "%s is now listed for customers." % product_name
 	else:
 		status_label.text = "%s is now %s." % [product_name, "listed for customers" if listed else "hidden from the storefront"]
-	_save_game()
+	if not phone_remote_stock_change:_save_game()
 	_schedule_next_customer(true)
 
 func _unlist_all_products() -> void:
@@ -9480,7 +9497,7 @@ func _set_reserved(product_name: String, amount: int) -> void:
 	data["reserved"] = reserved
 	products[product_name] = data
 	status_label.text = "%dg of %s reserved." % [reserved, product_name]
-	_save_game()
+	if not phone_remote_stock_change:_save_game()
 
 func _buy_seed(seed_name: String) -> void:
 	if neighborhood!=null and neighborhood.location_ops!=null and not tutorial_active:
@@ -9489,7 +9506,7 @@ func _buy_seed(seed_name: String) -> void:
 	if seed_catalog.has(seed_name):
 		var purchase_info: Dictionary = seed_catalog[seed_name]
 		if bool(purchase_info.get("recipe_only", false)):
-			status_label.text = "%s is genetics-only. Create it in Phone -> Genetics." % seed_name
+			status_label.text = "%s is a discovery strain. Grow mixed strains in a multi-plant tent; see Genetics for parent hints." % seed_name
 			return
 	if tutorial_active:
 		status_label.text = "Use your starter seed first. Extra purchases unlock after the guided basics."
@@ -9728,6 +9745,7 @@ func _reset_failed(message: String) -> void:
 
 
 func _save_game() -> void:
+	if phone_remote_stock_change:return
 	last_save_ok=false
 	if reset_in_progress:
 		return # Do not recreate a deleted save during the scene reload.

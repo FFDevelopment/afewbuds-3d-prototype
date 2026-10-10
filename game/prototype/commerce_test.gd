@@ -71,15 +71,13 @@ func run() -> void:
 	game.game_day+=4;ops.update(0)
 	check(ops.rent_overdue() and not ops.eligible("Grow Supply Shelf III"),"Overdue rent holds new equipment orders")
 	game.game_day-=4
-	# Both the visible phone tile and stale direct navigation must be removed.
-	ops.close();game.phone_current_app="business";game._refresh_phone()
-	check(game.phone_current_app=="budshop","Illegal Businesses phone category remains accessible")
-	game._open_phone_app("bills");check(game.phone_current_app=="bills" and game._phone_parent_app("bills")=="budshop","Bills opens and returns to Business")
-	var business_tiles: Array[String]=[]
-	game.phone_current_app="business";game._refresh_phone()
-	for node in game.phone_list.find_children("*","Button",true,false):business_tiles.append(node.text)
-	check(business_tiles.any(func(t):return "BILLS" in t),"Business includes Bills")
-	check(business_tiles.any(func(t):return "EMPLOYEES" in t) and business_tiles.any(func(t):return "EQUIPMENT" in t or "UPGRADES" in t),"Business phone offers consistent remote staff and equipment navigation")
+	# Management is centralized in the selected property on the phone.
+	ops.close();game._open_phone_app("realestate");ops.portfolio_select("apartment");game._refresh_phone()
+	var business_tiles:Array[String]=[]
+	for node in game.phone_list.find_children("*","Button",true,false):business_tiles.append(node.text.to_upper())
+	check(business_tiles.any(func(t):return "BILLS" in t),"Selected property includes bills")
+	check(business_tiles.any(func(t):return "EMPLOYEES" in t) and business_tiles.any(func(t):return "STOCK" in t),"Selected property organizes employees and stock")
+	game._open_phone_app("bills");check(game._phone_parent_app("bills")=="realestate","Bills returns to Properties")
 	game.phone_open=false;game.phone_panel.hide()
 	var desk: MeshInstance3D=game.get_node("ApartmentComputerDesk")
 	var bench: MeshInstance3D=game.get_node("BenchTop")
@@ -93,14 +91,11 @@ func run() -> void:
 		check(ops.is_open() and ops.computer_context=="apartment" and not game.phone_open and game.phone_list==original_list,"Management stays in computer panel: "+app)
 		ops.close()
 	ops.computer("apartment")
-	check(ops.management_app=="business","Computer opens complete original Business interface")
-	var buttons: String=""
+	var buttons:String=""
 	for button in ops.ui.body.find_children("*","Button",true,false):buttons+=button.text
-	for category in ["OVERVIEW","EMPLOYEES","PRODUCTION","INVENTORY","EQUIPMENT","BILLS"]:check(category in buttons,"Computer category: "+category)
-	ops.manage("employees")
-	check(ops.management_app=="employees" and not game.phone_open,"Staff management stays in computer")
+	check("IN PROPERTIES" in buttons and not "EMPLOYEES" in buttons,"Computer directs management to the property phone hub")
 	ops.close()
-	game.property_opportunity_state.acquired=true
+	game.property_opportunity_state.acquired=true;game.property_opportunity_state.relocated=true;game.property_opportunity_state.agreement_signed=true;game.property_opportunity_state.agreement="purchase"
 	game.cash+=1000
 	var computer_id:String=game.inventory_system.furniture.model.own("computer")
 	check(game.inventory_system.furniture.model.place(computer_id,"house",Vector3(26.35,0,1.65),0),"Buy and place house computer")

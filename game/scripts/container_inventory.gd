@@ -220,7 +220,7 @@ func accepts(id:String,item:String) -> bool:
  if kind=="supply":return group(item) in ["seeds","fertilizer"]
  if kind=="dealer":return category(item)=="product"
  if kind=="packing":return group(item)=="grams"
- return kind=="storage" and (category(item)=="product" or item=="cash" or group(item)=="equipment")
+ return kind=="storage" and (category(item)=="product" or item=="cash")
 func capacity(id:String,item:String) -> int:
  if item=="cash":return 2000000000
  if furniture!=null and id!="backpack":
@@ -319,6 +319,7 @@ func transfer(source:String,destination:String,item:String,amount:int,expected_r
  if source==destination or amount<=0 or (source!="backpack" and destination!="backpack"):return {"ok":false,"reason":"Choose a backpack/container transfer."}
  var container:String=destination if source=="backpack" else source
  if not reachable(container):return {"ok":false,"reason":"Stand near this container to transfer items."}
+ if destination!="backpack" and group(item)=="equipment":return {"ok":false,"reason":"Furniture and equipment need dedicated storage. Keep them placed or in your backpack."}
  if not accepts(destination,item):return {"ok":false,"reason":"This container does not accept that item."}
  if amount>available(source,item):return {"ok":false,"reason":"Not enough available stock. Reserved orders stay in storage."}
  if amount>free_space(destination,item):return {"ok":false,"reason":"Not enough space for that amount."}
