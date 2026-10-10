@@ -1217,9 +1217,9 @@ func portfolio_set_duty(name:String) -> void:
 	var job:String=crew.role(name)
 	if job=="production":
 		host._toggle_packing_employee()
-	elif job=="dealer":
+	elif job in ["dealer","door"]:
 		var was_on:bool=portfolio_staff_duty(name)
-		if not was_on and not host.dealers_active:
+		if job=="dealer" and not was_on and not host.dealers_active:
 			if not host._staff_duty_blocker("dealer").is_empty():return
 			host._toggle_dealers()
 		var duty:Dictionary=host.location_state.get("staff_duty",{})
@@ -1232,13 +1232,14 @@ func portfolio_set_duty(name:String) -> void:
 func portfolio_transfer(name:String,target:String) -> void:
 	if portfolio_property.is_empty() or not computer_staff_names(portfolio_property).has(name):return
 	if not _property_controlled(target) or name=="Dealer Team":return
+	if crew.role(name)=="door" and not crew.manager(target).is_empty():return
 	crew.assign(name,target)
 	portfolio_employee=""
 	host._refresh_phone()
 
 func portfolio_fire(name:String) -> void:
 	if portfolio_employee!=name or portfolio_fire_confirm!=name:return
-	if crew.role(name)=="dealer" and host.dealer_arrested:return
+	if crew.role(name) in ["dealer","door"] and host.dealer_arrested:return
 	if crew.role(name)=="production" and host.production_worker_arrested:return
 	portfolio_fire_confirm=""
 	if name.begins_with("Hired Dealer "):
@@ -1285,7 +1286,7 @@ func portfolio_employees_ui(parent:VBoxContainer) -> void:
 		var staff:Array[String]=computer_staff_names(prop)
 		for worker_name in staff:
 			var job:String=crew.role(worker_name)
-			var working:bool=(host.dealers_active and portfolio_staff_duty(worker_name)) if job=="dealer" else host.packing_employee_active
+			var working:bool=(host.dealers_active and portfolio_staff_duty(worker_name)) if job=="dealer" else (portfolio_staff_duty(worker_name) if job=="door" else host.packing_employee_active)
 			_property_button(parent,worker_name+" · "+job.capitalize()+"\n"+("ON DUTY" if working else "HOME"),portfolio_employee_open.bind(worker_name))
 		if staff.is_empty():_property_label(parent,"No workers assigned here yet.",16)
 		_property_button(parent,"CONTACTS · HIRE BY TEXT",host._open_phone_app.bind("clients"))
@@ -1297,21 +1298,22 @@ func portfolio_employees_ui(parent:VBoxContainer) -> void:
 		return
 	var job:String=crew.role(name)
 	_property_label(parent,name+" · "+job.capitalize(),20)
-	var working:bool=(host.dealers_active and portfolio_staff_duty(name)) if job=="dealer" else host.packing_employee_active
+	var working:bool=(host.dealers_active and portfolio_staff_duty(name)) if job=="dealer" else (portfolio_staff_duty(name) if job=="door" else host.packing_employee_active)
 	_property_label(parent,"Assigned: "+portfolio_name(prop)+"\nStatus: "+("LAYING LOW" if working and crew.shop.laying_low(prop) else ("ON DUTY" if working else "HOME")),16)
-	if job=="dealer":
-		_property_button(parent,"DEALER STATS · VIEW DEALS & COMMISSION",portfolio_page_dealer_stats)
-		if name!="Dealer Team":
-			_property_button(parent,"HANDLE APARTMENT DOOR" if crew.manager()!=name else "RETURN TO STREET DEALS",crew.assign_manager.bind(name) if crew.manager()!=name else crew.return_to_street.bind(name),prop!="apartment")
+	if job in ["dealer","door"]:
+		_property_button(parent,"SALES STATS · VIEW DEALS & COMMISSION",portfolio_page_dealer_stats)
+		if job=="dealer" and name!="Dealer Team":
+			_property_button(parent,"HANDLE APARTMENT DOOR" if crew.manager()!=name else "RETURN TO STREET DEALS",crew.assign_manager.bind(name) if crew.manager()!=name else crew.return_to_street.bind(name),prop!="apartment" or (not crew.manager().is_empty() and crew.manager()!=name))
 	elif job=="production":
 		_property_label(parent,"Tasks today: %d\nCurrent task: %s" % [host.production_worker_tasks_today,host.production_worker_last_action],16)
 		_property_button(parent,"AUTO PLANT: "+("ON" if host.production_worker_auto_plant else "OFF"),host._toggle_production_worker_auto_plant)
-	var reason:String=host._staff_duty_blocker(job)
+	var reason:String="" if job=="door" else host._staff_duty_blocker(job)
 	_property_button(parent,"SEND HOME" if working else "PUT ON DUTY",portfolio_set_duty.bind(name),not working and not reason.is_empty())
 	if not working and not reason.is_empty():_property_label(parent,"Cannot start work: "+reason,15)
 	var other:String="house" if prop=="apartment" else "apartment"
 	if _property_controlled(other):
-		_property_button(parent,"TRANSFER TO "+portfolio_name(other),portfolio_transfer.bind(name,other))
+		var blocked:bool=job=="door" and not crew.manager(other).is_empty()
+		_property_button(parent,"TRANSFER TO "+portfolio_name(other),portfolio_transfer.bind(name,other),blocked)
 	if portfolio_fire_confirm==name:
 		_property_label(parent,"Confirm firing "+name+"? Sales history stays recorded.",16)
 		_property_button(parent,"CONFIRM FIRE",portfolio_fire.bind(name))
@@ -1334,7 +1336,7 @@ func portfolio_cancel_fire() -> void:
 	host._refresh_phone()
 
 func portfolio_page_dealer_stats() -> void:
-	if portfolio_employee.is_empty() or crew.role(portfolio_employee)!="dealer":return
+	if portfolio_employee.is_empty() or crew.role(portfolio_employee) not in ["dealer","door"]:return
 	portfolio_page="dealer_stats"
 	host._refresh_phone()
 
