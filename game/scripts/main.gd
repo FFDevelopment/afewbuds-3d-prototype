@@ -6272,16 +6272,16 @@ func _record_customer_strain_experience(customer_name: String, requested: String
 			relationship["preferred_strain"] = sold
 	customer_relationships[customer_name] = relationship
 
-func _dealer_product_amount(strain_name: String, doorstep: bool) -> int:
+func _dealer_product_amount(strain_name: String, doorstep: bool, listed_only: bool = false) -> int:
 	if not products.has(strain_name):return 0
-	if doorstep and not bool(products[strain_name].get("listed", false)):return 0
+	if doorstep and listed_only and not bool(products[strain_name].get("listed", false)):return 0
 	var result: int = maxi(0, int(locker_weed.get(strain_name, 0)))
 	if doorstep:
 		result += _available_amount(strain_name) + maxi(0, int(bagged_inventory.get(strain_name, 0)))
 	return result
 
-func _dealer_best_offer(customer: Dictionary, requested: String, minimum_grams: int, doorstep: bool) -> String:
-	if products.has(requested) and _dealer_product_amount(requested, doorstep) >= minimum_grams:
+func _dealer_best_offer(customer: Dictionary, requested: String, minimum_grams: int, doorstep: bool, listed_only: bool = false) -> String:
+	if products.has(requested) and _dealer_product_amount(requested, doorstep, listed_only) >= minimum_grams:
 		return requested
 	if doorstep:
 		for strain_name in bagged_inventory.keys():
@@ -6290,7 +6290,7 @@ func _dealer_best_offer(customer: Dictionary, requested: String, minimum_grams: 
 	var best_chance: float = -1.0
 	for strain_name in products.keys():
 		var candidate: String = str(strain_name)
-		if candidate == requested or _dealer_product_amount(candidate, doorstep) < minimum_grams:continue
+		if candidate == requested or _dealer_product_amount(candidate, doorstep, listed_only) < minimum_grams:continue
 		var chance: float = _substitute_acceptance_chance_for(customer, requested, candidate)
 		if chance > best_chance or (is_equal_approx(chance, best_chance) and (best.is_empty() or candidate < best)):
 			best = candidate
@@ -6342,9 +6342,9 @@ func _dealer_sell_one_local(show_feedback: bool, assigned_dealer_name: String = 
 		chosen_customer=door_customer
 	var favorite: String = str(door_order.get("product", _customer_favorite(chosen_customer)))
 	var required_amount: int = maxi(1, int(door_order.get("qty", 1))) if not door_customer.is_empty() else 1
-	var product_name: String = _dealer_best_offer(chosen_customer, favorite, required_amount, not door_customer.is_empty())
+	var product_name: String = _dealer_best_offer(chosen_customer, favorite, required_amount, not door_customer.is_empty(), dedicated_door)
 	if product_name.is_empty():return false
-	var available: int = _dealer_product_amount(product_name, not door_customer.is_empty())
+	var available: int = _dealer_product_amount(product_name, not door_customer.is_empty(), dedicated_door)
 	if available <= 0:
 		return false
 	var max_qty: int = mini(available, int(chosen_customer.get("max_qty", 2)))
