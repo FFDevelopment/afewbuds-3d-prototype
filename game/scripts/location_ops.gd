@@ -295,6 +295,8 @@ func computer(property: String) -> void:
 	ui.button("OPEN "+portfolio_name(property).to_upper()+" IN PROPERTIES",func():close();computer_context="";host._open_phone_app("realestate");portfolio_select(property);host._refresh_phone();host.phone_open=true;host.phone_panel.show())
 	ui.button("CLOSE COMPUTER",func():close();computer_context="")
 
+const MANAGEMENT_TABS := ["business","employees","production","inventory","upgrades","bills"]
+const MANAGEMENT_TITLES := {"business":"OVERVIEW","employees":"EMPLOYEES","production":"PRODUCTION","inventory":"INVENTORY","upgrades":"EQUIPMENT","bills":"BILLS"}
 func _management_navigation(section:String) -> void:
 	var property:String=computer_context
 	var banner:=PanelContainer.new()
