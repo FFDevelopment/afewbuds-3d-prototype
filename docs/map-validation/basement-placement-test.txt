@@ -1,0 +1,3 @@
+Godot Engine v4.6.stable.official.89cea1439 - https://godotengine.org
+
+BASEMENT_EQUIPMENT_PASS placement=true plant_height=true saved_height=true property_isolation=true move_pack=true stair_clearance=true

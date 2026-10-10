@@ -86,7 +86,7 @@ func sync() -> void:
     label(root,"DELIVERY\n"+model.item_name(id),Vector3(0,1.1,0));interaction(root,id,e.property,Vector3(.65,1,.65));continue
    if e.get("property","") not in model.ROOMS or not e.has("position"):continue
    var root:=Node3D.new();root.name="Owned_"+id;root.set_meta("equipment_id",id);host.add_child(root);rendered[id]=root
-   root.position=Vector3(e.position[0],0,e.position[2]);root.rotation.y=deg_to_rad(float(e.get("yaw",0)))
+   root.position=Vector3(e.position[0],e.position[1],e.position[2]);root.rotation.y=deg_to_rad(float(e.get("yaw",0)))
    if model.is_tent(e):tent(root,id)
    elif not clone_computer(root,id,e) and not clone_supply(root,id,e) and not clone_cabinet(root,id,e) and not clone_legacy(root,id,e):editor.build_prop(root,id,e.sku)
    if not model.station_kind(id).is_empty():
@@ -118,7 +118,7 @@ func sync() -> void:
   var e:Dictionary=model.state.items[id];var slots:Array=e.slots
   var width:float=model.size_of(id).x
   var x:float=(float(slots.find(i))-(slots.size()-1)*.5)*(width-.35)/slots.size()
-  plant.global_transform=Transform3D(Basis(Vector3.UP,deg_to_rad(float(e.get("yaw",0)))),Vector3(e.position[0],0,e.position[2]))*Transform3D(Basis.IDENTITY,Vector3(x,.26,0))
+  plant.global_transform=Transform3D(Basis(Vector3.UP,deg_to_rad(float(e.get("yaw",0)))),Vector3(e.position[0],e.position[1],e.position[2]))*Transform3D(Basis.IDENTITY,Vector3(x,.26,0))
  sync_levels()
  sync_supply_labels()
  if host.neighborhood!=null and host.neighborhood.house_controls!=null:host.neighborhood.house_controls.refresh_grow_panel()
@@ -256,6 +256,7 @@ func nearby_seat() -> String:
  for id in model.state.items:
   var e:Dictionary=model.state.items[id]
   if e.sku not in ["sofa","armchair","dining_chair"] or e.get("property","") not in model.ROOMS or not e.has("position"):continue
+  if absf(float(e.position[1])-(host.camera.global_position.y-1.6))>2.0:continue
   var at:=Vector3(e.position[0],host.camera.global_position.y,e.position[2])
   var gap:float=host.camera.global_position.distance_to(at)
   if gap<distance:nearest=id;distance=gap
@@ -264,7 +265,7 @@ func seat_eye() -> Vector3:
  seated_id=nearby_seat()
  if seated_id.is_empty():return host.camera.global_position
  var e:Dictionary=model.state.items[seated_id]
- var at:=Vector3(e.position[0],0,e.position[2]);var yaw:float=deg_to_rad(float(e.get("yaw",0)))
+ var at:=Vector3(e.position[0],e.position[1],e.position[2]);var yaw:float=deg_to_rad(float(e.get("yaw",0)))
  if e.get("legacy_group","")=="sofa":at+=Vector3(.5072,0,-.035).rotated(Vector3.UP,yaw)
  return host.neighborhood.bench_seating.eyes(at,yaw,load("res://scripts/scale_policy.gd").SEAT_HEIGHT)
 func toggle_lamp() -> void:

@@ -1,0 +1,15 @@
+Godot Engine v4.6.stable.official.89cea1439 - https://godotengine.org
+
+RAIL_EDGE_BLOCKED flight=(6.02, 0.0, 1.6) side=-1.0 at=(5.606245, 4.321494, -6.539936)
+ CONTACT /root/VisualLab/ApartmentPrototype/StreetStudyDetails/ConnectedFireEscape/@StaticBody3D@10660 normal=(0.0, 0.885828, 0.464013)
+ CONTACT /root/VisualLab/ApartmentPrototype/StreetStudyDetails/ConnectedFireEscape/@StaticBody3D@10660 normal=(0.0, 0.885828, 0.464013)
+RAIL_EDGE_BLOCKED flight=(6.02, 0.0, 1.6) side=1.0 at=(6.433756, 4.322423, -6.541799)
+ CONTACT /root/VisualLab/ApartmentPrototype/StreetStudyDetails/ConnectedFireEscape/@StaticBody3D@10660 normal=(0.0, 0.885828, 0.464013)
+ CONTACT /root/VisualLab/ApartmentPrototype/StreetStudyDetails/ConnectedFireEscape/@StaticBody3D@10660 normal=(0.0, 0.885828, 0.464013)
+RAIL_EDGE_BLOCKED flight=(7.75, 4.4, -6.8) side=-1.0 at=(7.310737, 7.914177, 1.740806)
+ CONTACT /root/VisualLab/ApartmentPrototype/StreetStudyDetails/ConnectedFireEscape/@MeshInstance3D@10681/@StaticBody3D@10683 normal=(0.97452, 0.0, 0.2243)
+RAIL_EDGE_BLOCKED flight=(6.02, 7.9, 1.6) side=1.0 at=(6.45986, 11.61417, -6.943857)
+ CONTACT /root/VisualLab/ApartmentPrototype/StreetStudyDetails/ConnectedFireEscape/@MeshInstance3D@10766/@StaticBody3D@10768 normal=(-0.972424, 0.0, -0.23322)
+RAIL_EDGE_BLOCKED flight=(43.8, -1.9, -12.4) side=1.0 at=(44.24247, 0.015274, -8.145603)
+ CONTACT /root/VisualLab/ApartmentPrototype/BasementExpansion/@Node3D@11066/@MeshInstance3D@11129/@StaticBody3D@11131 normal=(-0.963232, 0.0, 0.268672)
+RAIL_EDGE_RESULT failures=5

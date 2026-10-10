@@ -407,7 +407,7 @@ func _build_door_hinge() -> void:
 	host._add_box("EntryThreshold",Vector3(0,0.002,5.98),Vector3(2.1,0.024,0.56),Color("746b59"),0.8)
 
 func indoors(pos: Vector3) -> bool:
-	return pos.x > -5.1 and pos.x < 5.1 and pos.z > -10.3 and pos.z < 6.1
+	return pos.y > -.5 and pos.y < 4.4 and pos.x > -5.1 and pos.x < 5.1 and pos.z > -10.3 and pos.z < 6.1
 
 func _process(delta: float) -> void:
 	if not is_instance_valid(host) or not host.fp_ready: return
@@ -490,6 +490,8 @@ func _material(color: String, tile: int = -1, glow: float = 0.0) -> Material:
 			plain.emission = Color(color)
 			plain.emission_energy_multiplier = glow
 		material = plain
+	material.set_meta("lab_tile",tile)
+	material.set_meta("lab_color",color)
 	materials[key] = material
 	return material
 

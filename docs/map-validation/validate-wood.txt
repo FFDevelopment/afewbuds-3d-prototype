@@ -1,0 +1,7 @@
+Godot Engine v4.6.stable.official.89cea1439 - https://godotengine.org
+
+HOUSE_LIGHT_BUDGET_PASS overlaps=11 limit=16
+HOUSE_WINDOWS_ROOF_PASS panes=10
+FIRE_ESCAPE_WALK_PASS roof=(4.491802, 11.62249, -7.296486)
+BASEMENT_ROUND_TRIP_PASS cuts=3
+VISUAL_LAB_VALIDATION_PASS materials=2332 details=105

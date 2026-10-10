@@ -122,7 +122,7 @@ func _physics_process(delta: float) -> void:
 	velocity.z = move_toward(velocity.z, target.z, rate * delta)
 	velocity.y = -0.5 if is_on_floor() else velocity.y - GRAVITY * delta
 	move_and_slide()
-	if position.y < -3.0:
+	if position.y < (-6.0 if position.x>25 and position.x<46 and position.z> -15 and position.z<3 else -3.0):
 		position = Vector3(0, 0.1, 1.2)
 		velocity = Vector3.ZERO
 	sync_camera()

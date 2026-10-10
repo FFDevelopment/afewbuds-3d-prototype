@@ -167,6 +167,8 @@ func sell_menu() -> void:
   inventory.button("Sell %s · $%d"%[model.item_name(id),model.resale(id)],func():
    if model.sell(id):sell_menu()
    else:hint.text=model.error,list)
+func placement_floor()->float:
+ return -3.8 if property=="house" and host.has_node("BasementExpansion") and host.camera.global_position.y<-.5 else 0.0
 func begin(id:String) -> void:
  restore_camera()
  placement_camera=host.camera.global_transform
@@ -179,10 +181,10 @@ func begin(id:String) -> void:
  controls_active=false
  editing_camera=true
  layout_panel.hide();build_preview()
- point=host.camera.global_position-host.camera.global_basis.z*2.0;point.y=0
+ point=host.camera.global_position-host.camera.global_basis.z*2.0;point.y=placement_floor()
  point.x=snappedf(point.x,.05);point.z=snappedf(point.z,.05);yaw=0
  if e.get("property","")==property and e.has("position"):
-  point=Vector3(e.position[0],0,e.position[2]);yaw=int(e.yaw)
+  point=Vector3(e.position[0],e.position[1],e.position[2]);yaw=int(e.yaw)
  panel.hide();placement_panel.show()
  if host.get("fp_player")!=null:Input.mouse_mode=Input.MOUSE_MODE_CAPTURED
  aim();preview()
@@ -196,9 +198,9 @@ func aim() -> void:
  var size:Vector3=model.size_of(selected,yaw)
  var nearest:float=maxf(1.5,maxf(size.x,size.z)*.5+.8)
  var distance:float=3.25
- if forward.y<-.05:distance=origin.y / -forward.y * Vector2(forward.x,forward.z).length()
+ if forward.y<-.05:distance=(origin.y-placement_floor()) / -forward.y * Vector2(forward.x,forward.z).length()
  distance=clampf(distance,nearest,5.5)
- point=origin+flat*distance;point.y=0
+ point=origin+flat*distance;point.y=placement_floor()
  point.x=snappedf(point.x,.05);point.z=snappedf(point.z,.05)
  if model.state.items[selected].sku=="storage_5":snap_stash_to_wall()
 func handle_placement_input(event:InputEvent) -> bool:
@@ -240,7 +242,7 @@ func obstacle() -> String:
  if not problem.is_empty():return problem
  var size:Vector3=model.size_of(selected,yaw)
  var box:=AABB(point+Vector3(-size.x/2,.08,-size.z/2),Vector3(size.x,size.y-.08,size.z))
- if box.grow(.35).has_point(Vector3(host.camera.global_position.x,.5,host.camera.global_position.z)):return "Leave room for yourself to stand."
+ if box.grow(.35).has_point(Vector3(host.camera.global_position.x,placement_floor()+.5,host.camera.global_position.z)):return "Leave room for yourself to stand."
  var shape:=BoxShape3D.new();shape.size=box.size
  var query:=PhysicsShapeQueryParameters3D.new();query.shape=shape;query.transform=Transform3D(Basis.IDENTITY,box.get_center());query.collision_mask=1
  var excluded:Array[RID]=[]
@@ -415,7 +417,7 @@ func refresh_layout(force:bool=false) -> void:
   var e:Dictionary=model.state.items[id]
   if e.get("property","")!=layout_property or not e.has("position"):continue
   var size:Vector3=model.size_of(id,int(e.get("yaw",0)))
-  var box:=AABB(Vector3(e.position[0]-size.x*.5,0,e.position[2]-size.z*.5),size)
+  var box:=AABB(Vector3(e.position[0]-size.x*.5,e.position[1],e.position[2]-size.z*.5),size)
   var hit=box.intersects_ray(origin,direction)
   if hit!=null and origin.distance_to(hit)<distance:layout_focus=id;distance=origin.distance_to(hit)
  var reason:String="" if layout_focus.is_empty() else model.empty_reason(layout_focus)
@@ -445,7 +447,7 @@ func snap_stash_to_wall() -> void:
   if not mesh.is_visible_in_tree() or mesh.mesh==null or mesh.has_meta("furniture_id") or mesh.get_meta("no_collision",false):continue
   if not mesh.get_meta("structural",false) and not str(mesh.name).to_lower().contains("wall"):continue
   var wall:AABB=mesh.global_transform*mesh.get_aabb()
-  if wall.position.y>.15 or wall.end.y<model.size_of(selected).y or minf(wall.size.x,wall.size.z)>.5:continue
+  if wall.position.y>placement_floor()+.15 or wall.end.y<placement_floor()+model.size_of(selected).y or minf(wall.size.x,wall.size.z)>.5:continue
   var hit=wall.intersects_ray(origin,direction)
   if hit==null or origin.distance_to(hit)>=nearest:continue
   var normal:=Vector3.ZERO
@@ -457,5 +459,5 @@ func snap_stash_to_wall() -> void:
    if wall.size.x<half_width*2+.12:continue
    normal.z=1 if origin.z>wall.get_center().z else -1
    hit.x=clampf(hit.x,wall.position.x+half_width+.06,wall.end.x-half_width-.06)
-  nearest=origin.distance_to(hit);point=hit+normal*(model.size_of(selected).z*.5+.025);point.y=0
+  nearest=origin.distance_to(hit);point=hit+normal*(model.size_of(selected).z*.5+.025);point.y=placement_floor()
   yaw=posmod(int(round(rad_to_deg(atan2(normal.x,normal.z))/90))*90,360);wall_found=true

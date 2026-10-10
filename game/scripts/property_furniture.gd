@@ -224,9 +224,10 @@ func validate(id:String,property:String,point:Vector3,yaw:int) -> String:
  if bool(e.get("locked",false)):return "Unlock the furniture first."
  var reason:=empty_reason(id)
  if not reason.is_empty():return reason
- if not point.is_finite() or absf(point.y)>.05 or yaw%90!=0:return "Place on the floor with quarter-turn rotation."
+ var basement:bool=property=="house" and host.has_node("BasementExpansion") and absf(point.y+3.8)<.05
+ if not point.is_finite() or (not basement and absf(point.y)>.05) or yaw%90!=0:return "Place on the floor with quarter-turn rotation."
  var rect:=bounds(id,point,yaw).grow(.015);var room:=""
- var allowed_rooms:Dictionary=registry.rooms_for(property)
+ var allowed_rooms:Dictionary={"grow":Rect2(26.3,-13.5,14.2,13.0)} if basement else registry.rooms_for(property)
  for key in allowed_rooms:
   if (allowed_rooms[key] as Rect2).grow(.35 if e.sku=="storage_5" else 0.14).encloses(rect):room=key;break
  if room.is_empty():return "Keep the entire item inside one room and clear of doorways."
@@ -236,13 +237,14 @@ func validate(id:String,property:String,point:Vector3,yaw:int) -> String:
   var item:Dictionary=state.items[other]
   if item.get("property","")!=property or not item.has("position"):continue
   var p:Array=item.position
+  if absf(float(p[1])-point.y)>3.0:continue
   if rect.intersects(bounds(other,Vector3(p[0],p[1],p[2]),int(item.get("yaw",0)))):return "Furniture overlaps another item."
  return ""
 func place(id:String,property:String,point:Vector3,yaw:int) -> bool:
  error=validate(id,property,point,yaw)
  if not error.is_empty():return false
  var e:Dictionary=state.items[id]
- e.player_placed=true;e.property=property;e.position=[point.x,0.0,point.z];e.yaw=posmod(yaw,360);e.locked=true
+ e.player_placed=true;e.property=property;e.position=[point.x,point.y,point.z];e.yaw=posmod(yaw,360);e.locked=true
  var kind:=station_kind(id)
  if not kind.is_empty():
   var primary_id:=primary(property,kind)
@@ -296,7 +298,7 @@ func upgrade(id:String) -> bool:
  if not sku.begins_with("shelf_"):e.erase("size_override")
  e.sku=sku;e.locked=false
  if registry.exists(str(e.get("property",""))) and not sku.begins_with("shelf_"):
-  var p:Array=e.position;error=validate(id,e.property,Vector3(p[0],0,p[2]),int(e.yaw))
+  var p:Array=e.position;error=validate(id,e.property,Vector3(p[0],p[1],p[2]),int(e.yaw))
  if not error.is_empty():
   e.sku=old_sku;e.locked=locked
   if not old_size.is_empty():e.size_override=old_size

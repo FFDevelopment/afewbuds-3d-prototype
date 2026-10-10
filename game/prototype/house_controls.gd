@@ -28,26 +28,27 @@ func register_light(id: String, lamp: Light3D, fixture: MeshInstance3D, switch_a
 	_set_light(id,bool(states.get(id,true)))
 
 func register_grow(lamps: Array, fixtures: Array) -> void:
-	var at := Vector3(38.76,1.5,-9.1)
+	var at := Vector3(44.63,-2.25,-5.7)
 	var panel: MeshInstance3D=world._interior_piece("HouseGrowServicePanel",at,Vector3(0.12,0.85,0.7),"46534c")
 	panel.layers=2
 	panel.set_meta("no_collision",true)
 	grow_panel_label=Label3D.new()
 	grow_panel_label.name="HouseGrowStatus"
-	grow_panel_label.position=at+Vector3(0.08,0.28,0)
+	grow_panel_label.position=at+Vector3(-0.08,0.28,0)
+	grow_panel_label.rotation.y=-PI/2
 	grow_panel_label.font_size=20
 	grow_panel_label.pixel_size=0.00125
 	grow_panel_label.outline_size=4
 	grow_panel_label.modulate=Color("d4f5d2")
 	world.add_child(grow_panel_label)
-	var rocker: MeshInstance3D=world._interior_piece("GrowServiceRocker",at+Vector3(0.08,0,0),Vector3(0.035,0.18,0.15),"92a17d")
+	var rocker: MeshInstance3D=world._interior_piece("GrowServiceRocker",at+Vector3(-0.08,0,0),Vector3(0.035,0.18,0.15),"92a17d")
 	rocker.layers=2
 	rocker.set_meta("no_collision",true)
 	switches["grow_lights"]={"lamps":lamps,"fixtures":fixtures,"at":at,"rocker":rocker}
 	# This is a second, independent wall-panel control. A house ventilation
 	# unit must be placed inside the HOUSE grow room before it can run.
 	var air_at:Vector3=at+Vector3(0,-0.28,0)
-	var air_rocker:MeshInstance3D=world._interior_piece("HouseGrowVentilationRocker",air_at+Vector3(0.08,0,0),Vector3(0.035,0.14,0.15),"81918b")
+	var air_rocker:MeshInstance3D=world._interior_piece("HouseGrowVentilationRocker",air_at+Vector3(-0.08,0,0),Vector3(0.035,0.14,0.15),"81918b")
 	air_rocker.layers=2
 	air_rocker.set_meta("no_collision",true)
 	switches["grow_ventilation"]={"at":air_at,"rocker":air_rocker}
@@ -144,6 +145,8 @@ func _set_light(id: String, on: bool) -> void:
 	if id=="grow_lights":refresh_grow_panel()
 
 func _inside_room(point: Vector3) -> String:
+	if point.y > -4.0 and point.y < -.5 and point.x>26.1 and point.x<44.7 and point.z> -13.7 and point.z<1.4:return "basement"
+	if point.y < -.5 or point.y > 3.6:return ""
 	if world._indoors(point): return "apartment"
 	if point.x>12 and point.x<22 and point.z> -2 and point.z<6:
 		return "market_stock" if point.x<15.25 and point.z<1.1 else "market_front"
@@ -162,6 +165,7 @@ func _reachable(at: Vector3) -> bool:
 func nearby() -> String:
 	var room := _inside_room(host.camera.global_position)
 	if room.is_empty(): return ""
+	if room=="basement" and _reachable(switches["grow_lights"].at):return "house_system"
 	var nearest := ""
 	var nearest_distance := 2.5
 	for id in switches:
@@ -181,6 +185,7 @@ func nearby() -> String:
 	return ""
 
 func title(target: String) -> String:
+	if target=="house_system":return "OPEN HOUSE GROW SYSTEM"
 	if target.begins_with("switch_"):
 		var id := target.trim_prefix("switch_")
 		if id=="grow_ventilation":
@@ -197,6 +202,9 @@ func title(target: String) -> String:
 
 func use(target: String) -> void:
 	if target!=nearby(): return
+	if target=="house_system":
+		host.open_house_system()
+		return
 	if target.begins_with("switch_"):
 		var id := target.trim_prefix("switch_")
 		if id=="grow_ventilation":
@@ -224,7 +232,7 @@ func tap(point: Vector2) -> bool:
 	var target := nearby()
 	if target.is_empty(): return false
 	var id := target.trim_prefix("switch_").trim_prefix("shade_")
-	var at: Vector3=switches[id].at if target.begins_with("switch_") else shades[id].at
+	var at: Vector3=switches["grow_lights"].at if target=="house_system" else (switches[id].at if target.begins_with("switch_") else shades[id].at)
 	if host.camera.unproject_position(at).distance_to(point)>110: return false
 	var now := Time.get_ticks_msec()
 	if last_target==target and now-last_time<420:
