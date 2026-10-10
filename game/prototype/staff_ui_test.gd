@@ -101,6 +101,10 @@ func run()->void:
 	game._save_game()
 	var disk:Dictionary=JSON.parse_string(FileAccess.get_file_as_string(game.SAVE_PATH))
 	check(disk.friend_dealer_stats.Tyler.commission_earned==56 and disk.location_state.staff_assignments.get("Hired Dealer 1","")=="house","Save preserves staff records and distinct property assignments")
+	# Let pending phone-scroll frame callbacks finish before destroying their host.
+	game.phone_open=false;game.phone_panel.hide();game.inventory_system.set_process(false)
+	await process_frame;await process_frame
+	crew=null;ops=null
 	game.queue_free();await process_frame;await process_frame
 	print("STAFF_UI_RESULT: ","PASS" if failures==0 else "FAIL"," checks=",checks," failures=",failures)
 	quit(0 if failures==0 else 1)
