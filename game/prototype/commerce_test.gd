@@ -79,7 +79,7 @@ func run() -> void:
 	game.phone_current_app="business";game._refresh_phone()
 	for node in game.phone_list.find_children("*","Button",true,false):business_tiles.append(node.text)
 	check(business_tiles.any(func(t):return "BILLS" in t),"Business includes Bills")
-	check(not business_tiles.any(func(t):return "EMPLOYEES" in t or "UPGRADES" in t),"Business does not duplicate computer management")
+	check(business_tiles.any(func(t):return "EMPLOYEES" in t) and business_tiles.any(func(t):return "EQUIPMENT" in t or "UPGRADES" in t),"Business phone offers consistent remote staff and equipment navigation")
 	game.phone_open=false;game.phone_panel.hide()
 	var desk: MeshInstance3D=game.get_node("ApartmentComputerDesk")
 	var bench: MeshInstance3D=game.get_node("BenchTop")
@@ -96,7 +96,7 @@ func run() -> void:
 	check(ops.management_app=="business","Computer opens complete original Business interface")
 	var buttons: String=""
 	for button in ops.ui.body.find_children("*","Button",true,false):buttons+=button.text
-	for category in ["OPERATIONS","INVENTORY","PROPERTY & BILLS"]:check(category in buttons,"Computer category: "+category)
+	for category in ["OVERVIEW","EMPLOYEES","PRODUCTION","INVENTORY","EQUIPMENT","BILLS"]:check(category in buttons,"Computer category: "+category)
 	ops.manage("employees")
 	check(ops.management_app=="employees" and not game.phone_open,"Staff management stays in computer")
 	ops.close()
