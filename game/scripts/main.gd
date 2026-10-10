@@ -5859,10 +5859,12 @@ func _ensure_friend_dealer_stats(customer_name: String) -> Dictionary:
 
 func _active_dealer_roster() -> Array[String]:
 	var roster: Array[String] = []
+	var duty:Dictionary=location_state.get("staff_duty",{})
 	for friend_name: String in _friend_staff_names("dealer"):
-		roster.append(friend_name)
+		if bool(duty.get(friend_name,true)):roster.append(friend_name)
 	for index: int in range(dealer_count):
-		roster.append("Hired Dealer %d" % (index + 1))
+		var dealer_name:String="Hired Dealer %d" % (index + 1)
+		if bool(duty.get(dealer_name,true)):roster.append(dealer_name)
 	return roster
 
 func _record_friend_dealer_sale(customer_name: String, grams: int, gross: int, commission: int) -> void:
@@ -6252,6 +6254,8 @@ func _dealer_sell_one_local(show_feedback: bool, assigned_dealer_name: String = 
 	var gross_revenue: int = qty * _effective_price(product_name)
 	var commission: int = int(ceil(float(gross_revenue) * DEALER_COMMISSION_RATE))
 	var dealer_roster: Array[String] = _active_dealer_roster()
+	if dealer_roster.is_empty():return false
+	if not assigned_dealer_name.is_empty() and not dealer_roster.has(assigned_dealer_name):return false
 	var sale_dealer_name: String = assigned_dealer_name
 	if sale_dealer_name.is_empty() and not dealer_roster.is_empty():
 		sale_dealer_name = dealer_roster[dealer_sales_today % dealer_roster.size()]
@@ -6792,12 +6796,15 @@ func _phone_go_home() -> void:
 	_open_phone_app("home")
 
 func _phone_parent_app(app_name: String) -> String:
-	if app_name in ["bills","stats","heat","business","employees","upgrades","products","genetics"]:return "budshop"
+	if app_name in ["employees","products","upgrades"]:return "realestate"
+	if app_name in ["bills","stats","heat","business","genetics"]:return "budshop"
 	if app_name in ["seeds","supplies"]:return "shop"
 	if app_name=="account":return "settings"
 	return "home"
 
 func _phone_go_back() -> void:
+	if neighborhood!=null and neighborhood.location_ops!=null:
+		if neighborhood.location_ops.portfolio_phone_back(phone_current_app):return
 	if neighborhood!=null and neighborhood.location_ops!=null and neighborhood.location_ops.crew!=null and phone_current_app=="texts" and not neighborhood.location_ops.crew.thread.is_empty():
 		neighborhood.location_ops.crew.back()
 		return
@@ -6807,6 +6814,8 @@ func _open_phone_app(app_name: String) -> void:
 	if neighborhood!=null and neighborhood.location_ops!=null and neighborhood.location_ops.crew!=null and app_name=="texts":neighborhood.location_ops.crew.thread=""
 	if neighborhood!=null and neighborhood.location_ops!=null and neighborhood.location_ops.redirect(app_name):return
 	if app_name in ["lights","business"]:app_name="budshop"
+	if neighborhood!=null and neighborhood.location_ops!=null and app_name=="realestate" and phone_current_app!="realestate" and phone_current_app not in ["employees","products"]:
+		neighborhood.location_ops.portfolio_reset()
 	_cancel_phone_gesture()
 	phone_scroll.scroll_vertical = 0
 	phone_current_app = app_name
@@ -6854,7 +6863,7 @@ func _refresh_phone() -> void:
 			phone_title.text = "Leaderboard"
 			_build_leaderboard_app()
 		"realestate":
-			phone_title.text = "Real Estate"
+			phone_title.text = "Properties"
 			_build_real_estate_app()
 		"settings":
 			phone_title.text = "Settings"
@@ -6869,13 +6878,13 @@ func _refresh_phone() -> void:
 			phone_title.text = "Bills"
 			_build_bills_app()
 		"employees":
-			phone_title.text = ("%s · Employees" % (neighborhood.location_ops.active_property().capitalize() if neighborhood!=null and neighborhood.location_ops!=null else "Operation"))
+			phone_title.text = ("%s · Employees" % (neighborhood.location_ops.portfolio_property.capitalize() if neighborhood!=null and neighborhood.location_ops!=null and not neighborhood.location_ops.portfolio_property.is_empty() else "Operation"))
 			_build_employees_app()
 		"upgrades":
 			phone_title.text = ("%s · Equipment" % (neighborhood.location_ops.active_property().capitalize() if neighborhood!=null and neighborhood.location_ops!=null else "Operation"))
 			_build_upgrades_app()
 		"products":
-			phone_title.text = ("%s · Inventory" % (neighborhood.location_ops.active_property().capitalize() if neighborhood!=null and neighborhood.location_ops!=null else "Operation"))
+			phone_title.text = ("%s · Stock" % (neighborhood.location_ops.portfolio_property.capitalize() if neighborhood!=null and neighborhood.location_ops!=null and not neighborhood.location_ops.portfolio_property.is_empty() else "Operation"))
 			_build_products_app()
 		"seeds":
 			phone_title.text = "Seeds"
@@ -6955,6 +6964,11 @@ func _phone_business_selected() -> String:
 		return phone_business_focus
 	return neighborhood.location_ops.active_property()
 
+func _phone_open_property_from_business(property:String) -> void:
+	if neighborhood==null or neighborhood.location_ops==null:return
+	neighborhood.location_ops.portfolio_select(property)
+	_open_phone_app("realestate")
+
 func _phone_business_select(property:String) -> void:
 	if neighborhood==null or neighborhood.location_ops==null:return
 	if property not in ["apartment","house"] or not neighborhood.location_ops._property_controlled(property):return
@@ -6983,15 +6997,12 @@ func _build_budshop_app() -> void:
 	status.text="Assigned staff: %d · Property balances: $%d\nDealer team: %s · Production: %s" % [active_staff,due,"ON DUTY" if dealers_active else "HOME","ON DUTY" if packing_employee_active else "HOME"]
 	box.add_child(status)
 	var details:=Label.new()
-	details.text="Tap an operation below to view it remotely. Its physical property and stock stay where they are. Use Contacts to text workers for transfers."
+	details.text="Manage each property, its assigned workers, stock and bills through Properties. Hire people through Contacts and texts."
 	details.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	details.modulate=Color("b3caba")
 	box.add_child(details)
 	var grid:GridContainer=_phone_category_grid()
-	_add_phone_app_tile(grid,"","Employees","Staff assignments, duty and dealer commission","employees")
-	_add_phone_app_tile(grid,"","Inventory","Products, listings and stock","products")
-	_add_phone_app_tile(grid,"","Equipment","Owned equipment, upgrades and buying","upgrades")
-	_add_phone_app_tile(grid,"","Bills","Rent, utilities and dealer balance","bills")
+	_add_phone_app_tile(grid,"","Properties","Workers, stock, equipment and all bills","realestate")
 	_add_phone_app_tile(grid,"","Heat","Business pressure · %d/100" % int(round(heat)),"heat")
 	_add_phone_app_tile(grid,"","Stats","Revenue, milestones and career progress","stats")
 	var other:=Label.new()
@@ -7023,7 +7034,7 @@ func _build_budshop_app() -> void:
 				view_button.text="VIEW "+property_id.to_upper()+" OPERATION"+(" · SELECTED" if property_id==current_property else "")
 				view_button.disabled=property_id==current_property
 				view_button.custom_minimum_size.y=50
-				view_button.pressed.connect(_phone_business_select.bind(property_id))
+				view_button.pressed.connect(_phone_open_property_from_business.bind(property_id))
 				stack.add_child(view_button)
 			else:
 				var locked_note:=Label.new()
@@ -7031,7 +7042,7 @@ func _build_budshop_app() -> void:
 				locked_note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 				stack.add_child(locked_note)
 	var link:=Button.new()
-	link.text="OPEN REAL ESTATE · MANAGE PROPERTY ACCESS"
+	link.text="OPEN PROPERTIES · MANAGE PROPERTY ACCESS"
 	link.custom_minimum_size.y=52
 	link.pressed.connect(_open_phone_app.bind("realestate"))
 	phone_list.add_child(link)
@@ -7067,7 +7078,7 @@ func _build_phone_home() -> void:
 	phone_list.add_child(summary)
 	var grid: GridContainer = _phone_category_grid()
 	_add_phone_app_tile(grid, "", "Illegal Businesses", "Storefront status, bills & stats", "budshop")
-	_add_phone_app_tile(grid, "", "Real Estate", "Properties, leases & payments", "realestate")
+	_add_phone_app_tile(grid, "", "Properties", "Manage property, staff, stock & bills", "realestate")
 	_add_phone_app_tile(grid, "", "Store", "Seed orders & market info", "shop")
 	_add_phone_app_tile(grid, "", "Contacts", "Clients, crew & messages", "clients")
 	_add_phone_app_tile(grid, "", "Messages", ("%d unread" % phone_text_unread) if phone_text_unread > 0 else "Crew & story messages", "texts")
@@ -7230,6 +7241,12 @@ func _add_phone_app_tile(parent: GridContainer, icon_text: String, title_text: S
 	parent.add_child(tile)
 
 func _build_products_app() -> void:
+	if neighborhood!=null and neighborhood.location_ops!=null and not neighborhood.location_ops.portfolio_property.is_empty():
+		neighborhood.location_ops.portfolio_stock_ui(phone_list)
+		return
+	_build_products_local()
+
+func _build_products_local() -> void:
 	var intro: Label = Label.new()
 	intro.text = "Manage bagged inventory, storefront listings, prices and reserved stock here."
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -7616,6 +7633,12 @@ func _build_bills_app() -> void:
 		dealer_box.add_child(pay_dealers)
 
 func _build_employees_app() -> void:
+	if neighborhood!=null and neighborhood.location_ops!=null and not neighborhood.location_ops.portfolio_property.is_empty():
+		neighborhood.location_ops.portfolio_employees_ui(phone_list)
+		return
+	_build_employees_legacy()
+
+func _build_employees_legacy() -> void:
 	if neighborhood!=null and neighborhood.location_ops!=null:
 		var property_label:Label=Label.new()
 		property_label.text="EMPLOYEES · Viewing "+_phone_business_selected().capitalize()+"\nDealer duty applies to the whole team. Individual earnings and text transfers are in Contacts."
@@ -9347,6 +9370,14 @@ func _build_stats_app() -> void:
 	phone_list.add_child(reset)
 
 func _toggle_product_listing(product_name: String) -> void:
+	if neighborhood!=null and neighborhood.location_ops!=null and not neighborhood.location_ops.portfolio_property.is_empty():
+		var local_property:String=neighborhood.location_ops.portfolio_property
+		inventory_system.at_property(local_property,_toggle_product_listing_local.bind(product_name))
+		_refresh_phone()
+		return
+	_toggle_product_listing_local(product_name)
+
+func _toggle_product_listing_local(product_name: String) -> void:
 	if not products.has(product_name):
 		return
 	var data: Dictionary = products[product_name]
@@ -9358,6 +9389,9 @@ func _on_product_toggled(listed: bool, product_name: String) -> void:
 	_set_product_listed(product_name, listed)
 
 func _on_reserved_changed(value: float, product_name: String) -> void:
+	if neighborhood!=null and neighborhood.location_ops!=null and not neighborhood.location_ops.portfolio_property.is_empty():
+		inventory_system.at_property(neighborhood.location_ops.portfolio_property,_set_reserved.bind(product_name,int(value)))
+		return
 	_set_reserved(product_name, int(value))
 
 func _set_product_listed(product_name: String, listed: bool) -> void:
