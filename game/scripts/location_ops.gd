@@ -1301,7 +1301,7 @@ func portfolio_employees_ui(parent:VBoxContainer) -> void:
 	var working:bool=(host.dealers_active and portfolio_staff_duty(name)) if job=="dealer" else (portfolio_staff_duty(name) if job=="door" else host.packing_employee_active)
 	_property_label(parent,"Assigned: "+portfolio_name(prop)+"\nStatus: "+("LAYING LOW" if working and crew.shop.laying_low(prop) else ("ON DUTY" if working else "HOME")),16)
 	if job in ["dealer","door"]:
-		_property_button(parent,"SALES STATS · VIEW DEALS & COMMISSION",portfolio_page_dealer_stats)
+		_property_button(parent,"DEALER STATS · VIEW DEALS & COMMISSION" if job=="dealer" else "DOOR SALES STATS · VIEW DEALS & COMMISSION",portfolio_page_dealer_stats)
 		if job=="dealer" and name!="Dealer Team":
 			_property_button(parent,"HANDLE APARTMENT DOOR" if crew.manager()!=name else "RETURN TO STREET DEALS",crew.assign_manager.bind(name) if crew.manager()!=name else crew.return_to_street.bind(name),prop!="apartment" or (not crew.manager().is_empty() and crew.manager()!=name))
 	elif job=="production":
