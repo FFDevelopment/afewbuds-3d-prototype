@@ -6264,9 +6264,11 @@ func _record_customer_strain_experience(customer_name: String, requested: String
 	var tastes: Dictionary = (relationship.get("strain_tastes", {}) as Dictionary).duplicate(true)
 	tastes[sold] = mini(99, int(tastes.get(sold, 0)) + (2 if sold != requested else 1))
 	relationship["strain_tastes"] = tastes
-	if sold != requested and int(tastes[sold]) >= 6:
+	if sold != requested and int(tastes[sold]) >= 4:
+		relationship["secondary_strain"] = sold
+	if sold != requested and int(tastes[sold]) >= 10:
 		var old_preference: String = str(relationship.get("preferred_strain", requested))
-		if int(tastes[sold]) >= int(tastes.get(old_preference, 0)) + 3:
+		if int(tastes[sold]) >= int(tastes.get(old_preference, 0)) + 4:
 			relationship["preferred_strain"] = sold
 	customer_relationships[customer_name] = relationship
 
@@ -8103,6 +8105,8 @@ func _build_clients_app() -> void:
 			elif str(customer.get("tier", "")) == "Friend":
 				staff_line = "\nLOYAL FRIEND  |  Recruit at %d loyalty + %d personal sales." % [FRIEND_RECRUIT_LOYALTY, FRIEND_RECRUIT_PLAYER_SALES]
 			detail.text = "Prefers: %s\nStyle: %s\n%s\nSubstitution flexibility: %d%%\nEncounters: %d  |  Personal sales: %d  |  Dealer sales: %d\nLoyalty: %d / 100%s" % [_customer_favorite(customer), smoke_style, personality, int(round(float(customer.get("flexibility", 0.0)) * 100.0)), _customer_relationship_visits(client_name), int(client_relationship.get("player_sales", 0)), int(client_relationship.get("dealer_sales", 0)), _customer_loyalty(client_name), staff_line]
+			var secondary:String=str(client_relationship.get("secondary_strain",""))
+			if not secondary.is_empty() and secondary!=_customer_favorite(customer):detail.text+="\nAlso likes: "+secondary
 		else:
 			detail.text = "Preference: ???\nKeep dealing with this buyer to learn who they are."
 		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
