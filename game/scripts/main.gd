@@ -8102,6 +8102,11 @@ func _release_friend_staff(customer_name: String) -> void:
 	if role.is_empty():
 		return
 	friend_staff_roles.erase(customer_name)
+	# End work at its assigned property without losing lifetime performance.
+	if location_state.get("staff_assignments",{}) is Dictionary:
+		location_state["staff_assignments"].erase(customer_name)
+	if str(location_state.get("apartment_manager",""))==customer_name:
+		location_state["apartment_manager"]=""
 	if role == "production" and production_worker_friend_name == customer_name:
 		production_worker_friend_name = ""
 		_refresh_production_worker_friend_face()
