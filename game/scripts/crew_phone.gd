@@ -36,6 +36,7 @@ func reeves_available() -> bool:
 func contacts() -> void:
 	host.phone_title.text="Contacts"
 	label(host.phone_list,"Known clients and your crew. Open a contact for messages, appointments, recruiting and property assignment.")
+	button(host.phone_list,"EMPLOYEES · DUTY / DEALER SALES / COMMISSION",host._open_phone_app.bind("employees"))
 	var names: Array[String]=roster()
 	for client in host.customers:
 		if host._customer_is_known(client) and not names.has(str(client.name)):names.append(str(client.name))
@@ -104,6 +105,16 @@ func render_actions() -> void:
 	var job:=role(thread)
 	if not job.is_empty():
 		label(host.phone_list,job.to_upper()+" · Assigned to "+assignment(thread).capitalize())
+		if job=="dealer":
+			var stats:Dictionary=host.friend_dealer_stats.get(thread,{})
+			label(host.phone_list,"THIS DEALER · TODAY: %d deals · %dg · $%d gross · $%d commission" % [int(stats.get("today_sales",0)),int(stats.get("today_grams",0)),int(stats.get("today_gross",0)),int(stats.get("today_commission",0))])
+			label(host.phone_list,"CAREER: %d deals · %dg · $%d gross · $%d commission earned" % [int(stats.get("sales",0)),int(stats.get("grams",0)),int(stats.get("gross",0)),int(stats.get("commission_earned",0))])
+			label(host.phone_list,"DEALER TEAM: %s · %d deals today · $%d cash held · $%d commission pending · $%d balance due" % ["ON DUTY" if host.dealers_active else "OFF DUTY",host.dealer_sales_today,host.dealer_cash_held,host.dealer_commission_held,host.dealer_balance_due])
+			button(host.phone_list,("SEND ALL DEALERS HOME" if host.dealers_active else "PUT ALL DEALERS ON DUTY")+" (TEAM-WIDE)",toggle_crew_duty.bind("dealer"))
+		elif job=="production":
+			label(host.phone_list,"PRODUCTION: %s · Today: %d tasks · Current: %s" % ["ON DUTY" if host.packing_employee_active else "OFF DUTY",host.production_worker_tasks_today,host.production_worker_last_action])
+			button(host.phone_list,"SEND PRODUCTION WORKER HOME" if host.packing_employee_active else "PUT PRODUCTION WORKER ON DUTY",toggle_crew_duty.bind("production"))
+		button(host.phone_list,"ALL EMPLOYEES · FULL DUTY & PERFORMANCE",host._open_phone_app.bind("employees"))
 		if not host.lay_low_active:button(host.phone_list,"CLOSE SHOP" if host.business_open else "OPEN SHOP",command.bind(thread,"close" if host.business_open else "open"))
 		button(host.phone_list,"SET UP SHOP" if host.lay_low_active else "SHUT DOWN SHOP & LAY LOW",command.bind(thread,"reopen" if host.lay_low_active else "shutdown"))
 		button(host.phone_list,"TEXT: APARTMENT STATUS",command.bind(thread,"status"))
@@ -119,6 +130,11 @@ func render_actions() -> void:
 				button(host.phone_list,"OFFER PRODUCTION WORK · APARTMENT",recruit.bind(thread,"production"),host.grower_level<5 or host.packing_employee_hired)
 			elif str(client.get("tier",""))=="Friend":label(host.phone_list,"Recruiting requires %d loyalty and %d personal sales." % [host.FRIEND_RECRUIT_LOYALTY,host.FRIEND_RECRUIT_PLAYER_SALES])
 	button(host.phone_list,"BACK TO CONVERSATION",back)
+func toggle_crew_duty(job:String) -> void:
+	if job=="dealer" and host._total_dealer_count()>0:host._toggle_dealers()
+	elif job=="production" and host.packing_employee_hired:host._toggle_packing_employee()
+	host._refresh_phone()
+
 func render_reeves_actions() -> void:
 	if not reeves_available():
 		label(host.phone_list,"You haven't met Reeves yet.")
