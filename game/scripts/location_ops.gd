@@ -1093,7 +1093,11 @@ func portfolio_ui(parent:VBoxContainer) -> void:
 	_property_label(parent,"PROPERTIES",24)
 	if portfolio_property.is_empty() or not _property_controlled(portfolio_property):
 		if portfolio_page=="payments":
-			_legacy_real_estate_ui(parent)
+			property_bills_ui(parent)
+			if not apartment_lease_active():
+				var old_debt:int=apartment_balance()+property_utility_due("apartment","power")+property_utility_due("apartment","water")
+				_property_label(parent,"Released apartment: clear all old balances before renting it again. None of its former stock or furniture will be automatically restored.",16)
+				_property_button(parent,"RENT STARTER APARTMENT AGAIN · $%d" % APARTMENT_REACQUIRE_COST,reacquire_apartment,old_debt>0 or host.cash<APARTMENT_REACQUIRE_COST)
 			_property_button(parent,"BACK TO PROPERTIES",portfolio_back_pressed)
 			return
 		portfolio_reset()
