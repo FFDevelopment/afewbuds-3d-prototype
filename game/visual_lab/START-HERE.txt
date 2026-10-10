@@ -114,3 +114,5 @@ all ten house glass panes, roof/eave coverage, 11-light overlap budget; player-c
 from ground to roof and house-to-basement return trip; offline adapter and isolated
 local directory checks.
 See visual_lab/validate.gd. Render-review evidence is included under review/.
+
+01.8: Three full stories and aligned exterior windows on background residences; matching garage brick and roof materials.

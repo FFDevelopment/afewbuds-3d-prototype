@@ -116,6 +116,8 @@ func material_pass(world: Node3D) -> void:
    replace(n,surface("82624c",0))
   elif part in ["HouseFront","HouseSide","HouseRear"]:
    replace(n,surface("8d6853",0))
+  elif title.begins_with("GarageBrick"):
+   replace(n,surface("89634e",0))
   elif title.begins_with("RearBuilding") or title.begins_with("OppositeBuilding") or title.begins_with("OuterHouse") or title.begins_with("EastResidence"):
    replace(n,surface("80715e" if n.position.x>100 else "89634e",0))
   elif title.contains("WindowFrame") or title.contains("WindowSill") or title.contains("EntryTrim") or title.contains("EntryLintel"):
@@ -124,11 +126,11 @@ func material_pass(world: Node3D) -> void:
    replace(n,surface("c4bfb0",3))
   elif title.contains("Floor") and box_mesh!=null and tile!=6:
    replace(n,surface("918b7b",1))
-  # More legible windows on the existing appropriately sized two-/three-story shells.
+  # Full-height windows centered within each 3.5 m background story.
   if title.begins_with("Window") and n.position.y>0.5 and (n.position.x< -15 or n.position.x>54 or n.position.z< -23 or n.position.z>26):
    var before:Transform3D=n.transform
-   var row := roundi((n.position.y-2.04)/3.24)
-   var center := 2.04+row*3.24
+   var row := roundi((n.position.y-2.04)/3.5)
+   var center := 2.04+row*3.5
    n.position.y=center+(n.position.y-center)*1.15
    n.scale.y*=1.15
    # Tangential width scales together with the mullion, glass and sill.
@@ -297,7 +299,7 @@ func _process(_delta: float) -> void:
   env.ambient_light_energy=.28 if dusk else .32
   game.neighborhood.outdoor_sun.light_energy=.48 if dusk else .52
   game.neighborhood.outdoor_sun.light_color=Color("ffd1a1") if dusk else Color("fff0d6")
- label.text="AFB  /  VISUAL LAB 01.7  —  "+("REVISED" if revised else "ORIGINAL")+"\nF6 Compare   F7 "+("Light" if mobile else "Desktop")+" preset   F8 Time   F9 Viewpoint\nWASD Move   Mouse Look   E Interact   Esc Pause\nLocal test career  •  "+str(Engine.get_frames_per_second())+" FPS"
+ label.text="AFB  /  VISUAL LAB 01.8  —  "+("REVISED" if revised else "ORIGINAL")+"\nF6 Compare   F7 "+("Light" if mobile else "Desktop")+" preset   F8 Time   F9 Viewpoint\nWASD Move   Mouse Look   E Interact   Esc Pause\nLocal test career  •  "+str(Engine.get_frames_per_second())+" FPS"
 func _input(event: InputEvent) -> void:
  if not event is InputEventKey or not event.pressed or event.echo:return
  match event.physical_keycode:

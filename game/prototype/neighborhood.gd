@@ -151,7 +151,13 @@ func _raw_piece(label_text: String, pos: Vector3, size: Vector3, color: String, 
 	return mesh
 
 func building(label_text: String, pos: Vector3, size: Vector3, color: String, windows: bool = true) -> void:
-	size.y*=ScalePolicy.BACKGROUND_BUILDING_SCALE_Y
+	# Background residences have three complete stories, rather than a stretched
+	# two-row facade. The playable apartment upper shell keeps its own layout.
+	var residential := label_text in ["RearBuilding","OppositeBuilding","OuterHouse","EastResidence"]
+	var story_height := 3.5 if residential else 3.24
+	var window_center := 2.04
+	if residential: size.y = story_height * 3.0
+	else: size.y *= ScalePolicy.BACKGROUND_BUILDING_SCALE_Y
 	var bounds := AABB(pos, size)
 	building_bounds.append(bounds)
 	if is_zero_approx(pos.y): _obstacle(pos.x+size.x/2,pos.z+size.z/2,size.x,size.z)
@@ -169,12 +175,12 @@ func building(label_text: String, pos: Vector3, size: Vector3, color: String, wi
 			var width: float = size.x if normal.z != 0 else size.z
 			var depth: float = size.z if normal.z != 0 else size.x
 			var columns := maxi(2,int(width/2.4))
-			for row in range(int(size.y/3.24)):
+			for row in range(roundi(size.y/story_height) if residential else int(size.y/story_height)):
 				for col in range(columns):
 					var offset := (float(col)+0.5)*width/columns-width/2
 					if is_zero_approx(pos.y) and normal == front and row == 0 and absf(offset) < 1.4: continue
-					var point: Vector3 = Vector3(center.x,pos.y+2.04+row*3.24,center.z)+normal*(depth/2+0.05)+tangent*offset
-					window_layout_records.append({"at":point,"floor":pos.y+row*3.24,"ceiling":minf(pos.y+(row+1)*3.24,pos.y+size.y),"building":label_text,"row":row})
+					var point: Vector3 = Vector3(center.x,pos.y+window_center+row*story_height,center.z)+normal*(depth/2+0.05)+tangent*offset
+					window_layout_records.append({"at":point,"floor":pos.y+row*story_height,"ceiling":minf(pos.y+(row+1)*story_height,pos.y+size.y),"building":label_text,"row":row})
 					facade_window(point,normal)
 	if is_zero_approx(pos.y) and windows:
 		entrance(door_center,front)

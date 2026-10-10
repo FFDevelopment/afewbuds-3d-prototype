@@ -41,8 +41,8 @@ func bench(at:Vector3, facing:float) -> void:
 
 func garage(x:float) -> void:
 	var at:=Vector3(x,0,-13.0)
-	w.exterior_box(at+Vector3(0,1.65,0),Vector3(4.4,3.3,4),"bda887",0)
-	w.exterior_box(at+Vector3(0,3.38,0),Vector3(4.7,.16,4.3),"4d5150",3)
+	w.exterior_box(at+Vector3(0,1.65,0),Vector3(4.4,3.3,4),"bda887",0).name="GarageBrick"
+	w.exterior_box(at+Vector3(0,3.38,0),Vector3(4.7,.16,4.3),"4d5150",3).name="GarageRoof"
 	w.exterior_box(at+Vector3(0,1.43,-2.015),Vector3(3.45,2.85,.05),"a5aaa2")
 	for i in range(7):w.exterior_box(at+Vector3(0,.3+i*.38,-2.05),Vector3(3.42,.025,.035),"6a736c")
 	w._obstacle(at.x,at.z,4.4,4.0)

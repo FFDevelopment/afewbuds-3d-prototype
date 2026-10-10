@@ -70,3 +70,9 @@ Validated with Godot 4.6 stable, Compatibility renderer; not locally tested with
 - Rail-edge climbing along both sides of three outdoor and two basement flights.
 
 This is a desktop map integration branch, not a promoted tester release. Basement worker navigation, mobile mirroring of the changed shared furniture adapters, and full release/export gates are still pending. No tester repository or main branch is updated by this handoff.
+
+## Visual Lab 01.8 — complete background stories and garage brick
+
+Background RearBuilding, OppositeBuilding, OuterHouse and EastResidence shells now have three complete 3.5 m stories (10.5 m roofline), with three window rows on each facade. Footprints and closed decorative entrances remain unchanged. Apartment and house property IDs and playable interiors are preserved. Garage wall and roof meshes now have semantic names so the visual material pass consistently applies the updated brick and roof finishes.
+
+Validation: Godot 4.6 import and runtime geometry assertions, plus street/garage render captures; not tested in Godot 4.7.2.
