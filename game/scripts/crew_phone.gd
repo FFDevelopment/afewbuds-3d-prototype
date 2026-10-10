@@ -284,6 +284,7 @@ func assign(name: String,property: String) -> void:
 	if name=="Dealer Team" and property=="house":return
 	var previous:String=assignment(name)
 	if previous==property:return
+	if role(name)=="door" and not manager(property).is_empty():return
 	host.location_state.staff_assignments[name]=property
 	if str(host.location_state.get("apartment_manager",""))==name and property!="apartment":
 		host.location_state["apartment_manager"]=""
@@ -322,7 +323,7 @@ func invite(name: String) -> void:
 func assign_manager(name: String) -> void:
 	var property_id:String=assignment(name)
 	if role(name) not in ["dealer","door"] or not ops._property_controlled(property_id):return
-	if role(name)=="door" and not manager(property_id).is_empty() and manager(property_id)!=name:return
+	if not manager(property_id).is_empty() and manager(property_id)!=name:return
 	if role(name)=="door":
 		var managers:Dictionary=host.location_state.get("door_managers",{})
 		managers[property_id]=name
@@ -360,12 +361,12 @@ func return_to_street(name: String) -> void:
 	host._refresh_phone()
 func can_handle(property_id:String="apartment") -> bool:
 	var worker:String=manager(property_id)
-	if worker.is_empty() or not shop.dealer_allowed(worker) or host._simulation_blocked() or not host.business_open or host.lay_low_active:return false
+	if worker.is_empty() or not shop.dealer_allowed(worker) or host._simulation_blocked():return false
 	if not bool(host.location_state.get("staff_duty",{}).get(worker,true)):return false
-	if host.dealer_balance_due>0 or host.dealer_arrested:return false
-	return true if role(worker)=="door" else host.dealers_active
+	if role(worker)=="door":return true
+	return host.dealers_active and not host.dealer_arrested and host.dealer_balance_due<=0
 func serve_visit(client: Dictionary,request: Dictionary) -> bool:
-	var property_id:String=host.inventory_system.active_property() if host.inventory_system!=null else "apartment"
+	var property_id:String=ops.active_property() if ops!=null else "apartment"
 	var name:String=manager(property_id)
 	if not host.customer_waiting or host.customer_answered or host.customer_departing or str(host.current_customer.get("name",""))!=str(client.get("name","")):return false
 	if not can_handle(property_id) or not str(client.get("special","")).is_empty():return false
@@ -400,8 +401,8 @@ func update(delta: float) -> void:
 		if manager_node==null:
 			manager_node=character_instance(name) if FriendCharacters.has_character(name) else generic_manager_instance(name)
 			manager_node.name="ApartmentDoorManager";host.add_child(manager_node);manager_node.set_meta("contact",name)
-			for tag in manager_node.find_children("*","Label3D",true,false):tag.text=name+" · APARTMENT DEALER"
-		manager_node.visible=not host.dealer_arrested
+			for tag in manager_node.find_children("*","Label3D",true,false):tag.text=name+(" · DOOR DEALER" if role(name)=="door" else " · APARTMENT DEALER")
+		manager_node.visible=not host.dealer_arrested or role(name)=="door"
 		var couch: Dictionary=idle_couch()
 		var relax: bool=not couch.is_empty() and not host.customer_waiting and not world.couch_seated
 		var seat: Vector3=idle_spot(true,false)
