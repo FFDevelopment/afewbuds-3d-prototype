@@ -38,7 +38,7 @@ func reeves_available() -> bool:
 func contacts() -> void:
 	host.phone_title.text="Contacts"
 	label(host.phone_list,"Known clients and your crew. Open a contact for messages, appointments, recruiting and property assignment.")
-	button(host.phone_list,"EMPLOYEES · DUTY / DEALER SALES / COMMISSION",host._open_phone_app.bind("employees"))
+	button(host.phone_list,"PROPERTIES · MANAGE YOUR WORKERS",host._open_phone_app.bind("realestate"))
 	var names: Array[String]=roster()
 	for client in host.customers:
 		if host._customer_is_known(client) and not names.has(str(client.name)):names.append(str(client.name))
@@ -127,7 +127,7 @@ func render_actions() -> void:
 				button(host.phone_list,"TEXT: TRANSFER "+thread.to_upper()+" TO "+alternate.to_upper(),transfer_from_contact.bind(thread,alternate))
 			else:
 				label(host.phone_list,"Other operation locked — manage property access in Real Estate.")
-		button(host.phone_list,"ALL EMPLOYEES · FULL DUTY & PERFORMANCE",host._open_phone_app.bind("employees"))
+		button(host.phone_list,"MANAGE THIS WORKER IN PROPERTIES",open_worker_manager.bind(thread))
 		if not host.lay_low_active:button(host.phone_list,"CLOSE SHOP" if host.business_open else "OPEN SHOP",command.bind(thread,"close" if host.business_open else "open"))
 		button(host.phone_list,"SET UP SHOP" if host.lay_low_active else "SHUT DOWN SHOP & LAY LOW",command.bind(thread,"reopen" if host.lay_low_active else "shutdown"))
 		button(host.phone_list,"TEXT: APARTMENT STATUS",command.bind(thread,"status"))
@@ -150,6 +150,15 @@ func render_actions() -> void:
 		else:
 			button(host.phone_list,"FIRE "+thread.to_upper()+" · END "+job.to_upper()+" ROLE",request_staff_release.bind(thread))
 	button(host.phone_list,"BACK TO CONVERSATION",back)
+
+func open_worker_manager(name:String) -> void:
+	if role(name).is_empty():return
+	var property:String=assignment(name)
+	if not ops._property_controlled(property):return
+	host._open_phone_app("realestate")
+	ops.portfolio_select(property)
+	host._open_phone_app("employees")
+	ops.portfolio_employee_open(name)
 
 func transfer_from_contact(name:String,property:String) -> void:
 	# Text commands and property-computer transfers share one assignment route.
