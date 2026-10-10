@@ -48,6 +48,31 @@ func run()->void:
 	check("Malik" in employees and "Tyler" in employees,"Employees shows all hired staff and their property assignments")
 	check("TEXT TYLER" in employees and "TRANSFER TO HOUSE" in employees,"Phone employees offers transfer-by-text")
 	check("SEND WORKER HOME" in employees and "SEND DEALERS HOME" in employees,"Phone employees restores both duty actions")
+	game._toggle_packing_employee()
+	check(not game.packing_employee_active,"Send worker home changes actual production duty state")
+	game._open_phone_app("employees")
+	check("PUT WORKER ON DUTY" in labels(game.phone_list),"Off-duty production employee shows return-to-work button")
+	game._toggle_packing_employee()
+	check(game.packing_employee_active,"Put worker on duty activates production again")
+	game._toggle_dealers()
+	check(not game.dealers_active,"Send all dealers home changes actual team duty state")
+	game._open_phone_app("employees")
+	check("PUT DEALERS ON DUTY" in labels(game.phone_list),"Off-duty dealer team exposes return-to-work button")
+	game.dealer_balance_due=120
+	game._open_phone_app("employees")
+	check("Pay the $120 dealer balance" in labels(game.phone_list),"Unpaid dealer balance is visibly explained rather than silently hiding clock-in")
+	check(game._staff_duty_blocker("dealer").contains("$120"),"Dealer balance blocker reflects the real payroll rule")
+	game.dealer_balance_due=0
+	game._toggle_dealers()
+	check(game.dealers_active,"Clearing balance enables dealer team to clock back in")
+	game._toggle_dealers()
+	game.heat=81
+	game._open_phone_app("employees")
+	check("Heat is 75 or higher" in labels(game.phone_list),"High heat visibly explains off-duty status")
+	game.heat=0
+	game._toggle_dealers()
+	check(game.dealers_active,"Removing heat blocker restores dealer team duty")
+
 	check("$10 commission" in employees and "$56 commission" in employees,"Individual dealer performance includes today's and career commission")
 	crew.open_thread("Tyler")
 	crew.show_actions()
