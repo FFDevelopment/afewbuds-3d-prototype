@@ -10829,7 +10829,7 @@ func _customer_arrives() -> void:
 		return
 	if neighborhood != null and neighborhood.client_visits.reserve_slot():
 		return
-	if not business_open:
+	if not (neighborhood.location_ops.crew.shop.is_open(neighborhood.location_ops.active_property()) if neighborhood!=null else business_open):
 		_schedule_next_customer(true)
 		return
 	var viable: Array[Dictionary] = _viable_customers()
@@ -10890,7 +10890,7 @@ func _customer_arrives() -> void:
 
 func _viable_customers() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
-	if not business_open or not _is_customer_time():
+	if not (neighborhood.location_ops.crew.shop.is_open(neighborhood.location_ops.active_property()) if neighborhood!=null else business_open) or not _is_customer_time():
 		return result
 	var listed_names: Array[String] = []
 	for name_variant in products.keys():
