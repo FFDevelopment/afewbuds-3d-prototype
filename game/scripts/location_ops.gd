@@ -1124,12 +1124,17 @@ func portfolio_ui(parent:VBoxContainer) -> void:
 	_property_label(parent,portfolio_name(property),22)
 	_property_label(parent,"Workers: %d · Utilities due: $%d\n%s" % [computer_staff_names(property).size(),property_utility_due(property,"power")+property_utility_due(property,"water"),property_activity(property)],16)
 	if portfolio_page=="overview":
+		_property_label(parent,"Shop: "+crew.shop.status(property),17)
+		_property_button(parent,"SHOP OPERATIONS · Open, close & lay low",portfolio_page_open.bind("operations"))
 		_property_button(parent,"EMPLOYEES · Assigned crew & dealer stats",portfolio_app_open.bind("employees"))
 		_property_button(parent,"STOCK · Products, listings & inventory",portfolio_app_open.bind("products"))
 		_property_button(parent,"ARRANGE FURNITURE"+("" if portfolio_on_site(property) else " · VISIT PROPERTY"),portfolio_furniture,not portfolio_on_site(property))
 		_property_button(parent,"BILLS · Water, electricity & agreement",portfolio_page_open.bind("bills"))
+		_property_button(parent,"CREW PAY · Wages & dealer balances",host._open_phone_app.bind("bills"))
 		_property_button(parent,"PROPERTY AGREEMENT · Rent, ownership & access",portfolio_page_open.bind("agreement"))
 		_property_label(parent,"Staff can be hired by texting Contacts. Furniture can only be rearranged while you are physically inside this property.",15)
+	elif portfolio_page=="operations":
+		crew.shop.render(parent,property)
 	elif portfolio_page=="bills":
 		var bill:Dictionary=utility_state(property)
 		_property_label(parent,"ELECTRICITY  $%d\nWATER  $%d" % [int(bill.get("power_due",0)),int(bill.get("water_due",0))],19)
@@ -1300,7 +1305,7 @@ func portfolio_employees_ui(parent:VBoxContainer) -> void:
 	var job:String=crew.role(name)
 	_property_label(parent,name+" · "+job.capitalize(),20)
 	var working:bool=(host.dealers_active and portfolio_staff_duty(name)) if job=="dealer" else host.packing_employee_active
-	_property_label(parent,"Assigned: "+portfolio_name(prop)+"\nStatus: "+("ON DUTY" if working else "HOME"),16)
+	_property_label(parent,"Assigned: "+portfolio_name(prop)+"\nStatus: "+("LAYING LOW" if working and crew.shop.laying_low(prop) else ("ON DUTY" if working else "HOME")),16)
 	if job=="dealer":
 		_property_button(parent,"DEALER STATS · VIEW DEALS & COMMISSION",portfolio_page_dealer_stats)
 		if name!="Dealer Team":
@@ -1340,6 +1345,15 @@ func portfolio_page_dealer_stats() -> void:
 	portfolio_page="dealer_stats"
 	host._refresh_phone()
 
+func record_dealer_sale(name:String,client:String,product:String,grams:int,gross:int,commission:int) -> void:
+	if not host.location_state.get("dealer_sale_history",{}) is Dictionary:host.location_state["dealer_sale_history"]={}
+	if not host.location_state.has("dealer_sale_history"):host.location_state["dealer_sale_history"]={}
+	var history:Dictionary=host.location_state.dealer_sale_history
+	var rows:Array=history.get(name,[])
+	rows.append({"day":host.game_day,"time":host._format_game_clock(),"property":crew.assignment(name),"client":client,"product":product,"grams":grams,"gross":gross,"commission":commission})
+	while rows.size()>100:rows.pop_front()
+	history[name]=rows
+
 func portfolio_dealer_stats_ui(parent:VBoxContainer) -> void:
 	var name:String=portfolio_employee
 	var stats:Dictionary={}
@@ -1348,6 +1362,12 @@ func portfolio_dealer_stats_ui(parent:VBoxContainer) -> void:
 	_property_label(parent,name+" · DEALER STATS",22)
 	_property_label(parent,"TODAY\nDeals: %d · Grams: %dg\nGross sales: $%d · Commission: $%d" % [int(stats.get("today_sales",0)),int(stats.get("today_grams",0)),int(stats.get("today_gross",0)),int(stats.get("today_commission",0))],18)
 	_property_label(parent,"LIFETIME\nDeals: %d · Grams: %dg\nGross sales: $%d · Commission earned: $%d" % [int(stats.get("sales",0)),int(stats.get("grams",0)),int(stats.get("gross",0)),int(stats.get("commission_earned",0))],18)
+	_property_label(parent,"RECENT SALES · latest 100",20)
+	var rows:Array=host.location_state.get("dealer_sale_history",{}).get(name,[])
+	if rows.is_empty():_property_label(parent,"New sales will appear here. Your existing totals are preserved.",16)
+	for index in range(rows.size()-1,-1,-1):
+		var sale:Dictionary=rows[index]
+		_property_label(parent,"Day %d · %s · %s\n%s · %dg %s\n$%d gross · $%d commission · $%d net" % [int(sale.day),str(sale.time),str(sale.property).capitalize(),str(sale.client),int(sale.grams),str(sale.product),int(sale.gross),int(sale.commission),int(sale.gross)-int(sale.commission)],16)
 	_property_button(parent,"BACK TO "+name.to_upper(),portfolio_dealer_stats_back)
 
 func portfolio_dealer_stats_back() -> void:
