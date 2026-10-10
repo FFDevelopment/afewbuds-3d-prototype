@@ -7035,6 +7035,30 @@ func _build_budshop_app() -> void:
 	link.custom_minimum_size.y=52
 	link.pressed.connect(_open_phone_app.bind("realestate"))
 	phone_list.add_child(link)
+func _build_settings_app() -> void:
+	var intro: Label = Label.new()
+	intro.text = "Help, account, saves and system controls."
+	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	phone_list.add_child(intro)
+	var grid: GridContainer = _phone_category_grid()
+	_add_phone_app_tile(grid, "", "Help", "Basics & controls", "help")
+	_add_phone_app_tile(grid, "", "Account", "Username, password, email & updates", "account")
+	_add_phone_app_tile(grid, "", "System", "Save game & safe quit", "system")
+
+func _build_task_app() -> void:
+	_build_story_progress_section()
+	var grid: GridContainer = _phone_category_grid()
+	_add_phone_app_tile(grid, "", "Advancements", "Roadmap + %d reward%s ready" % [_advancement_ready_count(), "" if _advancement_ready_count() == 1 else "s"], "advancements")
+
+	# Task uses the same fixed-width containment as the Advancements page.
+	# Long chapter/objective copy must wrap inside the phone instead of
+	# increasing the minimum width of the phone/game viewport.
+	_constrain_advancement_phone_width(phone_list)
+	phone_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	phone_list.custom_minimum_size.x = 0.0
+	phone_list.queue_sort()
+	phone_scroll.queue_sort()
+
 func _build_phone_home() -> void:
 	var summary: Label = Label.new()
 	summary.text = "DAY %d  |  %s\n$%d cash   |   Level %d   |   Storefront %s" % [game_day, _format_game_clock(), cash, grower_level, "LAYING LOW" if lay_low_active else ("OPEN" if business_open else "AWAY")]
