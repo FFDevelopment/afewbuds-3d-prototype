@@ -27,10 +27,13 @@ func button(parent: Node,text: String,action: Callable,disabled: bool=false) -> 
 	var node:=Button.new();node.text=text;node.custom_minimum_size.y=54;node.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;node.disabled=disabled;node.pressed.connect(action);parent.add_child(node)
 func role(name: String) -> String:
 	if host.packing_employee_hired and name==host._critical_production_sender():return "production"
+	if host._friend_staff_role(name)=="door":return "door"
 	if host._friend_staff_role(name)=="dealer" or (name.begins_with("Hired Dealer ") and int(name.trim_prefix("Hired Dealer "))>0 and int(name.trim_prefix("Hired Dealer "))<=host.dealer_count) or (name=="Dealer Team" and host._total_dealer_count()>0):return "dealer"
 	return host._friend_staff_role(name)
 func roster() -> Array[String]:
 	var names: Array[String]=host._friend_staff_names("dealer")
+	for worker_name in host._friend_staff_names("door"):
+		if not names.has(worker_name):names.append(worker_name)
 	for idx in range(host.dealer_count):names.append("Hired Dealer %d" % (idx+1))
 	if host.packing_employee_hired and not names.has(host._critical_production_sender()):names.append(host._critical_production_sender())
 	return names
@@ -111,7 +114,7 @@ func render_actions() -> void:
 	var job:=role(thread)
 	if not job.is_empty():
 		label(host.phone_list,job.to_upper()+" · Assigned to "+assignment(thread).capitalize())
-		if job=="dealer":
+		if job in ["dealer", "door"]:
 			var stats:Dictionary=host.friend_dealer_stats.get(thread,{})
 			label(host.phone_list,"THIS DEALER · TODAY: %d deals · %dg · $%d gross · $%d commission" % [int(stats.get("today_sales",0)),int(stats.get("today_grams",0)),int(stats.get("today_gross",0)),int(stats.get("today_commission",0))])
 			label(host.phone_list,"CAREER: %d deals · %dg · $%d gross · $%d commission earned" % [int(stats.get("sales",0)),int(stats.get("grams",0)),int(stats.get("gross",0)),int(stats.get("commission_earned",0))])
@@ -134,7 +137,7 @@ func render_actions() -> void:
 		if not shop.laying_low(assignment(thread)):button(host.phone_list,"CLOSE SHOP" if shop.is_open(assignment(thread)) else "OPEN SHOP",command.bind(thread,"close" if shop.is_open(assignment(thread)) else "open"))
 		button(host.phone_list,"SET UP SHOP" if shop.laying_low(assignment(thread)) else "SHUT DOWN SHOP & LAY LOW",command.bind(thread,"reopen" if shop.laying_low(assignment(thread)) else "shutdown"))
 		button(host.phone_list,"TEXT: "+assignment(thread).to_upper()+" STATUS",command.bind(thread,"status"))
-		if job=="dealer":button(host.phone_list,"GO BACK TO STREET DEALS" if manager()==thread else "HANDLE APARTMENT DOOR",return_to_street.bind(thread) if manager()==thread else assign_manager.bind(thread))
+		if job=="dealer":button(host.phone_list,"GO BACK TO STREET DEALS" if manager(assignment(thread))==thread else "HANDLE PROPERTY DOOR",return_to_street.bind(thread) if manager(assignment(thread))==thread else assign_manager.bind(thread))
 		if job=="dealer" and host.dealer_arrested:button(host.phone_list,"SEND DEALER BAIL · $%d" % host.dealer_bail_due,host._pay_dealer_bail,host.cash<host.dealer_bail_due)
 		if job=="production" and host.production_worker_arrested:button(host.phone_list,"SEND WORKER BAIL · $%d" % host.production_worker_bail_due,host._pay_production_bail,host.cash<host.production_worker_bail_due)
 	else:
@@ -144,6 +147,8 @@ func render_actions() -> void:
 			if host._friend_is_recruitable(client):
 				button(host.phone_list,"OFFER DEALER WORK · APARTMENT",recruit.bind(thread,"dealer"),host._total_dealer_count()>=host._dealer_capacity())
 				button(host.phone_list,"OFFER PRODUCTION WORK · APARTMENT",recruit.bind(thread,"production"),host.grower_level<5 or host.packing_employee_hired)
+				for property_id in ["apartment","house"]:
+					if ops._property_controlled(property_id):button(host.phone_list,"OFFER DOOR WORK · "+property_id.to_upper()+" · $500",recruit_door.bind(thread,property_id),not manager(property_id).is_empty() or host.cash<500)
 			elif str(client.get("tier",""))=="Friend":label(host.phone_list,"Recruiting requires %d loyalty and %d personal sales." % [host.FRIEND_RECRUIT_LOYALTY,host.FRIEND_RECRUIT_PLAYER_SALES])
 	if not host._friend_staff_role(thread).is_empty():
 		if release_confirmation==thread:
@@ -283,6 +288,12 @@ func assign(name: String,property: String) -> void:
 	if str(host.location_state.get("apartment_manager",""))==name and property!="apartment":
 		host.location_state["apartment_manager"]=""
 		manager_attempted=false
+	if role(name)=="door":
+		var managers:Dictionary=host.location_state.get("door_managers",{})
+		for place in managers.keys():
+			if str(managers[place])==name:managers.erase(place)
+		if manager(property).is_empty():managers[property]=name
+		host.location_state["door_managers"]=managers
 	if role(name)=="production":
 		host.production_worker_pending_action=""
 		host.production_worker_pending_slot=-1
@@ -300,19 +311,36 @@ func recruit(name: String,job: String) -> void:
 	actions=false
 	host._recruit_friend_staff(name,job)
 	if role(name)==job:assign(name,"apartment")
+func recruit_door(name: String, property_id: String) -> void:
+	actions=false
+	host._recruit_friend_staff(name,"door",property_id)
+	host._refresh_phone()
+
 func invite(name: String) -> void:
 	if not host.business_open:return
 	outgoing(name,"I'm available at the apartment. Stop by when you can.");host._text_known_customer(name);host._refresh_phone();host._save_game()
 func assign_manager(name: String) -> void:
-	if role(name)!="dealer" or assignment(name)!="apartment":return
-	host.location_state["apartment_manager"]=name
-	if can_handle():host._schedule_next_customer(true)
-	outgoing(name,"Run the apartment and answer clients at the door.")
-	send(name,"I'll answer clients at the apartment using packaged stock in its locker, storage or packing bench. I'm off street deals while assigned here. Cash and commission settle at nightly closeout.")
+	var property_id:String=assignment(name)
+	if role(name) not in ["dealer","door"] or not ops._property_controlled(property_id):return
+	if role(name)=="door" and not manager(property_id).is_empty() and manager(property_id)!=name:return
+	if role(name)=="door":
+		var managers:Dictionary=host.location_state.get("door_managers",{})
+		managers[property_id]=name
+		host.location_state["door_managers"]=managers
+	else:
+		if property_id!="apartment":return
+		host.location_state["apartment_manager"]=name
+	if can_handle(property_id) and property_id=="apartment":host._schedule_next_customer(true)
+	outgoing(name,"Handle clients at the "+property_id+".")
+	send(name,"I'll handle the door using the property's available packaged stock. Sales and commission settle at daily closeout.")
 	host._refresh_phone()
-func manager() -> String:
-	var name:=str(host.location_state.get("apartment_manager",""))
-	return name if role(name)=="dealer" and assignment(name)=="apartment" else ""
+func manager(property_id:String="apartment") -> String:
+	var managers:Dictionary=host.location_state.get("door_managers",{})
+	var dedicated:String=str(managers.get(property_id,""))
+	if role(dedicated)=="door" and assignment(dedicated)==property_id:return dedicated
+	if property_id!="apartment":return ""
+	var legacy:String=str(host.location_state.get("apartment_manager",""))
+	return legacy if role(legacy)=="dealer" and assignment(legacy)==property_id else ""
 func shutdown() -> void:
 	shop.shutdown("apartment")
 
@@ -321,22 +349,33 @@ func command(name: String,action: String) -> void:
 	shop.command(name,action)
 
 func return_to_street(name: String) -> void:
-	if manager()!=name:return
-	host.location_state["apartment_manager"]="";manager_attempted=false
+	var property_id:String=assignment(name)
+	if manager(property_id)!=name:return
+	if role(name)=="door":return
+	host.location_state["apartment_manager"]=""
+	manager_attempted=false
 	host._schedule_next_customer(true)
-	outgoing(name,"Go back to street deals.");send(name,"Back on street deals. I'll use the Dealer Locker again. You'll need to answer the apartment door.");host._refresh_phone()
-func can_handle() -> bool:
-	return not host._simulation_blocked() and not manager().is_empty() and shop.dealer_allowed(manager()) and host.dealers_active and host.business_open and not host.lay_low_active and not host.dealer_arrested and host.dealer_balance_due<=0
+	outgoing(name,"Go back to street deals.")
+	send(name,"Back on street deals. You'll need someone at the door.")
+	host._refresh_phone()
+func can_handle(property_id:String="apartment") -> bool:
+	var worker:String=manager(property_id)
+	if worker.is_empty() or not shop.dealer_allowed(worker) or host._simulation_blocked() or not host.business_open or host.lay_low_active:return false
+	if not bool(host.location_state.get("staff_duty",{}).get(worker,true)):return false
+	if host.dealer_balance_due>0 or host.dealer_arrested:return false
+	return true if role(worker)=="door" else host.dealers_active
 func serve_visit(client: Dictionary,request: Dictionary) -> bool:
-	var name:=manager()
+	var property_id:String=host.inventory_system.active_property() if host.inventory_system!=null else "apartment"
+	var name:String=manager(property_id)
 	if not host.customer_waiting or host.customer_answered or host.customer_departing or str(host.current_customer.get("name",""))!=str(client.get("name","")):return false
-	if not can_handle() or not str(client.get("special","")).is_empty():return false
+	if not can_handle(property_id) or not str(client.get("special","")).is_empty():return false
 	if not host._dealer_sell_one(false,name,client,request):return false
-	host.customer_answered=true;host._record_customer_encounter(false)
-	var summary: String="Served %s · %dg %s. Proceeds settle at closeout." % [str(client.get("name","client")),int(request.get("qty",0)),str(request.get("product",""))]
+	host.customer_answered=true
+	host._record_customer_encounter(false)
+	var sold:String=str(host.location_state.get("last_door_sale_strain",str(request.get("product",""))))
+	var summary:String="Served %s · %dg %s. Proceeds settle at closeout." % [str(client.get("name","client")),int(request.get("qty",0)),sold]
 	world.client_visits._release_visit()
 	host.status_label.text=name+": "+summary
-	# Routine sales are recorded in dealer details without sending a text.
 	host._save_game()
 	return true
 func computer_controls() -> void:
