@@ -293,33 +293,69 @@ func computer(property: String) -> void:
 		ui.button("CLOSE COMPUTER",func():computer_context="";close())
 		return
 	manage("business")
+const MANAGEMENT_TABS := ["business","employees","production","inventory","upgrades","bills"]
+const MANAGEMENT_TITLES := {"business":"OVERVIEW","employees":"EMPLOYEES","production":"PRODUCTION","inventory":"INVENTORY","upgrades":"EQUIPMENT","bills":"BILLS"}
+func _management_navigation(section:String) -> void:
+	var property:String=computer_context
+	var banner:=PanelContainer.new()
+	banner.add_theme_stylebox_override("panel",host.inventory_system.ui_style("10251d","5a9a74",15))
+	ui.body.add_child(banner)
+	var banner_box:=VBoxContainer.new()
+	banner_box.add_theme_constant_override("separation",4)
+	banner.add_child(banner_box)
+	var heading:=Label.new()
+	heading.text=property.to_upper()+"  /  "+str(MANAGEMENT_TITLES.get(section,section.to_upper()))
+	heading.add_theme_font_size_override("font_size",24)
+	heading.add_theme_color_override("font_color",Color("b6efc4"))
+	banner_box.add_child(heading)
+	var detail:=Label.new()
+	detail.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	detail.text="PROPERTY-LOCAL CONTROLS  ·  $%d outstanding  ·  %d assigned staff" % [computer_due(property),computer_staff_names(property).size()]
+	detail.add_theme_font_size_override("font_size",15)
+	detail.add_theme_color_override("font_color",Color("b1c8b6"))
+	banner_box.add_child(detail)
+	var tabs:=GridContainer.new()
+	tabs.columns=2 if ui.panel.size.x<590 else 3
+	tabs.add_theme_constant_override("h_separation",8)
+	tabs.add_theme_constant_override("v_separation",8)
+	ui.body.add_child(tabs)
+	for key in MANAGEMENT_TABS:
+		var tab:=Button.new()
+		tab.text=str(MANAGEMENT_TITLES[key])
+		tab.custom_minimum_size.y=48
+		tab.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+		tab.add_theme_font_size_override("font_size",16)
+		tab.disabled=key==section
+		host.inventory_system.style_button(tab)
+		tab.pressed.connect(manage.bind(key))
+		tabs.add_child(tab)
+
 func manage(app: String) -> void:
-	# Bind every dashboard tab to the property of the opened computer.
-	# Looking away from its mesh must never change or suppress the property context.
+	# Everything displayed on this computer belongs to its original property.
 	if computer_context not in ["apartment","house"] or not _property_controlled(computer_context):return
 	management_app=app
 	rendering_management=true
-	clear(computer_context.to_upper()+" — "+app.to_upper())
-	var previous_list: VBoxContainer=host.phone_list
+	clear(computer_context.to_upper()+" — BUSINESS COMPUTER")
+	var previous_list:VBoxContainer=host.phone_list
 	host.phone_list=ui.body
+	if app!="production":
+		_management_navigation(app)
 	match app:
 		"business":business_home()
 		"operations":operations_home()
 		"inventory":inventory_home()
 		"property":property_home()
 		"employees":computer_employees()
+		"production":production()
 		"products":host._build_products_app()
 		"genetics":host._build_genetics_app()
 		"upgrades":computer_upgrades()
 		"bills":computer_bills()
 	host.phone_list=previous_list
-	b("REFRESH",manage.bind(app))
-	if app=="business":ui.button("CLOSE COMPUTER",close)
-	else:
-		var parent: String={"employees":"operations","products":"inventory","genetics":"inventory","upgrades":"property","bills":"property"}.get(app,"business")
-		ui.button("BACK TO "+parent.to_upper(),manage.bind(parent))
+	if is_open():
+		if app!="business":ui.button("BACK TO OVERVIEW",manage.bind("business"))
 		ui.button("CLOSE COMPUTER",close)
-	format_management()
+		format_management()
 	rendering_management=false
 func computer_staff_names(property:String) -> Array[String]:
 	var names:Array[String]=[]
@@ -341,18 +377,34 @@ func computer_stock_total(property:String,kind:String,prefix:String) -> int:
 func computer_due(property:String) -> int:
 	var state:Dictionary=utility_state(property)
 	return int(state.get("power_due",0))+int(state.get("water_due",0))+(house_balance() if property=="house" else apartment_balance())
+func _management_metric(title:String,value:String,description:String) -> void:
+	var card:=PanelContainer.new()
+	card.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel",host.inventory_system.ui_style("182c25","3d6c55",12))
+	ui.body.add_child(card)
+	var column:=VBoxContainer.new()
+	column.add_theme_constant_override("separation",4)
+	card.add_child(column)
+	for entry in [[title,15,"b6d6bf"],[value,23,"e6f8e3"],[description,14,"a2b9aa"]]:
+		var label_node:=Label.new()
+		label_node.text=str(entry[0])
+		label_node.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+		label_node.add_theme_font_size_override("font_size",int(entry[1]))
+		label_node.add_theme_color_override("font_color",Color(str(entry[2])))
+		column.add_child(label_node)
+
 func business_home() -> void:
 	var property:String=computer_context
 	var staff:Array[String]=computer_staff_names(property)
-	ui.label(property.to_upper()+" OPERATION · PROPERTY-LOCAL DATA",22)
-	ui.label("Assigned staff: %d · Packing: %dg raw / %dg trimmed / %dg bagged" % [staff.size(),computer_stock_total(property,"packing","raw|"),computer_stock_total(property,"packing","trimmed|"),computer_stock_total(property,"packing","product|")])
-	ui.label("Storage: %dg · Dealer locker: %dg · Property bills: $%d" % [computer_stock_total(property,"storage","product|"),computer_stock_total(property,"dealer","product|"),computer_due(property)])
-	if property=="house":ui.label("The house has its own stock, equipment, workers and utility account. Apartment door traffic and apartment staff do not transfer here automatically.")
-	else:ui.label("Apartment storefront: "+("LAYING LOW" if host.lay_low_active else ("OPEN" if host.business_open else "AWAY")))
-	b("OPERATIONS · Staff, production & power",manage.bind("operations"))
-	b("INVENTORY · Products & genetics",manage.bind("inventory"))
-	b("PROPERTY & BILLS · Storefront, rent & equipment",manage.bind("property"))
-	if host.location_state.deliveries.size()>0:ui.label("%d paid equipment orders · Collect into your backpack before installation." % host.location_state.deliveries.size())
+	ui.label("YOUR "+property.to_upper()+" AT A GLANCE",21)
+	_management_metric("CREW",str(staff.size())+" assigned","On duty: "+str(host.packing_employee_active if staff.has(host._critical_production_sender()) else false)+" · Dealer team: "+("WORKING" if host.dealers_active else "HOME"))
+	_management_metric("PRODUCTION","%dg packed" % computer_stock_total(property,"packing","product|"),"%dg raw · %dg trimmed" % [computer_stock_total(property,"packing","raw|"),computer_stock_total(property,"packing","trimmed|")])
+	_management_metric("STORAGE","%dg products" % computer_stock_total(property,"storage","product|"),"Dealer locker: %dg" % computer_stock_total(property,"dealer","product|"))
+	_management_metric("BILLS","$%d due" % computer_due(property),"Power, water and property payments")
+	ui.label("Choose a section above to manage this property's workers, production, inventory, equipment or bills.",17)
+	if property=="house":ui.label("House equipment, utilities, stock and worker assignments are separate from the apartment. Dealer duty is currently a team-wide switch.",16)
+	else:ui.label("Apartment storefront: "+("LAYING LOW" if host.lay_low_active else ("OPEN" if host.business_open else "AWAY")),16)
+	if host.location_state.deliveries.size()>0:ui.label("%d paid orders · Collect into backpack at Central Market before placement." % host.location_state.deliveries.size(),16)
 func operations_home() -> void:
 	var property:String=computer_context
 	ui.label(property.to_upper()+" CREW · %d assigned" % computer_staff_names(property).size())
@@ -476,10 +528,11 @@ func redirect(app: String) -> bool:
 		manage(app)
 		return true
 	if host.tutorial_active:return false
+	# Mobile/desktop phone must offer remote staff and inventory information too.
+	# These apps use the same loaded career, while physical interactions stay
+	# restricted to the property computer and nearby stations.
 	if app in ["employees","products","genetics","upgrades"]:
-		host.phone_current_app="home";host._refresh_phone()
-		host.status_label.text="Use your active property computer for detailed operation management."
-		return true
+		return false
 	return false
 func _utility_template() -> Dictionary:
 	return {"today_power":0.0,"power_due":0,"last_power":0,"today_water":0.0,"water_uses":0,"water_due":0,"last_water":0}
