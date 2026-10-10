@@ -198,6 +198,7 @@ func cylinder(id: String, at: Vector3, radius: float, height: float, color: Stri
 	mesh.radial_segments = 16
 	m.mesh = mesh
 	m.name = id
+	m.set_meta("fit_part",id)
 	m.position = at
 	m.layers = 2
 	m.material_override = world._surface(0,color)

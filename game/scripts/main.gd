@@ -2285,6 +2285,7 @@ func _build_bagging_station() -> void:
 		var shifted_child: Node = get_child(child_index)
 		if shifted_child is Node3D:
 			(shifted_child as Node3D).position.z += 0.48
+			shifted_child.set_meta("equipment_template_group","packing")
 
 func _inventory_grams(inventory: Dictionary) -> int:
 	var total: int = 0

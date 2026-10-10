@@ -1,0 +1,88 @@
+Godot Engine v4.6.stable.official.89cea1439 - https://godotengine.org
+
+PASS Reload migration preserves items and plant contents
+PASS Existing station and starter tent become owned items
+PASS Growing plant blocks pickup
+PASS Growing plant blocks direct move
+PASS Mature unharvested plant blocks pickup
+PASS Dead plant must be cleared
+PASS Empty unlocked tent packs
+PASS Packed tent is a backpack item
+PASS Packed tent cannot accept planting
+PASS Repeated pickup cannot duplicate item
+PASS Packed tent places in house grow room
+PASS Placement consumes the backpack view exactly once
+PASS Plant ownership follows its tent
+PASS Order tent_1
+PASS Order tent_2
+PASS Order grow_tent
+PASS Order tent_4
+PASS Four tent sizes allocate independent 1/2/3/4 plant slots
+PASS Plants are no longer capped at three fixed tents
+PASS Orders are assigned to selected property's delivery box
+PASS Delivery cannot be collected remotely
+PASS Delivery box transfers item to backpack at curb
+PASS Delivery cannot be collected twice
+PASS Tents still reject non-grow rooms
+PASS Overweight purchase refuses without charging
+PASS Market pays the displayed resale value
+PASS Repeated resale cannot duplicate money
+PASS Stock safety lists raw, trimmed and packaged contents
+PASS Equipment cannot upgrade over existing stock
+PASS Active processing blocks pickup even when counters are empty
+PASS Empty equipment upgrades by item identity
+PASS Upgraded empty bench packs
+PASS Packed equipment preserves upgrades
+PASS Upgraded station places in new property
+PASS Station interaction follows placed location
+PASS Moved station is reachable at its new position
+PASS Inactive property's stock also blocks pickup
+PASS Physical packing works at a moved non-primary-property bench
+PASS Processing preserves stock in correct property
+PASS Item IDs, upgrades, deliveries and plants survive reload
+PASS Legacy plants retain their original indices
+PASS Wall stash keeps original framed artwork
+PASS Old fixed stash is hidden; only owned model renders
+PASS Wall stash has no generic floor shelf
+PASS Original stash remains raised on the wall
+PASS Restoring stash model preserves all stored items
+PASS Opening owned stash swings artwork open
+PASS Closing stash returns artwork to wall
+PASS Premium locker can be bought and placed
+PASS Premium locker preserves original model and keypad
+PASS Owned locker doors swing in opposite directions
+PASS Both locker doors close
+PASS Empty premium locker packs without losing its tier
+PASS Furniture & Equipment section groups packed assets separately
+PASS Packed furniture section exposes Place action
+PASS Premium locker places again after pickup
+PASS Locker animation survives pickup and replacement
+PASS Saved tent slot IDs normalize to integers on reload
+PASS All three starter pots remain visible after saving and reloading
+PASS Reload repair does not alter plant contents
+PASS Grow shelf uses one finished original model without rebuilding
+PASS Supply tier 2 retains original shelf without a generic replacement
+PASS Supply tier 3 retains original shelf without a generic replacement
+PASS Only owned supply shelf renders and its contents are preserved
+PASS Repeated world updates cannot duplicate the grow shelf
+PASS Empty house supply shelf upgrades its capacity in place
+PASS House shelf retains its existing model and footprint when upgraded
+PASS Migrated water_kit stays in apartment grow room
+PASS Utility repair preserves paid value and upgrades
+PASS Utility leaves clear access to original grow shelf
+PASS Migrated ventilation stays in apartment grow room
+PASS Utility repair preserves paid value and upgrades
+PASS Utility leaves clear access to original grow shelf
+PASS Water and ventilation no longer overlap
+PASS Migrated water_kit stays in house grow room
+PASS Utility repair preserves paid value and upgrades
+PASS Utility leaves clear access to original grow shelf
+PASS Migrated ventilation stays in house grow room
+PASS Utility repair preserves paid value and upgrades
+PASS Utility leaves clear access to original grow shelf
+PASS Water and ventilation no longer overlap
+PASS Repair retains shelf stock and purchased tier
+PASS Earlier automatic layout updates to the clear utility wall
+PASS Utility repair is idempotent
+PASS Repair never moves player-placed equipment
+EQUIPMENT_V2_RESULT: PASS checks=85 failures=0

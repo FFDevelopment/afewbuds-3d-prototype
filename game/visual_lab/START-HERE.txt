@@ -44,6 +44,7 @@ Revision 01.7: closed visual apartment entrances 201 and 301 at the second-
 and third-floor fire-escape landings. No new accessible interiors. Front
 planters moved 0.7 m closer to the facade and given solid pot collision.
 Removed floating basement stair text; B still controls basement lighting.
+Fixed orphan house jars and apartment bench props left after moving the bench.
 Revision 01.7: continuous railing barriers prevent stair-exit snagging on
 the fire escape and basement stairs.
 

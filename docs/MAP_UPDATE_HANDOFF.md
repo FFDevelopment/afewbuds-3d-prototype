@@ -12,6 +12,8 @@ Added closed visual entrances 201 and 301 at the second- and third-floor fire-es
 
 Both front planters moved 0.7 m toward the building and have solid pot collision. Removed the floating basement stair label; B still toggles basement lights. Player collision against both planters was verified and the door views rendered in Godot.
 
+Packing-prop follow-up: the house’s two orphan green jars lost their semantic names when Godot assigned duplicate-node names. Cylinder props now keep `fit_part` metadata. All apartment bench-created props receive explicit packing ownership, including bag stacks, labels, pens and scissors, so moving/rotating/picking up the bench cannot leave them behind. A focused runtime test checks nine previously unowned apartment props and all three house jars.
+
 ## Included changes
 
 - Consistent procedural brick, pavement, gravel, plaster, roof and matte wood surfaces. House/apartment floors and wooden doors share the new wood palette. Moving doors use local grain coordinates.
