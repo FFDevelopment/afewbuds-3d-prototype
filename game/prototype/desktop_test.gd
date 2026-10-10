@@ -117,8 +117,10 @@ func run() -> void:
 		if DisplayServer.get_name()!="headless":
 			for spot in [Vector2(.5,.5),Vector2(.12,.25),Vector2(.88,.75)]:
 				game._open_phone_app("home");await frames()
-				var tile:Control=game.phone_list.get_child(1).get_child(1)
-				var point:Vector2=tile.get_global_rect().position+tile.size*spot
+				var tile:Control
+				for candidate in game.phone_list.find_children("*","Button",true,false):
+					if candidate.get_meta("phone_app","")=="shop":tile=candidate;break
+				var point:Vector2=tile.get_global_rect().position+tile.get_global_rect().size*spot
 				root.warp_mouse(point);await frames(2)
 				click.pressed=true;controls._input(click);await frames(2)
 				click.pressed=false;controls._input(click);await frames(2)

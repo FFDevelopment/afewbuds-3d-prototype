@@ -1,4 +1,5 @@
 extends Node3D
+const PhoneVisuals = preload("res://scripts/phone_visuals.gd")
 
 var neighborhood: Node3D
 var house_control_state: Dictionary = {}
@@ -3339,31 +3340,41 @@ func _build_phone_panel() -> void:
 	hud.add_child(phone_panel)
 
 	var shell: StyleBoxFlat = StyleBoxFlat.new()
-	shell.bg_color = Color("101d16")
+	shell.bg_color = Color("101b16")
 	shell.border_color = Color("526257")
-	shell.set_border_width_all(6)
-	shell.set_corner_radius_all(34)
-	shell.content_margin_left = 18
-	shell.content_margin_right = 18
+	shell.set_border_width_all(8)
+	shell.set_corner_radius_all(49)
+	shell.content_margin_left = 28
+	shell.content_margin_right = 28
 	shell.content_margin_top = 14
 	shell.content_margin_bottom = 18
 	phone_panel.add_theme_stylebox_override("panel", shell)
 
 	var root: VBoxContainer = VBoxContainer.new()
-	root.add_theme_constant_override("separation", 10)
+	root.add_theme_constant_override("separation", 14)
 	phone_panel.add_child(root)
 
 	var status: HBoxContainer = HBoxContainer.new()
 	root.add_child(status)
 	phone_clock_label = Label.new()
 	phone_clock_label.text = _format_game_clock()
+	phone_clock_label.custom_minimum_size.x=100
 	phone_clock_label.add_theme_font_size_override("font_size", 15)
 	status.add_child(phone_clock_label)
 	var status_space: Control = Control.new()
 	status_space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	status.add_child(status_space)
+	var camera_dot:=Panel.new()
+	camera_dot.custom_minimum_size=Vector2(18,18)
+	camera_dot.add_theme_stylebox_override("panel",PhoneVisuals.box(Color("030604"),9,Color("243b2e"),0))
+	status.add_child(camera_dot)
+	var right_space:=Control.new()
+	right_space.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	status.add_child(right_space)
 	phone_status_label = Label.new()
-	phone_status_label.text = "AFEWBUDS   |   5G   |   87%"
+	phone_status_label.text = "5G  ▰"
+	phone_status_label.custom_minimum_size.x=100
+	phone_status_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT
 	phone_status_label.add_theme_font_size_override("font_size", 14)
 	status.add_child(phone_status_label)
 
@@ -3372,24 +3383,23 @@ func _build_phone_panel() -> void:
 	root.add_child(header)
 	phone_back_button = Button.new()
 	phone_back_button.text = "‹"
-	phone_back_button.custom_minimum_size = Vector2(54, 48)
+	phone_back_button.custom_minimum_size = Vector2(36, 36)
 	phone_back_button.visible = false
 	phone_back_button.pressed.connect(_phone_go_back)
 	header.add_child(phone_back_button)
-	_add_app_logo(header, 48.0)
 	phone_title = Label.new()
 	phone_title.text = "AFewBuds"
+	phone_title.clip_text=true
+	phone_title.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS
 	phone_title.add_theme_font_size_override("font_size", 30)
 	phone_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(phone_title)
 	var close: Button = Button.new()
-	close.text = "X"
-	close.custom_minimum_size = Vector2(54, 48)
+	close.text = "×"
+	close.custom_minimum_size = Vector2(36, 36)
 	close.pressed.connect(_toggle_phone)
 	header.add_child(close)
 
-	var divider: HSeparator = HSeparator.new()
-	root.add_child(divider)
 	tutorial_phone_coach = _make_tutorial_coach(root)
 
 	phone_scroll = PhoneTouchScroll.new()
@@ -3408,17 +3418,24 @@ func _build_phone_panel() -> void:
 	dock.alignment = BoxContainer.ALIGNMENT_CENTER
 	dock.add_theme_constant_override("separation", 12)
 	root.add_child(dock)
-	_add_phone_dock_button(dock, "HOME", "home")
-	_add_phone_dock_button(dock, "PROPERTIES", "realestate")
-	_add_phone_dock_button(dock, "TASKS", "task")
+	_add_phone_dock_button(dock, "‹", "back")
+	_add_phone_dock_button(dock, "━━━━", "home")
+	_add_phone_dock_button(dock, "?", "help")
+	PhoneVisuals.fit(self)
+	get_viewport().size_changed.connect(_fit_phone_screen)
+
+func _fit_phone_screen() -> void:
+	PhoneVisuals.fit(self)
 
 func _add_phone_dock_button(dock: HBoxContainer, label_text: String, app_name: String) -> void:
 	var dock_button: Button = Button.new()
 	dock_button.text = label_text
-	dock_button.custom_minimum_size = Vector2(0, 54)
+	dock_button.custom_minimum_size = Vector2(0, 38)
+	dock_button.add_theme_stylebox_override("normal",StyleBoxEmpty.new())
 	dock_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	dock_button.add_theme_font_size_override("font_size", 13)
-	dock_button.pressed.connect(_open_phone_app.bind(app_name))
+	if app_name=="back":dock_button.pressed.connect(_phone_go_back)
+	else:dock_button.pressed.connect(_open_phone_app.bind(app_name))
 	dock.add_child(dock_button)
 
 func _build_tutorial_panel() -> void:
@@ -4491,8 +4508,8 @@ func _panel_root(panel: PanelContainer, title_text: String, close_callable: Call
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(spacer)
 	var close: Button = Button.new()
-	close.text = "X"
-	close.custom_minimum_size = Vector2(54, 48)
+	close.text = "×"
+	close.custom_minimum_size = Vector2(36, 36)
 	close.pressed.connect(close_callable)
 	header.add_child(close)
 	return root
@@ -6840,6 +6857,9 @@ func _phone_parent_app(app_name: String) -> String:
 	return "home"
 
 func _phone_go_back() -> void:
+	if phone_current_app=="home":
+		_toggle_phone()
+		return
 	if neighborhood!=null and neighborhood.location_ops!=null:
 		if neighborhood.location_ops.portfolio_phone_back(phone_current_app):return
 	if neighborhood!=null and neighborhood.location_ops!=null and neighborhood.location_ops.crew!=null and phone_current_app=="texts" and not neighborhood.location_ops.crew.thread.is_empty():
@@ -6883,7 +6903,10 @@ func _refresh_phone() -> void:
 		old_child.queue_free()
 	phone_back_button.visible = phone_current_app != "home"
 	phone_back_button.tooltip_text = "Back to " + _phone_parent_app(phone_current_app).capitalize()
-	phone_status_label.text = "LV %d   |   $%d   |   REP %d   |   HEAT %d" % [grower_level, cash, reputation, int(round(heat))]
+	phone_status_label.text = "5G  ▰"
+	phone_list.remove_meta("phone_visual")
+	phone_list.add_theme_constant_override("separation",12)
+	phone_title.get_parent().visible=phone_current_app!="home"
 	if phone_clock_label != null:
 		phone_clock_label.text = _format_game_clock()
 	match phone_current_app:
@@ -6959,6 +6982,8 @@ func _refresh_phone() -> void:
 		_:
 			phone_title.text = "AFewBuds"
 			_build_phone_home()
+	PhoneVisuals.polish(phone_list)
+	PhoneVisuals.fit(self)
 	_restore_phone_scroll.call_deferred(restore_y, phone_current_app, phone_refresh_revision)
 
 func _build_leaderboard_app() -> void:
@@ -7109,24 +7134,7 @@ func _build_task_app() -> void:
 	phone_scroll.queue_sort()
 
 func _build_phone_home() -> void:
-	var summary:=PanelContainer.new()
-	summary.add_theme_stylebox_override("panel",_style_box(Color("1d3427"),Color("3d624b"),20,1))
-	phone_list.add_child(summary)
-	var details:=VBoxContainer.new();details.add_theme_constant_override("separation",8);summary.add_child(details)
-	var greeting:=Label.new();greeting.text="YOUR WORLD. WITHIN REACH.";greeting.add_theme_font_size_override("font_size",13);greeting.modulate=Color("b4d2bd");details.add_child(greeting)
-	var balance:=Label.new();balance.text="$%d  ·  Day %d" % [cash,game_day];balance.add_theme_font_size_override("font_size",26);details.add_child(balance)
-	var status:=Label.new();status.text="Grower %d · Heat %d/100" % [grower_level,int(round(heat))];status.modulate=Color("b4d2bd");details.add_child(status)
-	var grid:GridContainer=_phone_category_grid()
-	_add_phone_app_tile(grid,"","Properties","Your spaces & operations","realestate")
-	_add_phone_app_tile(grid,"","Contacts","Clients & recruiting","clients")
-	_add_phone_app_tile(grid,"","Shop","Seeds & supplies","shop")
-	_add_phone_app_tile(grid,"","Genetics","Discoveries & parent hints","genetics")
-	_add_phone_app_tile(grid,"","Messages",("%d unread" % phone_text_unread) if phone_text_unread>0 else "Your conversations","texts")
-	_add_phone_app_tile(grid,"","Tasks & Rewards","Story & milestones","task")
-	_add_phone_app_tile(grid,"","Heat","Pressure & laying low","heat")
-	_add_phone_app_tile(grid,"","Stats","Your career","stats")
-	_add_phone_app_tile(grid,"","Leaderboard","Weekly & lifetime","leaderboard")
-	_add_phone_app_tile(grid,"","Settings","Help, account & saves","settings")
+	PhoneVisuals.home(self)
 
 func _build_real_estate_app() -> void:
 	if neighborhood!=null and neighborhood.location_ops!=null:
@@ -12133,16 +12141,16 @@ func _build_door_alert() -> void:
 	add_child(door_alert_layer)
 	knock_banner = PanelContainer.new()
 	knock_banner.name = "VisitorAlert"
-	knock_banner.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	knock_banner.offset_left = 24
-	knock_banner.offset_right = -24
+	knock_banner.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	knock_banner.offset_left = -180
+	knock_banner.offset_right = 180
 	knock_banner.offset_top = 12
-	knock_banner.offset_bottom = 120
+	knock_banner.offset_bottom = 68
 	knock_banner.visible = false
 	knock_banner.mouse_filter = Control.MOUSE_FILTER_STOP
 	var style: StyleBoxFlat = _style_box(Color("17271f"), Color("c5b371"), 18, 2)
-	style.content_margin_top = 12
-	style.content_margin_bottom = 12
+	style.content_margin_top = 6
+	style.content_margin_bottom = 6
 	style.content_margin_left = 16
 	style.content_margin_right = 16
 	knock_banner.add_theme_stylebox_override("panel", style)
@@ -12153,7 +12161,7 @@ func _build_door_alert() -> void:
 	knock_banner.add_child(row)
 	door_alert_dot = Label.new()
 	door_alert_dot.text = "O"
-	door_alert_dot.add_theme_font_size_override("font_size", 25)
+	door_alert_dot.add_theme_font_size_override("font_size", 16)
 	door_alert_dot.modulate = Color("f1ca70")
 	door_alert_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(door_alert_dot)
@@ -12163,14 +12171,14 @@ func _build_door_alert() -> void:
 	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(text)
 	knock_text = Label.new()
-	knock_text.text = "KNOCK  |  VISITOR WAITING"
-	knock_text.add_theme_font_size_override("font_size", 22)
+	knock_text.text = "Someone’s at the door"
+	knock_text.add_theme_font_size_override("font_size", 16)
 	knock_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	knock_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text.add_child(knock_text)
 	door_alert_detail = Label.new()
 	door_alert_detail.text = "Someone is at the front door."
-	door_alert_detail.add_theme_font_size_override("font_size", 18)
+	door_alert_detail.add_theme_font_size_override("font_size", 13)
 	door_alert_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	door_alert_detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text.add_child(door_alert_detail)
@@ -12195,7 +12203,7 @@ func _refresh_door_alert() -> void:
 		return
 	var covering_panel: bool = phone_open or bagging_panel.visible or storage_panel.visible or (dealer_storage_panel != null and dealer_storage_panel.visible) or (supply_inventory_panel != null and supply_inventory_panel.visible) or (system_control_panel != null and system_control_panel.visible) or trim_panel.visible or bag_minigame_panel.visible or grow_panel.visible or (plant_direct_panel != null and plant_direct_panel.visible)
 	knock_banner.offset_top = 12.0 if covering_panel else 194.0
-	knock_banner.offset_bottom = knock_banner.offset_top + 108.0
+	knock_banner.offset_bottom = knock_banner.offset_top + 56.0
 	door_alert_button.disabled = customer_departing
 	if customer_departing:
 		knock_text.text = "VISITOR IS LEAVING"
@@ -12203,10 +12211,10 @@ func _refresh_door_alert() -> void:
 		door_alert_dot.modulate = Color("d59683")
 		return
 	var remaining: int = int(ceil(customer_patience_timer.time_left)) if customer_patience_timer != null else 0
-	knock_text.text = "KNOCK  |  VISITOR WAITING"
-	door_alert_detail.text = "Walk to the front door  |  %ds left" % remaining
+	knock_text.text = "Someone’s at the door"
+	door_alert_detail.text = "Walk to the door · %ds left" % remaining
 	if remaining <= 7:
-		door_alert_detail.text = "Leaving soon!  |  %ds left" % remaining
+		door_alert_detail.text = "Leaving soon · %ds left" % remaining
 		door_alert_dot.modulate = Color("efb27e")
 	else:
 		door_alert_dot.modulate = Color("f1ca70")
@@ -12281,24 +12289,10 @@ func _handle_door_alert_pointer(event: InputEvent) -> bool:
 	return false
 
 func _go_to_waiting_customer() -> void:
-	if neighborhood != null and neighborhood.active:
-		status_label.text = "Walk back to your apartment entrance to answer the door."
-		return
-	if _simulation_blocked() or not customer_waiting or customer_departing or customer_answered:
-		return
-	_hide_learning_panels()
-	trim_active_strain = ""
-	trim_harvest_amount = 0
-	trim_continue_button.visible = false
-	bag_active_strain = ""
-	current_room = "main"
-	room_ring = main_room_ring
-	_go_to_view("door", false)
-	_set_world_controls_visible(true)
-	status_label.text = "Check the peephole, then answer when you are ready."
-	_open_peephole()
-	_refresh_door_alert()
-	_save_game()
+	# Compatibility entry point only: the 3D game requires physically walking.
+	# No menu closing, movement, teleport or remote peephole interaction.
+	status_label.text = "Walk to the front door to answer your visitor."
+
 func _inventory_take_packed(strain_name:String) -> void:
 	bagging_panel.hide()
 	inventory_system.open_container("packing")

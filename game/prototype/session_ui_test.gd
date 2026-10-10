@@ -35,7 +35,7 @@ func run():
  menu._process(0)
  check(menu.panel.get_global_rect().size.y<=game.get_viewport().get_visible_rect().size.y,"Scrollable Help stays inside viewport")
  menu.show_page("home");game._open_phone_app("home")
- check(not "SETTINGS" in buttons(game.phone_panel) and not "Settings" in buttons(game.phone_panel),"Phone no longer duplicates settings navigation")
+ check("Settings" in buttons(game.phone_panel),"Preview phone dock provides Settings without removing Pause settings")
  game.phone_open=false;game.phone_panel.hide()
  menu.on_cloud_event("offline");game._resume_gameplay()
  check(game.session_paused and menu.cloud_locked,"Lost session verification prevents resuming gameplay")

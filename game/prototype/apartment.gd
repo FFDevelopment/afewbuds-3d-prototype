@@ -516,15 +516,7 @@ func _setup_desktop_panels() -> void:
 		panel.offset_right = 345
 		panel.offset_top = -320
 		panel.offset_bottom = 330
-	# Phone gets a portrait shell; workstation panels keep their wider layout.
-	var screen: Vector2 = get_viewport().get_visible_rect().size
-	var phone_height: float = minf(740.0, screen.y - 112.0)
-	var phone_width: float = phone_height * 0.64
-	phone_panel.set_anchors_preset(Control.PRESET_CENTER)
-	phone_panel.offset_left = -phone_width / 2.0
-	phone_panel.offset_right = phone_width / 2.0
-	phone_panel.offset_top = -phone_height / 2.0 + 40.0
-	phone_panel.offset_bottom = phone_height / 2.0 + 40.0
+	PhoneVisuals.fit(self)
 	phone_title.add_theme_font_size_override("font_size", 24)
 	phone_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	phone_title.clip_text = true
@@ -554,6 +546,7 @@ func _build_advancements_app() -> void:
 	call_deferred("_setup_desktop_panels")
 
 func _constrain_portrait_phone_content(node: Node) -> void:
+	if node.has_meta("phone_visual"):return
 	for child: Node in node.get_children():
 		if child is Control:
 			var control := child as Control
@@ -726,28 +719,28 @@ func _build_door_alert() -> void:
 	super._build_door_alert()
 	# A compact, fixed alert rail above the portrait phone.
 	knock_banner.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	knock_banner.offset_left = -250
-	knock_banner.offset_right = 250
+	knock_banner.offset_left = -170
+	knock_banner.offset_right = 170
 	knock_banner.offset_top = 12
-	knock_banner.offset_bottom = 80
+	knock_banner.offset_bottom = 64
 	var style := knock_banner.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
-	style.content_margin_top = 8
-	style.content_margin_bottom = 8
+	style.content_margin_top = 6
+	style.content_margin_bottom = 6
 	style.content_margin_left = 12
 	style.content_margin_right = 12
 	knock_banner.add_theme_stylebox_override("panel", style)
-	knock_text.add_theme_font_size_override("font_size", 16)
-	door_alert_detail.add_theme_font_size_override("font_size", 14)
-	door_alert_dot.add_theme_font_size_override("font_size", 18)
+	knock_text.add_theme_font_size_override("font_size", 14)
+	door_alert_detail.add_theme_font_size_override("font_size", 12)
+	door_alert_dot.add_theme_font_size_override("font_size", 16)
 	door_alert_button.custom_minimum_size = Vector2(100, 48)
-	door_alert_button.add_theme_font_size_override("font_size", 14)
+	door_alert_button.add_theme_font_size_override("font_size", 12)
 
 func _refresh_door_alert() -> void:
 	super._refresh_door_alert()
 	if knock_banner != null:
 		# Base mobile layout otherwise moves the alert down to Y=194 while walking.
 		knock_banner.offset_top = 12
-		knock_banner.offset_bottom = 80
+		knock_banner.offset_bottom = 64
 
 func _build_pause_overlay() -> void:
 	super._build_pause_overlay()

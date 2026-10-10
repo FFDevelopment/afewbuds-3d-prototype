@@ -82,6 +82,9 @@ func run() -> void:
 	check(game.knock_player.playing and not game.customer_patience_timer.is_stopped(),"At-home appointment uses normal knock and patience")
 	game._refresh_door_alert()
 	check(game.knock_banner.visible and not game.door_alert_button.visible,"At-home door alert keeps guidance and removes obsolete Go to Door")
+	var before_shortcut:Vector3=game.camera.global_position
+	game._go_to_waiting_customer()
+	check(game.camera.global_position==before_shortcut and not game.peephole_panel.visible,"Legacy visitor shortcut cannot move player or inspect door remotely")
 	game._open_peephole()
 	check(game.peephole_panel.visible,"Existing desktop peephole handles appointment")
 	game._answer_from_peephole()

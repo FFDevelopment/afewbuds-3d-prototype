@@ -998,19 +998,12 @@ func _property_label(parent:VBoxContainer,text_value:String,size:int=18) -> Labe
 	var item:=Label.new()
 	item.text=text_value
 	item.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
-	item.add_theme_font_size_override("font_size",size)
+	item.add_theme_font_size_override("font_size",mini(size,16))
 	parent.add_child(item)
 	return item
 
 func _property_button(parent:VBoxContainer,text_value:String,callback:Callable,disabled:bool=false) -> Button:
-	var item:=Button.new()
-	item.text=text_value
-	item.custom_minimum_size.y=54
-	item.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
-	item.disabled=disabled
-	item.pressed.connect(callback)
-	parent.add_child(item)
-	return item
+	return preload("res://scripts/phone_visuals.gd").row(parent,text_value,callback,disabled)
 
 func property_activity(property_id:String) -> String:
 	var inventory=host.inventory_system
@@ -1090,7 +1083,6 @@ func portfolio_furniture() -> void:
 	host.inventory_system.furniture.open_property(portfolio_property)
 
 func portfolio_ui(parent:VBoxContainer) -> void:
-	_property_label(parent,"PROPERTIES",24)
 	if portfolio_property.is_empty() or not _property_controlled(portfolio_property):
 		if portfolio_page=="payments":
 			property_bills_ui(parent)
@@ -1101,7 +1093,7 @@ func portfolio_ui(parent:VBoxContainer) -> void:
 			_property_button(parent,"BACK TO PROPERTIES",portfolio_back_pressed)
 			return
 		portfolio_reset()
-		_property_label(parent,"Choose a property to manage its workers, stock, furniture, utility bills and lease. You can check balances from anywhere.",16)
+		_property_label(parent,"Your people, stock and bills. Organized by property.",16)
 		var utility_due:int=utility_total_due()
 		_property_label(parent,"ALL PROPERTIES · ELECTRIC & WATER\nTotal utilities owed: $%d" % utility_due,19)
 		if utility_due>0:
@@ -1112,7 +1104,7 @@ func portfolio_ui(parent:VBoxContainer) -> void:
 			var due:Dictionary=utility_state(property)
 			var debt:int=int(due.get("power_due",0))+int(due.get("water_due",0))
 			var staff:int=computer_staff_names(property).size()
-			var summary:String="%s\n%d workers · $%d utilities due\n%s" % [portfolio_name(property),staff,debt,property_activity(property)]
+			var summary:String="%s\n%d assigned crew · $%d utilities due" % [portfolio_name(property),staff,debt]
 			_property_button(parent,summary,portfolio_open_property.bind(property))
 		if not apartment_lease_active():
 			_property_label(parent,"Starter Apartment lease released. Past-due balances and reacquisition remain available in Property Payments.",15)
@@ -1121,8 +1113,13 @@ func portfolio_ui(parent:VBoxContainer) -> void:
 		_property_button(parent,"PROPERTY AGREEMENTS & RELEASED LEASES",portfolio_legacy_payments)
 		return
 	var property:String=portfolio_property
-	_property_label(parent,portfolio_name(property),22)
-	_property_label(parent,"Workers: %d · Utilities due: $%d\n%s" % [computer_staff_names(property).size(),property_utility_due(property,"power")+property_utility_due(property,"water"),property_activity(property)],16)
+	var banner:=PanelContainer.new()
+	banner.add_theme_stylebox_override("panel",preload("res://scripts/phone_visuals.gd").box(Color("20392b"),20))
+	parent.add_child(banner)
+	var overview:=VBoxContainer.new();overview.add_theme_constant_override("separation",8);banner.add_child(overview)
+	_property_label(overview,portfolio_name(property),22)
+	_property_label(overview,"%d assigned crew · $%d utilities due" % [computer_staff_names(property).size(),property_utility_due(property,"power")+property_utility_due(property,"water")],14)
+	_property_label(overview,property_activity(property),12)
 	if portfolio_page=="overview":
 		_property_label(parent,"Shop: "+crew.shop.status(property),17)
 		_property_button(parent,"SHOP OPERATIONS · Open, close & lay low",portfolio_page_open.bind("operations"))
