@@ -113,9 +113,9 @@ func build(world:Node3D) -> void:
 	for at in [Vector3(121.5,0,-8.5),Vector3(130,0,-8.5)]:
 		w._cylinder(at+Vector3.UP*.46,.22,.92,"345c40")
 		w._obstacle(at.x,at.z,.44,.44)
-	w._car(91,20.5,"435c70")
-	w._car(126,13.4,"566a50")
-	w._car(100,-19,"898c83")
+	w._car(91,20.42,"435c70",false,PI)
+	w._car(126,13.58,"566a50")
+
 	# Relocated east containment; north/south/west limits retain their coordinates.
 	w.fence(Vector3(73,0,-36),Vector3(EAST_LIMIT,0,-36))
 	w.fence(Vector3(73,0,39),Vector3(EAST_LIMIT,0,39))

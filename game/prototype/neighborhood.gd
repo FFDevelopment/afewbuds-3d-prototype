@@ -376,9 +376,9 @@ func _build_block() -> void:
 	load("res://prototype/police_district.gd").new().build(self)
 	police_station=load("res://prototype/police_station.gd").new();police_station.name="PoliceStation";add_child(police_station);police_station.build(self)
 	_label("APARTMENTS",Vector3(0,3.45,6.16),0.006)
-	_car(18,-6.5,"7d8686",true)
-	_car(-1,20.7,"415b50")
-	_car(32,13.4,"8d4540")
+	_car(16,-6.5,"7d8686",true,PI/2)
+	_car(-1,20.42,"415b50",false,PI)
+	_car(20,-6.5,"8d4540",false,PI/2)
 	for x in [-4.0,18.0,41.0]: _lamp(x,23.0)
 	var sun := DirectionalLight3D.new()
 	outdoor_sun = sun
@@ -531,22 +531,14 @@ func _hip_roof(center: Vector3, width: float, depth: float, rise: float) -> void
 	roof.name="HousePorchRoof"
 	add_child(roof)
 
-func _car(x: float, z: float, color: String, pickup: bool = false) -> void:
-	var before:=get_children()
-	_car_box(Vector3(x,0.63,z),Vector3(4.5,0.64,1.8),color)
-	_car_box(Vector3(x-0.2,1.18,z),Vector3(2.25 if not pickup else 1.6,0.7,1.65),color)
-	_car_box(Vector3(x-0.2,1.21,z+0.84),Vector3(1.75 if not pickup else 1.20,0.44,0.03),"43606a")
-	_car_box(Vector3(x-0.2,1.21,z-0.84),Vector3(1.75 if not pickup else 1.20,0.44,0.03),"43606a")
-	_car_box(Vector3(x+0.94,1.21,z),Vector3(0.04,0.44,1.45),"43606a")
-	_car_box(Vector3(x+2.26,0.57,z),Vector3(0.05,0.15,1.45),"b1b2a5")
-	for side in [-1.0,1.0]:
-		for axle in [-1.45,1.45]: _car_wheel(Vector3(x+axle,0.37,z+side*0.89),0.37,0.22,"252826",Vector3(PI/2,0,0))
-		_car_box(Vector3(x+2.28,0.76,z+side*0.58),Vector3(0.04,0.22,0.35),"eee3ad",-1,0.15)
-	var origin:=Vector3(x,0,z)
-	var basis:=Basis(Vector3.UP,PI/2 if pickup else 0.0)*Basis.from_scale(Vector3.ONE*ScalePolicy.CAR_SCALE)
-	for child in get_children():
-		if child not in before and child is Node3D:
-			child.transform=Transform3D(basis,origin-basis*origin)*child.transform
+func _car(x: float, z: float, color: String, pickup: bool = false, yaw: float = 0.0, police: bool = false) -> void:
+	var vehicle=load("res://prototype/parked_vehicle.gd").new()
+	vehicle.name="ParkedVehicle";add_child(vehicle)
+	vehicle.position=Vector3(x,0,z);vehicle.rotation.y=yaw
+	vehicle.scale=Vector3(.96,1,1)*ScalePolicy.CAR_SCALE
+	vehicle.build(color,pickup,police)
+	var footprint=Basis(Vector3.UP,yaw)*Vector3(4.9*.96,0,2.15)
+	_obstacle(x,z,absf(footprint.x)*ScalePolicy.CAR_SCALE,absf(footprint.z)*ScalePolicy.CAR_SCALE)
 
 func _car_box(at: Vector3, size: Vector3, color: String, _tile: int = -1, glow: float = 0.0) -> void:
 	var part := _box(at,size,color)

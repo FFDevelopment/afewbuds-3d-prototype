@@ -116,3 +116,5 @@ local directory checks.
 See visual_lab/validate.gd. Render-review evidence is included under review/.
 
 01.8: Three full stories and aligned exterior windows on background residences; matching garage brick and roof materials.
+
+01.9: Restyled sedan, pickup and police cars, centered parking bays, curb-aligned street cars, and cleared rear alley. Vehicles are static scenery.
