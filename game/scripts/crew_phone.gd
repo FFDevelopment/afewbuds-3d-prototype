@@ -24,10 +24,11 @@ func button(parent: Node,text: String,action: Callable,disabled: bool=false) -> 
 	var node:=Button.new();node.text=text;node.custom_minimum_size.y=54;node.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;node.disabled=disabled;node.pressed.connect(action);parent.add_child(node)
 func role(name: String) -> String:
 	if host.packing_employee_hired and name==host._critical_production_sender():return "production"
-	if name in host._active_dealer_roster() or (name=="Dealer Team" and host._total_dealer_count()>0):return "dealer"
+	if host._friend_staff_role(name)=="dealer" or (name.begins_with("Hired Dealer ") and int(name.trim_prefix("Hired Dealer "))>0 and int(name.trim_prefix("Hired Dealer "))<=host.dealer_count) or (name=="Dealer Team" and host._total_dealer_count()>0):return "dealer"
 	return host._friend_staff_role(name)
 func roster() -> Array[String]:
-	var names: Array[String]=host._active_dealer_roster()
+	var names: Array[String]=host._friend_staff_names("dealer")
+	for idx in range(host.dealer_count):names.append("Hired Dealer %d" % (idx+1))
 	if host.packing_employee_hired and not names.has(host._critical_production_sender()):names.append(host._critical_production_sender())
 	return names
 func assignment(name: String) -> String:return str(host.location_state.staff_assignments.get(name,"apartment"))
