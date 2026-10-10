@@ -22,7 +22,7 @@ func status(property:String) -> String:
 func on_duty(name:String) -> bool:
 	var role:String=crew.role(name)
 	if role=="production":return host.packing_employee_active and not host.production_worker_arrested
-	return role in ["dealer","door"] and (host.dealers_active if role=="dealer" else true) and not host.dealer_arrested and crew.ops.portfolio_staff_duty(name)
+	return role in ["dealer","door"] and (host.dealers_active and not host.dealer_arrested if role=="dealer" else true) and crew.ops.portfolio_staff_duty(name)
 func operator_for(property:String) -> String:
 	for name in crew.roster():
 		if crew.assignment(name)==property and on_duty(name):return name
