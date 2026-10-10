@@ -112,10 +112,14 @@ func render_actions() -> void:
 			label(host.phone_list,"THIS DEALER · TODAY: %d deals · %dg · $%d gross · $%d commission" % [int(stats.get("today_sales",0)),int(stats.get("today_grams",0)),int(stats.get("today_gross",0)),int(stats.get("today_commission",0))])
 			label(host.phone_list,"CAREER: %d deals · %dg · $%d gross · $%d commission earned" % [int(stats.get("sales",0)),int(stats.get("grams",0)),int(stats.get("gross",0)),int(stats.get("commission_earned",0))])
 			label(host.phone_list,"DEALER TEAM: %s · %d deals today · $%d cash held · $%d commission pending · $%d balance due" % ["ON DUTY" if host.dealers_active else "OFF DUTY",host.dealer_sales_today,host.dealer_cash_held,host.dealer_commission_held,host.dealer_balance_due])
-			button(host.phone_list,("SEND ALL DEALERS HOME" if host.dealers_active else "PUT ALL DEALERS ON DUTY")+" (TEAM-WIDE)",toggle_crew_duty.bind("dealer"))
+			var dealer_reason:String=host._staff_duty_blocker("dealer")
+			if not host.dealers_active and not dealer_reason.is_empty():label(host.phone_list,"WHY OFF DUTY: "+dealer_reason)
+			button(host.phone_list,("SEND ALL DEALERS HOME" if host.dealers_active else "PUT ALL DEALERS ON DUTY")+" (TEAM-WIDE)",toggle_crew_duty.bind("dealer"),not host.dealers_active and not dealer_reason.is_empty())
 		elif job=="production":
 			label(host.phone_list,"PRODUCTION: %s · Today: %d tasks · Current: %s" % ["ON DUTY" if host.packing_employee_active else "OFF DUTY",host.production_worker_tasks_today,host.production_worker_last_action])
-			button(host.phone_list,"SEND PRODUCTION WORKER HOME" if host.packing_employee_active else "PUT PRODUCTION WORKER ON DUTY",toggle_crew_duty.bind("production"))
+			var production_reason:String=host._staff_duty_blocker("production")
+			if not host.packing_employee_active and not production_reason.is_empty():label(host.phone_list,"WHY OFF DUTY: "+production_reason)
+			button(host.phone_list,"SEND PRODUCTION WORKER HOME" if host.packing_employee_active else "PUT PRODUCTION WORKER ON DUTY",toggle_crew_duty.bind("production"),not host.packing_employee_active and not production_reason.is_empty())
 		if thread!="Dealer Team":
 			var alternate:String="house" if assignment(thread)=="apartment" else "apartment"
 			if ops._property_controlled(alternate):
