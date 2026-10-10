@@ -177,6 +177,13 @@ func size_of(id:String,yaw:int=0) -> Vector3:
  return Vector3(s.z,s.y,s.x) if posmod(yaw,180)==90 else s
 func bounds(id:String,point:Vector3,yaw:int) -> Rect2:
  var s:=size_of(id,yaw);return Rect2(Vector2(point.x-s.x/2,point.z-s.z/2),Vector2(s.x,s.z))
+func occupied_box(id:String,point:Vector3,yaw:int)->AABB:
+ var size=size_of(id)
+ var local=AABB(Vector3(-size.x/2,0,-size.z/2),size)
+ if state.items[id].sku=="storage_5":
+  # The artwork cabinet is elevated inside its floor-anchored legacy template.
+  local=AABB(Vector3(-.86,1.04,-.1425),Vector3(1.72,1.36,.3345))
+ return Transform3D(Basis(Vector3.UP,deg_to_rad(yaw)),point)*local
 func item_for_slot(slot:int) -> String:
  for id in state.items:
   if slot in state.items[id].get("slots",[]):return id
@@ -215,6 +222,28 @@ func empty_reason(id:String) -> String:
  if bool(host.packing_employee_active) and not str(host.get("production_worker_pending_action")).is_empty() and state.items[id].get("property","")==inv().worker_property():
   if station_kind(id) in ["packing","supply","storage","dealer"] or is_tent(state.items[id]):return "Pause the production worker before moving equipment."
  return ""
+func wall_mountable(id:String)->bool:
+ return state.items.has(id) and state.items[id].sku in ["water_kit","ventilation"]
+func mounting_walls()->Array[AABB]:
+ var walls:Array[AABB]=[]
+ for node in host.find_children("*","MeshInstance3D",true,false):
+  if not node.is_visible_in_tree() or node.mesh==null or node.has_meta("furniture_id") or node.get_meta("no_collision",false):continue
+  var title=str(node.name).to_lower();var part=str(node.get_meta("fit_part",""))
+  if not (node.get_meta("wall_mount_surface",false) or node.get_meta("structural",false) or title.contains("wall") or title.contains("plaster") or part in ["HouseFront","HouseSide","HouseRear"]):continue
+  var bounds:AABB=node.global_transform*node.get_aabb()
+  if bounds.size.y>.5 and minf(bounds.size.x,bounds.size.z)<.51:walls.append(bounds)
+ return walls
+func has_mount_support(id:String,point:Vector3,yaw:int)->bool:
+ var size=size_of(id);var normal=Vector3.BACK.rotated(Vector3.UP,deg_to_rad(yaw));var back=point-normal*(size.z*.5+.025)
+ for wall in mounting_walls():
+  if point.y<wall.position.y+.04 or point.y+size.y>wall.end.y-.04:continue
+  if absf(normal.x)>.5 and wall.size.x<.51:
+   var face=wall.end.x if normal.x>0 else wall.position.x
+   if absf(back.x-face)<.035 and back.z-size.x/2>wall.position.z+.035 and back.z+size.x/2<wall.end.z-.035:return true
+  elif absf(normal.z)>.5 and wall.size.z<.51:
+   var face=wall.end.z if normal.z>0 else wall.position.z
+   if absf(back.z-face)<.035 and back.x-size.x/2>wall.position.x+.035 and back.x+size.x/2<wall.end.x-.035:return true
+ return false
 func validate(id:String,property:String,point:Vector3,yaw:int) -> String:
  if not state.items.has(id):return "Furniture is not owned."
  if not controlled(property):return "You do not hold this property."
@@ -224,11 +253,19 @@ func validate(id:String,property:String,point:Vector3,yaw:int) -> String:
  if bool(e.get("locked",false)):return "Unlock the furniture first."
  var reason:=empty_reason(id)
  if not reason.is_empty():return reason
- if not point.is_finite() or absf(point.y)>.05 or yaw%90!=0:return "Place on the floor with quarter-turn rotation."
+ var basement:bool=property=="house" and host.has_node("BasementExpansion") and point.y<-.5
+ var floor_y:float=-3.8 if basement else 0.0
+ var elevated:bool=absf(point.y-floor_y)>.05
+ if not point.is_finite() or yaw%90!=0:return "Use quarter-turn rotation on a valid floor or wall."
+ if elevated:
+  if not wall_mountable(id) or point.y-floor_y<.84 or point.y-floor_y+size_of(id).y>2.66:return "Mount utilities between waist and head height."
+  if not has_mount_support(id,point,yaw):return "Mount against a solid wall, clear of windows and doors."
  var rect:=bounds(id,point,yaw).grow(.015);var room:=""
- var allowed_rooms:Dictionary=registry.rooms_for(property)
+ var allowed_rooms:Dictionary={"grow":Rect2(26.3,-13.5,14.2,13.0)} if basement else registry.rooms_for(property)
+ if basement and elevated:allowed_rooms={"grow":Rect2(26.1,-13.7,14.4,13.2)}
  for key in allowed_rooms:
-  if (allowed_rooms[key] as Rect2).grow(.35 if e.sku=="storage_5" else 0.14).encloses(rect):room=key;break
+  if not basement and not registry._within_height(property,key,point.y):continue
+  if (allowed_rooms[key] as Rect2).grow(.35 if e.sku=="storage_5" or elevated else 0.14).encloses(rect):room=key;break
  if room.is_empty():return "Keep the entire item inside one room and clear of doorways."
  if not item_registry.permits_room(str(e.sku),str(registry.state.properties[property].get("room_uses",{}).get(room,room))):return "This equipment is not allowed in this room."
  for other in state.items:
@@ -236,13 +273,13 @@ func validate(id:String,property:String,point:Vector3,yaw:int) -> String:
   var item:Dictionary=state.items[other]
   if item.get("property","")!=property or not item.has("position"):continue
   var p:Array=item.position
-  if rect.intersects(bounds(other,Vector3(p[0],p[1],p[2]),int(item.get("yaw",0)))):return "Furniture overlaps another item."
+  if occupied_box(id,point,yaw).grow(.007).intersects(occupied_box(other,Vector3(p[0],p[1],p[2]),int(item.get("yaw",0)))):return "Furniture overlaps another item."
  return ""
 func place(id:String,property:String,point:Vector3,yaw:int) -> bool:
  error=validate(id,property,point,yaw)
  if not error.is_empty():return false
  var e:Dictionary=state.items[id]
- e.player_placed=true;e.property=property;e.position=[point.x,0.0,point.z];e.yaw=posmod(yaw,360);e.locked=true
+ e.player_placed=true;e.property=property;e.position=[point.x,point.y,point.z];e.yaw=posmod(yaw,360);e.locked=true
  var kind:=station_kind(id)
  if not kind.is_empty():
   var primary_id:=primary(property,kind)
@@ -296,7 +333,7 @@ func upgrade(id:String) -> bool:
  if not sku.begins_with("shelf_"):e.erase("size_override")
  e.sku=sku;e.locked=false
  if registry.exists(str(e.get("property",""))) and not sku.begins_with("shelf_"):
-  var p:Array=e.position;error=validate(id,e.property,Vector3(p[0],0,p[2]),int(e.yaw))
+  var p:Array=e.position;error=validate(id,e.property,Vector3(p[0],p[1],p[2]),int(e.yaw))
  if not error.is_empty():
   e.sku=old_sku;e.locked=locked
   if not old_size.is_empty():e.size_override=old_size

@@ -51,11 +51,7 @@ func build(world:Node3D) -> void:
 	w.fence(Vector3(174,0,-33),Vector3(174,0,-24))
 	for z in [-30.5,-26.5]:
 		for x in [153.5,169.5]:
-			w._car(x,z,"d2d6d1")
-			w.exterior_box(Vector3(x,2.015,z),Vector3(.75,.15,.35),"2b3b4a")
-			w.exterior_box(Vector3(x-.2,2.11,z),Vector3(.3,.09,.32),"446b99",-1,.25)
-			w.exterior_box(Vector3(x+.2,2.11,z),Vector3(.3,.09,.32),"a45046",-1,.25)
-			w._label("POLICE",Vector3(x,1.05,z+1.14),.003)
+			w._car(x,z,"d2d6d1",false,0.0 if x<160 else PI,true)
 	for x in [150.0,166.0]:
 		for z in [-32.5,-28.5,-24.5]:slab(x,x+7,z-.03,z+.03,"c9c8b5",-1,-.018,.008)
 	parking_sign("PATROL PARKING",Vector3(161.5,2.5,-32.7),4.3,.006)
@@ -65,7 +61,8 @@ func build(world:Node3D) -> void:
 	driveways.append({"id":"public","rect":Rect2(185.5,7,6,5),"aisle":Rect2(185.5,-14,6,26)})
 	for z in [-14.0,-9.0,-4.0,1.0,6.0]:
 		for x in [179.5,191.5]:slab(x,x+6,z-.03,z+.03,"d0cdbb",-1,-.018,.008)
-	w._car(182.5,-11.5,"455c70");w._car(195,-1.5,"8b8e82")
+	w._car(182.5,-11.5,"455c70");w._car(194.5,-1.5,"8b8e82",false,PI)
+	w._car(182.5,-6.5,"898c83",false,PI) # Relocated from the narrow rear alley.
 	slab(179.5,185.5,1,6,"425e7d",-1,-.027,.008)
 	parking_sign("PUBLIC PARKING",Vector3(194,2.5,10.5),4.1,.006)
 	parking_sign("ACCESSIBLE",Vector3(178.4,2.0,3.5),1.9,.003,PI/2)

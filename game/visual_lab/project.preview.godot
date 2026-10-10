@@ -1,17 +1,17 @@
 config_version=5
 
 [application]
-config/name="AFewBuds Desktop Development"
-config/version="0.16.0-dev.16"
-run/main_scene="res://account/login.tscn"
-config/features=PackedStringArray("4.7", "GL Compatibility")
+config/name="AFewBuds Visual Lab — Street Study 01.7"
+config/version="0.16.0-beta.9"
+run/main_scene="res://visual_lab/boot.tscn"
+config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://assets/branding/afb_app_icon.png"
 config/use_custom_user_dir=true
-config/custom_user_dir_name="AFewBuds-Inventory-Preview"
+config/custom_user_dir_name="AFewBuds-Visual-Lab-01"
 
 [autoload]
 DesktopInput="*res://prototype/desktop_input.gd"
-AFBCloud="*res://account/cloud.gd"
+AFBCloud="*res://visual_lab/offline_cloud.gd"
 
 [display]
 window/size/viewport_width=1280

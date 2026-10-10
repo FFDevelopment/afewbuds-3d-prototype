@@ -69,6 +69,16 @@ func _ready() -> void:
 		_pause_gameplay("WELCOME TO BONGCHESTER\n\nWASD to walk · Mouse to look · Shift to sprint (uses stamina)\nE to use a station or open/close the front door · P for phone\nEsc to pause · F5 to save\n\nOpen the front door and walk outside, then close it behind you. R at the door checks for visitors. Walk through the interior opening into the grow room. Harvest the ready Purple Dream plant, then take it to the packaging bench.\n\nYour progress saves automatically.")
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
+	if ProjectSettings.get_setting("application/config/custom_user_dir_name","")!="AFewBuds-Visual-Lab-01":
+		call_deferred("_install_map_update")
+
+func _install_map_update()->void:
+	if has_node("MapVisuals"):return
+	var map_visuals=load("res://visual_lab/runtime.gd").new()
+	map_visuals.name="MapVisuals"
+	add_child(map_visuals)
+	map_visuals.setup(self)
+
 func _process(delta: float) -> void:
 	if not fp_ready:
 		return
@@ -78,6 +88,7 @@ func _process(delta: float) -> void:
 	if fp_collision_timer >= 0.25:
 		fp_collision_timer = 0.0
 		_sync_physical_collisions()
+		if house_system_context and system_control_panel.visible:_refresh_system_control_panel()
 	var modal := _any_modal_open() or daily_report_pending
 	if modal:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -738,6 +749,7 @@ func _build_door_alert() -> void:
 func _refresh_door_alert() -> void:
 	super._refresh_door_alert()
 	if knock_banner != null:
+		if fp_player!=null and not neighborhood.indoors(fp_player.position):knock_banner.hide()
 		# Base mobile layout otherwise moves the alert down to Y=194 while walking.
 		knock_banner.offset_top = 12
 		knock_banner.offset_bottom = 64
@@ -798,3 +810,71 @@ func _controller_work_tick(delta:float,axis:Vector2) -> void:
 	elif bag_minigame_panel.visible and bag_current_units<bag_target_units:
 		bag_bud_token.position+=axis*400.0*delta
 		_clamp_control_to_parent(bag_bud_token,bag_play_area)
+
+# Art-lab house system uses the apartment UI with an explicit property context.
+var house_system_context:bool=false
+func open_house_system()->void:
+	house_system_context=true
+	_set_system_copy()
+	super._open_system_control_panel()
+func _open_system_control_panel()->void:
+	house_system_context=false
+	_set_system_copy()
+	super._open_system_control_panel()
+func _close_system_control_panel()->void:
+	super._close_system_control_panel()
+	house_system_context=false
+func _activate_room_interaction(action_id:String)->bool:
+	if not house_system_context or not system_control_panel.visible:return super._activate_room_interaction(action_id)
+	if session_paused or daily_report_pending or tutorial_active:return false
+	var controls=neighborhood.house_controls
+	match action_id:
+		"grow_room_light_switch":
+			var basement=get_node("BasementExpansion")
+			basement.set_room_lights(not basement.room_lights_on)
+			_save_game()
+		"grow_light_switch":controls.toggle_house_grow_lights()
+		"ventilation_switch":controls.toggle_house_ventilation()
+		_:return false
+	_refresh_system_control_panel()
+	return true
+func _refresh_system_control_panel()->void:
+	if not house_system_context:
+		super._refresh_system_control_panel()
+		return
+	if system_control_status==null:return
+	var controls=neighborhood.house_controls
+	var state:Dictionary=controls.grow_snapshot()
+	var basement=get_node_or_null("BasementExpansion")
+	system_control_status.text="HOUSE · BASEMENT CONTROL PANEL\n%d tents · %d/%d plants · %d ready · %d need water · %d dead\nRoom light: %s · Grow lights: %s · Air: %s\nHouse equipment only · Upstairs and basement tents." % [state.tents,state.active,state.capacity,state.ready,state.dry,state.dead,"ON" if basement!=null and basement.room_lights_on else "OFF","ON" if controls.states.get("grow_lights",false) else "OFF",("ON" if state.ventilation_on else "OFF") if state.ventilation else "NOT INSTALLED"]
+	_refresh_utility_controls()
+func _refresh_utility_controls()->void:
+	super._refresh_utility_controls()
+	if not house_system_context or system_control_panel==null:return
+	var controls=neighborhood.house_controls
+	var state:Dictionary=controls.grow_snapshot()
+	for button in system_control_panel.find_children("System_*","Button",true,false):
+		var action:String=str(button.get_meta("utility_id",""))
+		var on:bool=false
+		var installed:bool=true
+		match action:
+			"grow_room_light_switch":on=get_node("BasementExpansion").room_lights_on
+			"grow_light_switch":
+				on=bool(controls.states.get("grow_lights",false));installed=state.tents>0
+			"ventilation_switch":
+				on=state.ventilation_on;installed=state.ventilation
+		button.text=("NO TENTS PLACED" if action=="grow_light_switch" else "NOT INSTALLED") if not installed else ("ON   |   TAP OFF" if on else "OFF   |   TAP ON")
+		button.disabled=not installed or session_paused or daily_report_pending or tutorial_active
+		button.add_theme_stylebox_override("normal",_style_box(Color("294636") if on else Color("242c33"),Color("9ac8a6") if on else Color("9aa7b1"),12,2))
+
+func _set_system_copy()->void:
+	for label in system_control_panel.find_children("*","Label",true,false):
+		if label==system_control_status:continue
+		if not label.has_meta("apartment_copy"):label.set_meta("apartment_copy",label.text)
+		var original:String=str(label.get_meta("apartment_copy"))
+		label.text=original
+		if house_system_context:
+			if original=="GROW ROOM SYSTEM":label.text="HOUSE GROW SYSTEM"
+			elif original=="General grow-room lighting.":label.text="Basement ceiling lights. Also controlled with B."
+			elif original=="Plant lighting. OFF greatly slows crop growth.":label.text="Placed house tents. Separate from apartment lighting."
+			elif original=="Air system. Requires the ventilation upgrade.":label.text="Requires a ventilation unit placed at the house."

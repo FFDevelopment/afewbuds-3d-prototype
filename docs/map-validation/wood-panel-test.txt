@@ -1,0 +1,3 @@
+Godot Engine v4.6.stable.official.89cea1439 - https://godotengine.org
+
+WOOD_HOUSE_PANEL_PASS wooden_door_parts=8 property_isolation=true reachable=true close_position_preserved=true

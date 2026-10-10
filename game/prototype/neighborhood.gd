@@ -151,7 +151,13 @@ func _raw_piece(label_text: String, pos: Vector3, size: Vector3, color: String, 
 	return mesh
 
 func building(label_text: String, pos: Vector3, size: Vector3, color: String, windows: bool = true) -> void:
-	size.y*=ScalePolicy.BACKGROUND_BUILDING_SCALE_Y
+	# Background residences have three complete stories, rather than a stretched
+	# two-row facade. The playable apartment upper shell keeps its own layout.
+	var residential := label_text in ["RearBuilding","OppositeBuilding","OuterHouse","EastResidence"]
+	var story_height := 3.5 if residential else 3.24
+	var window_center := 2.04
+	if residential: size.y = story_height * 3.0
+	else: size.y *= ScalePolicy.BACKGROUND_BUILDING_SCALE_Y
 	var bounds := AABB(pos, size)
 	building_bounds.append(bounds)
 	if is_zero_approx(pos.y): _obstacle(pos.x+size.x/2,pos.z+size.z/2,size.x,size.z)
@@ -169,12 +175,12 @@ func building(label_text: String, pos: Vector3, size: Vector3, color: String, wi
 			var width: float = size.x if normal.z != 0 else size.z
 			var depth: float = size.z if normal.z != 0 else size.x
 			var columns := maxi(2,int(width/2.4))
-			for row in range(int(size.y/3.24)):
+			for row in range(roundi(size.y/story_height) if residential else int(size.y/story_height)):
 				for col in range(columns):
 					var offset := (float(col)+0.5)*width/columns-width/2
 					if is_zero_approx(pos.y) and normal == front and row == 0 and absf(offset) < 1.4: continue
-					var point: Vector3 = Vector3(center.x,pos.y+2.04+row*3.24,center.z)+normal*(depth/2+0.05)+tangent*offset
-					window_layout_records.append({"at":point,"floor":pos.y+row*3.24,"ceiling":minf(pos.y+(row+1)*3.24,pos.y+size.y),"building":label_text,"row":row})
+					var point: Vector3 = Vector3(center.x,pos.y+window_center+row*story_height,center.z)+normal*(depth/2+0.05)+tangent*offset
+					window_layout_records.append({"at":point,"floor":pos.y+row*story_height,"ceiling":minf(pos.y+(row+1)*story_height,pos.y+size.y),"building":label_text,"row":row})
 					facade_window(point,normal)
 	if is_zero_approx(pos.y) and windows:
 		entrance(door_center,front)
@@ -370,9 +376,9 @@ func _build_block() -> void:
 	load("res://prototype/police_district.gd").new().build(self)
 	police_station=load("res://prototype/police_station.gd").new();police_station.name="PoliceStation";add_child(police_station);police_station.build(self)
 	_label("APARTMENTS",Vector3(0,3.45,6.16),0.006)
-	_car(18,-6.5,"7d8686",true)
-	_car(-1,20.7,"415b50")
-	_car(32,13.4,"8d4540")
+	_car(16,-6.5,"7d8686",true,PI/2)
+	_car(-1,20.42,"415b50",false,PI)
+	_car(20,-6.5,"8d4540",false,PI/2)
 	for x in [-4.0,18.0,41.0]: _lamp(x,23.0)
 	var sun := DirectionalLight3D.new()
 	outdoor_sun = sun
@@ -407,7 +413,7 @@ func _build_door_hinge() -> void:
 	host._add_box("EntryThreshold",Vector3(0,0.002,5.98),Vector3(2.1,0.024,0.56),Color("746b59"),0.8)
 
 func indoors(pos: Vector3) -> bool:
-	return pos.x > -5.1 and pos.x < 5.1 and pos.z > -10.3 and pos.z < 6.1
+	return pos.y > -.5 and pos.y < 4.4 and pos.x > -5.1 and pos.x < 5.1 and pos.z > -10.3 and pos.z < 6.1
 
 func _process(delta: float) -> void:
 	if not is_instance_valid(host) or not host.fp_ready: return
@@ -490,6 +496,8 @@ func _material(color: String, tile: int = -1, glow: float = 0.0) -> Material:
 			plain.emission = Color(color)
 			plain.emission_energy_multiplier = glow
 		material = plain
+	material.set_meta("lab_tile",tile)
+	material.set_meta("lab_color",color)
 	materials[key] = material
 	return material
 
@@ -523,22 +531,14 @@ func _hip_roof(center: Vector3, width: float, depth: float, rise: float) -> void
 	roof.name="HousePorchRoof"
 	add_child(roof)
 
-func _car(x: float, z: float, color: String, pickup: bool = false) -> void:
-	var before:=get_children()
-	_car_box(Vector3(x,0.63,z),Vector3(4.5,0.64,1.8),color)
-	_car_box(Vector3(x-0.2,1.18,z),Vector3(2.25 if not pickup else 1.6,0.7,1.65),color)
-	_car_box(Vector3(x-0.2,1.21,z+0.84),Vector3(1.75 if not pickup else 1.20,0.44,0.03),"43606a")
-	_car_box(Vector3(x-0.2,1.21,z-0.84),Vector3(1.75 if not pickup else 1.20,0.44,0.03),"43606a")
-	_car_box(Vector3(x+0.94,1.21,z),Vector3(0.04,0.44,1.45),"43606a")
-	_car_box(Vector3(x+2.26,0.57,z),Vector3(0.05,0.15,1.45),"b1b2a5")
-	for side in [-1.0,1.0]:
-		for axle in [-1.45,1.45]: _car_wheel(Vector3(x+axle,0.37,z+side*0.89),0.37,0.22,"252826",Vector3(PI/2,0,0))
-		_car_box(Vector3(x+2.28,0.76,z+side*0.58),Vector3(0.04,0.22,0.35),"eee3ad",-1,0.15)
-	var origin:=Vector3(x,0,z)
-	var basis:=Basis(Vector3.UP,PI/2 if pickup else 0.0)*Basis.from_scale(Vector3.ONE*ScalePolicy.CAR_SCALE)
-	for child in get_children():
-		if child not in before and child is Node3D:
-			child.transform=Transform3D(basis,origin-basis*origin)*child.transform
+func _car(x: float, z: float, color: String, pickup: bool = false, yaw: float = 0.0, police: bool = false) -> void:
+	var vehicle=load("res://prototype/parked_vehicle.gd").new()
+	vehicle.name="ParkedVehicle";add_child(vehicle)
+	vehicle.position=Vector3(x,0,z);vehicle.rotation.y=yaw
+	vehicle.scale=Vector3(.96,1,1)*ScalePolicy.CAR_SCALE
+	vehicle.build(color,pickup,police)
+	var footprint=Basis(Vector3.UP,yaw)*Vector3(4.9*.96,0,2.15)
+	_obstacle(x,z,absf(footprint.x)*ScalePolicy.CAR_SCALE,absf(footprint.z)*ScalePolicy.CAR_SCALE)
 
 func _car_box(at: Vector3, size: Vector3, color: String, _tile: int = -1, glow: float = 0.0) -> void:
 	var part := _box(at,size,color)

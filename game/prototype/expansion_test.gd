@@ -94,14 +94,14 @@ func run():
  check(game.plant_visuals[0].get_node("PlantHitArea0").collision_layer==8,"Replaced tent restores plant interactions")
  check(m.powered_tent_count("house")==1,"Placed tent power belongs to its property")
  m.lock("legacy_tent_0",false)
- game.camera.global_position=Vector3(41.8,2.16,-8)
+ game.camera.global_position=Vector3(29,-2.16,-6)
  editor.open();editor.begin("legacy_tent_0")
  var tent_spots:=0
- for x in range(81,87):
-  for z in range(-25,-17):
-   editor.point=Vector3(x*.5,0,z*.5)
+ for x in range(57,77):
+  for z in range(-23,-7):
+   editor.point=Vector3(x*.5,-3.8,z*.5)
    if editor.obstacle().is_empty():tent_spots+=1
- check(tent_spots>0,"Actual house grow room has valid tent placement")
+ check(tent_spots>0,"Basement house grow room has valid tent placement")
  editor.close();m.lock("legacy_tent_0",true)
  game.advancement_stats.harvests+=3;story.tick()
  check(story.stage()==2,"House harvest milestone advances")

@@ -2285,6 +2285,7 @@ func _build_bagging_station() -> void:
 		var shifted_child: Node = get_child(child_index)
 		if shifted_child is Node3D:
 			(shifted_child as Node3D).position.z += 0.48
+			shifted_child.set_meta("equipment_template_group","packing")
 
 func _inventory_grams(inventory: Dictionary) -> int:
 	var total: int = 0
@@ -5520,16 +5521,21 @@ func _production_worker_station_position(station_name: String) -> Vector3:
 		if station_name=="idle":return Vector3(29.0,0.0,-0.9)
 		var kind:String={"workbench":"packing","storage":"storage","grow":"tent"}.get(station_name,"")
 		if station_name=="grow":
+			var selected_id:String=model.item_for_slot(production_worker_pending_slot)
+			if not selected_id.is_empty():
+				var selected:Dictionary=model.state.items[selected_id]
+				if selected.get("property","")=="house" and selected.has("position"):
+					return Vector3(float(selected.position[0])-1.2,float(selected.position[1]),float(selected.position[2]))
 			for id in model.state.items:
 				var entry:Dictionary=model.state.items[id]
 				if entry.get("property","")=="house" and str(entry.get("sku","")).begins_with("tent_") and entry.has("position"):
-					return Vector3(float(entry.position[0])-1.2,0.0,float(entry.position[2]))
+					return Vector3(float(entry.position[0])-1.2,float(entry.position[1]),float(entry.position[2]))
 			return Vector3(40.4,0.0,-9.0)
 		if not kind.is_empty():
 			var station_id:String=model.primary("house",kind)
 			if not station_id.is_empty():
 				var e:Dictionary=model.state.items[station_id]
-				if e.has("position"):return Vector3(float(e.position[0])-1.3,0.0,float(e.position[2]))
+				if e.has("position"):return Vector3(float(e.position[0])-1.3,float(e.position[1]),float(e.position[2]))
 		return Vector3(28.5,0.0,-0.8)
 	match station_name:
 		"grow": return Vector3(0.70, 0.0, -6.45)
@@ -5551,7 +5557,8 @@ func _reset_production_worker_navigation() -> void:
 
 func _production_worker_navigation_target() -> Vector3:
 	# House workers navigate to the house stations, not old apartment hallway waypoints.
-	if inventory_system!=null and inventory_system.worker_property()=="house":return production_worker_target_position
+	if inventory_system!=null and inventory_system.worker_property()=="house":
+		return _house_worker_navigation_target()
 	if production_worker_node == null:
 		return production_worker_target_position
 	var worker_pos: Vector3 = production_worker_node.position
@@ -5588,7 +5595,8 @@ func _update_production_worker_visual(delta: float) -> void:
 	production_worker_node.visible = packing_employee_hired and not production_worker_arrested
 	if not on_duty:
 		if production_worker_node.visible and not bool(production_worker_node.get_meta("seated",false)):
-			production_worker_node.position=production_worker_node.position.move_toward(_production_worker_station_position("idle"),PRODUCTION_WORKER_MOVE_SPEED*delta)
+			production_worker_target_position=_production_worker_station_position("idle")
+			production_worker_node.position=production_worker_node.position.move_toward(_production_worker_navigation_target(),PRODUCTION_WORKER_MOVE_SPEED*delta)
 		return
 	var worker_idle: bool=production_worker_pending_action.is_empty() and (production_worker_task=="Waiting for work" or lay_low_active)
 	if worker_idle:
@@ -7368,6 +7376,9 @@ func _build_products_local() -> void:
 			row.add_child(empty)
 
 func _build_seed_shop_app() -> void:
+	if not tutorial_active and inventory_system!=null:
+		inventory_system.furniture.cart.seeds(phone_list)
+		return
 	var intro: Label = Label.new()
 	intro.text = "Order seeds for pickup at Central Market. Shelf Lv %d: %d / %d seeds. Collect orders at checkout, then put carried seeds on your grow shelf using Add Stock." % [supply_shelf_level, _total_seed_inventory(), _supply_seed_capacity()]
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -12356,3 +12367,21 @@ func _packing_batch_size() -> int:
 func _guide_protects_plants() -> bool:
 	var guide:Dictionary=location_state.get("first_day_guide",{})
 	return bool(guide.get("active",false)) and int(guide.get("step",0))<15
+
+func _house_worker_navigation_target()->Vector3:
+	var target:Vector3=production_worker_target_position
+	if production_worker_node==null:return target
+	var here:Vector3=production_worker_node.position
+	if not production_worker_route_valid or production_worker_route_destination.distance_to(target)>.01:
+		production_worker_route_points.clear();production_worker_route_index=0
+		production_worker_route_destination=target;production_worker_route_valid=true
+		if has_node("BasementExpansion") and (here.y<-.5)!=(target.y<-.5):
+			var stairs:Array[Vector3]=[Vector3(43.8,0,-7.6),Vector3(43.8,0,-8.3),Vector3(43.8,-1.9,-12.4),Vector3(43.8,-1.9,-13),Vector3(42,-1.9,-13),Vector3(42,-1.9,-12.4),Vector3(42,-3.8,-8.3),Vector3(42,-3.8,-7.4),Vector3(40.6,-3.8,-7.4)]
+			if here.y<-.5:stairs.reverse()
+			production_worker_route_points.append_array(stairs)
+		production_worker_route_points.append(target)
+	while production_worker_route_index<production_worker_route_points.size():
+		var point:Vector3=production_worker_route_points[production_worker_route_index]
+		if here.distance_to(point)>.08:return point
+		production_worker_route_index+=1
+	return target

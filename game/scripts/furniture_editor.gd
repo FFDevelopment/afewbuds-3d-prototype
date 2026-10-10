@@ -10,6 +10,8 @@ var layout_hint:Label
 var layout_move:Button
 var layout_pickup:Button
 var wall_found:=false
+var wall_mount:=false
+var mount_button:Button
 var chapter:RefCounted
 var equipment_world:Node
 var portfolio_property:=""
@@ -19,6 +21,7 @@ var rod_button:Button
 var tick_timer:=0.0
 var host:Node3D
 var inventory:Node
+var cart:RefCounted
 var model:RefCounted
 var layer:CanvasLayer
 var panel:PanelContainer
@@ -41,6 +44,7 @@ var known_tent_count:=-1
 func setup(owner:Node3D,inv:Node) -> void:
  host=owner;inventory=inv
  model=load("res://scripts/property_furniture.gd").new();model.setup(host)
+ cart=load("res://scripts/market_cart.gd").new();cart.setup(host,inventory)
  chapter=load("res://scripts/chapter_five.gd").new();chapter.setup(host,model)
  equipment_world=load("res://scripts/equipment_world.gd").new();add_child(equipment_world);equipment_world.setup(self)
  layer=CanvasLayer.new();layer.layer=31;add_child(layer)
@@ -57,6 +61,7 @@ func setup(owner:Node3D,inv:Node) -> void:
  placement_hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
  var row:=HBoxContainer.new();placement_box.add_child(row)
  inventory.button("Rotate",rotate_item,row)
+ mount_button=inventory.button("Mount: floor",toggle_mount,row);mount_button.hide()
  place_button=inventory.button("Place",confirm,row,true)
  inventory.button("Cancel",cancel_placement,row)
  placement_panel.hide()
@@ -144,20 +149,15 @@ func render_list() -> void:
     else:hint.text=model.error,list).disabled=not reason.is_empty()
 func shop(shop_id:String) -> void:
  open();clear();hint.text="CENTRAL MARKET / "+shop_id.to_upper()
- inventory.label("Buy packed items or order a box to a property's curb. Select packed items in Backpack to place them.",list)
- var choices:=HBoxContainer.new();list.add_child(choices)
- for destination in ["backpack","apartment","house"]:
-  if destination!="backpack" and not model.controlled(destination):continue
-  inventory.button(("✓ " if delivery_property==destination else "")+destination.capitalize(),func():delivery_property=destination;shop(shop_id),choices)
+ inventory.label("Choose quantities and add them to your cart. Pay once at checkout; collect what fits and leave the rest for later.",list)
+ cart.toolbar(list)
  for sku in model.CATALOG:
   var item:Dictionary=model.CATALOG[sku]
   if item.shop!=shop_id:continue
   inventory.label("%s · $%d · %d lb"%[item.name,model.price_for(sku),item.get("weight",8)],list,18)
   if model.is_tent({"sku":sku}):inventory.label("%d plants · grow rooms only"%item.plants,list,14)
-  inventory.button("Buy / order",func():
-   var id:String=model.own(sku,delivery_property)
-   if id.is_empty():hint.text=model.error
-   else:shop(shop_id);hint.text="Packed item added to backpack." if delivery_property=="backpack" else "Delivery ready at the "+delivery_property+" curb.",list).disabled=host.cash<model.price_for(sku)
+  cart.chooser(list,"item|"+sku)
+ inventory.button("Review cart / checkout",cart.show,list,true)
  inventory.button("Back to market",func():close();host.neighborhood.location_ops.market(),list)
  inventory.button("Sell packed equipment",sell_menu,list)
 func sell_menu() -> void:
@@ -167,6 +167,8 @@ func sell_menu() -> void:
   inventory.button("Sell %s · $%d"%[model.item_name(id),model.resale(id)],func():
    if model.sell(id):sell_menu()
    else:hint.text=model.error,list)
+func placement_floor()->float:
+ return -3.8 if property=="house" and host.has_node("BasementExpansion") and host.camera.global_position.y<-.5 else 0.0
 func begin(id:String) -> void:
  restore_camera()
  placement_camera=host.camera.global_transform
@@ -176,13 +178,15 @@ func begin(id:String) -> void:
  var e:Dictionary=model.state.items[id]
  if e.get("property","") not in [property,"backpack"]:hint.text="Pick up this item at its property first.";selected="";return
  if not model.empty_reason(id).is_empty():hint.text=model.empty_reason(id);selected="";return
+ wall_mount=model.wall_mountable(id) and e.has("position") and absf(float(e.position[1])-placement_floor())>.05
+ mount_button.visible=model.wall_mountable(id);mount_button.text="Mount: wall" if wall_mount else "Mount: floor"
  controls_active=false
  editing_camera=true
  layout_panel.hide();build_preview()
- point=host.camera.global_position-host.camera.global_basis.z*2.0;point.y=0
+ point=host.camera.global_position-host.camera.global_basis.z*2.0;point.y=placement_floor()
  point.x=snappedf(point.x,.05);point.z=snappedf(point.z,.05);yaw=0
  if e.get("property","")==property and e.has("position"):
-  point=Vector3(e.position[0],0,e.position[2]);yaw=int(e.yaw)
+  point=Vector3(e.position[0],e.position[1],e.position[2]);yaw=int(e.yaw)
  panel.hide();placement_panel.show()
  if host.get("fp_player")!=null:Input.mouse_mode=Input.MOUSE_MODE_CAPTURED
  aim();preview()
@@ -196,11 +200,12 @@ func aim() -> void:
  var size:Vector3=model.size_of(selected,yaw)
  var nearest:float=maxf(1.5,maxf(size.x,size.z)*.5+.8)
  var distance:float=3.25
- if forward.y<-.05:distance=origin.y / -forward.y * Vector2(forward.x,forward.z).length()
+ if forward.y<-.05:distance=(origin.y-placement_floor()) / -forward.y * Vector2(forward.x,forward.z).length()
  distance=clampf(distance,nearest,5.5)
- point=origin+flat*distance;point.y=0
+ point=origin+flat*distance;point.y=placement_floor()
  point.x=snappedf(point.x,.05);point.z=snappedf(point.z,.05)
  if model.state.items[selected].sku=="storage_5":snap_stash_to_wall()
+ elif model.wall_mountable(selected) and wall_mount:snap_utility_to_wall()
 func handle_placement_input(event:InputEvent) -> bool:
  if panel.visible or (not is_placing() and not layout_mode) or host.session_paused:return false
  if not event.is_pressed() or event.is_echo():return false
@@ -234,13 +239,15 @@ func handle_placement_input(event:InputEvent) -> bool:
  elif event is InputEventKey and event.keycode in [KEY_P,KEY_I]:return true
  return false
 func obstacle() -> String:
+ if not selected.is_empty() and model.wall_mountable(selected) and wall_mount and not wall_found:return "Aim at a solid grow-room wall to mount this unit."
  if not selected.is_empty() and model.state.items[selected].sku=="storage_5" and not wall_found:return "Aim at a clear wall to mount the hidden stash."
  if not inside(property):return "Enter this property before placing furniture."
  var problem:String=model.validate(selected,property,point,yaw)
  if not problem.is_empty():return problem
  var size:Vector3=model.size_of(selected,yaw)
- var box:=AABB(point+Vector3(-size.x/2,.08,-size.z/2),Vector3(size.x,size.y-.08,size.z))
- if box.grow(.35).has_point(Vector3(host.camera.global_position.x,.5,host.camera.global_position.z)):return "Leave room for yourself to stand."
+ var box:AABB=model.occupied_box(selected,point,yaw)
+ if model.state.items[selected].sku!="storage_5":box.position.y+=.08;box.size.y-=.08
+ if box.grow(.35).has_point(Vector3(host.camera.global_position.x,placement_floor()+.5,host.camera.global_position.z)):return "Leave room for yourself to stand."
  var shape:=BoxShape3D.new();shape.size=box.size
  var query:=PhysicsShapeQueryParameters3D.new();query.shape=shape;query.transform=Transform3D(Basis.IDENTITY,box.get_center());query.collision_mask=1
  var excluded:Array[RID]=[]
@@ -351,8 +358,8 @@ func build_prop(root:Node3D,id:String,sku:String) -> void:
   for x in [-1,1]:piece(root,id,Vector3(x*.6,.4,0),Vector3(.08,.8,.65),"344440")
   piece(root,id,Vector3(0,1.2,-.15),Vector3(.85,.5,.06),"285d44")
  elif sku in ["water_kit","ventilation"]:
-  piece(root,id,Vector3(0,s.y/2,0),s,"526466")
-  piece(root,id,Vector3(0,s.y*.6,s.z/2),Vector3(s.x*.6,s.y*.4,.025),"253532")
+  var visual=load("res://scripts/grow_equipment_visuals.gd").new();visual.name="GrowEquipmentVisual";root.add_child(visual)
+  visual.build_utility(id,sku,s)
  elif sku in ["coffee_table","dining_table"]:
   piece(root,id,Vector3(0,s.y-.04,0),Vector3(s.x,.08,s.z),"98734d")
   for x in [-1,1]:
@@ -415,7 +422,7 @@ func refresh_layout(force:bool=false) -> void:
   var e:Dictionary=model.state.items[id]
   if e.get("property","")!=layout_property or not e.has("position"):continue
   var size:Vector3=model.size_of(id,int(e.get("yaw",0)))
-  var box:=AABB(Vector3(e.position[0]-size.x*.5,0,e.position[2]-size.z*.5),size)
+  var box:=AABB(Vector3(e.position[0]-size.x*.5,e.position[1],e.position[2]-size.z*.5),size)
   var hit=box.intersects_ray(origin,direction)
   if hit!=null and origin.distance_to(hit)<distance:layout_focus=id;distance=origin.distance_to(hit)
  var reason:String="" if layout_focus.is_empty() else model.empty_reason(layout_focus)
@@ -445,7 +452,7 @@ func snap_stash_to_wall() -> void:
   if not mesh.is_visible_in_tree() or mesh.mesh==null or mesh.has_meta("furniture_id") or mesh.get_meta("no_collision",false):continue
   if not mesh.get_meta("structural",false) and not str(mesh.name).to_lower().contains("wall"):continue
   var wall:AABB=mesh.global_transform*mesh.get_aabb()
-  if wall.position.y>.15 or wall.end.y<model.size_of(selected).y or minf(wall.size.x,wall.size.z)>.5:continue
+  if wall.position.y>placement_floor()+.15 or wall.end.y<placement_floor()+model.size_of(selected).y or minf(wall.size.x,wall.size.z)>.5:continue
   var hit=wall.intersects_ray(origin,direction)
   if hit==null or origin.distance_to(hit)>=nearest:continue
   var normal:=Vector3.ZERO
@@ -457,5 +464,33 @@ func snap_stash_to_wall() -> void:
    if wall.size.x<half_width*2+.12:continue
    normal.z=1 if origin.z>wall.get_center().z else -1
    hit.x=clampf(hit.x,wall.position.x+half_width+.06,wall.end.x-half_width-.06)
-  nearest=origin.distance_to(hit);point=hit+normal*(model.size_of(selected).z*.5+.025);point.y=0
+  nearest=origin.distance_to(hit);point=hit+normal*(model.size_of(selected).z*.5+.025);point.y=placement_floor()
   yaw=posmod(int(round(rad_to_deg(atan2(normal.x,normal.z))/90))*90,360);wall_found=true
+
+func toggle_mount()->void:
+ if selected.is_empty() or not model.wall_mountable(selected):return
+ wall_mount=not wall_mount;mount_button.text="Mount: wall" if wall_mount else "Mount: floor"
+ aim();preview()
+func snap_utility_to_wall()->void:
+ wall_found=false
+ var origin:Vector3=host.camera.global_position;var direction:Vector3=-host.camera.global_basis.z
+ var size:Vector3=model.size_of(selected);var nearest:=5.5;var floor_y=placement_floor()
+ for wall in model.mounting_walls():
+  var hit=wall.intersects_ray(origin,direction)
+  if hit==null or origin.distance_to(hit)>=nearest:continue
+  var normal=Vector3.ZERO
+  if wall.size.x<wall.size.z:
+   if wall.size.z<size.x+.12:continue
+   normal.x=1 if origin.x>wall.get_center().x else -1
+   hit.x=wall.end.x if normal.x>0 else wall.position.x
+   hit.z=clampf(hit.z,wall.position.z+size.x/2+.06,wall.end.z-size.x/2-.06)
+  else:
+   if wall.size.x<size.x+.12:continue
+   normal.z=1 if origin.z>wall.get_center().z else -1
+   hit.z=wall.end.z if normal.z>0 else wall.position.z
+   hit.x=clampf(hit.x,wall.position.x+size.x/2+.06,wall.end.x-size.x/2-.06)
+  var candidate:Vector3=hit+normal*(size.z*.5+.025)
+  candidate.y=clampf(snappedf(hit.y-size.y*.5,.05),floor_y+.85,floor_y+2.65-size.y)
+  var turn=posmod(int(round(rad_to_deg(atan2(normal.x,normal.z))/90))*90,360)
+  if not model.has_mount_support(selected,candidate,turn):continue
+  nearest=origin.distance_to(hit);point=candidate;yaw=turn;wall_found=true

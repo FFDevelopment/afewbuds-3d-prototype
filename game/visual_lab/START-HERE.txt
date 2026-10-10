@@ -1,0 +1,124 @@
+AFewBuds Visual Lab 01.7 — Muted wood, basement grow controls and tent placement
+
+OPEN THIS AS A SEPARATE PROJECT
+1. Extract the entire ZIP into a new folder (do not copy over your game).
+2. In Godot Project Manager, Import the included project.godot.
+3. Let the asset import finish, then press F5 to run the project.
+   Once the game is running, F6 toggles original/revised visuals.
+
+Godot: validated with Godot 4.6 stable, Compatibility renderer.
+The source snapshot declares 4.7; this copy was imported and checked with 4.6.
+
+CONTROLS
+WASD / mouse: walk / look. Shift: sprint. E: interact/open doors.
+Esc: pause or release mouse. P: existing phone.
+F6: switch revised / original materials and added details.
+F7: Desktop / Light rendering preset (MSAA and shadow distance).
+F8: afternoon / late afternoon lighting.
+F9: cycle apartment exterior, market, living room, fire escape,
+    front-door wall, east residences, police station, house exterior,
+    house living room, basement, and rooftop.
+B while in basement: toggle basement lights.
+F5 while running: existing local save action.
+
+BASEMENT ACCESS
+Enter the house, go through the rear-right grow-room doorway, and turn
+right to the stair opening. Walk down and back up; F9 also offers a
+basement inspection view. The eight fixed cultivation platforms are removed.
+Place your own tents/equipment using the existing Backpack/Arrange controls.
+The main basement floor accepts grow equipment; the east stair/panel aisle
+and the service strip along the tanks/counter remain reserved.
+Existing upstairs furniture stays put. Empty and unlock tents before moving
+or packing them, using the same rules as before. No purchases or plants are reset.
+House equipment keeps its original property ID, plant slots and inventory.
+Basement furniture, plants and interactions use and save the lower floor height.
+The east-wall grow panel downstairs opens with E and uses the apartment-style
+status/control screen. Room Light controls basement ceiling lights; Grow Lights
+and Ventilation control HOUSE equipment on both floors, separately from apartment
+controls. Ventilation requires a placed house unit. B also toggles basement lights.
+Worker navigation through the new basement has not been validated.
+The basement structure stays present when F6 compares the art pass.
+
+WHAT THIS IS
+Revision 01.7: closed visual apartment entrances 201 and 301 at the second-
+and third-floor fire-escape landings. No new accessible interiors. Front
+planters moved 0.7 m closer to the facade and given solid pot collision.
+Removed floating basement stair text; B still controls basement lighting.
+Fixed orphan house jars and apartment bench props left after moving the bench.
+Revision 01.7: continuous railing barriers prevent stair-exit snagging on
+the fire escape and basement stairs.
+
+Wood/basement update: coordinated matte oak floors and wooden doors, including the
+apartment floor. Wood grain stays attached to swinging doors. The house panel
+now opens a full control screen downstairs. Removed fixed cultivation benches
+and added height-aware player equipment placement, rendering and saved positions.
+
+Earlier revision 01.4: supported market board and awning, corrected awning slope,
+crate/board collision; roof perimeter and upper landing rails with collision.
+Indoor checks now include height, preventing apartment door alerts on the
+roof. House room controls also respect floor height. Stair-connected house
+basement with a cut through both the actual floor and terrain collision.
+An early environment art direction study on the actual current map.
+Apartment proportions: roof cornice lifted clear of the top windows; two equally
+spaced 3.5 m upper stories, larger upper windows, aligned floor bands,
+and extended pilasters/downpipes. The playable ground floor stays intact.
+
+Revised masonry, pavement/asphalt, interior plaster, warm light, entrance
+canopy, layered cornice, drainpipes, side fire escape, market awning and
+small street props. Character models and gameplay are from the snapshot.
+Revision 01.3: restored transparent glass and original window frames on the
+enterable house; narrowed facade material selection to actual wall pieces.
+Roof sheets are visible from both sides, and new soffits close the eave gap.
+Original house wood floors are preserved. Eleven inspection viewpoints.
+Compatibility light budget increased from 8 to 16 per object: the house
+floor and ceiling overlap 11 local lights (including the room lights). This avoids camera-dependent
+light selection on those large meshes. This is a desktop preview setting;
+phone performance remains unmeasured.
+
+Revision 01.2: consistent world-scaled brick, concrete, asphalt, gravel,
+soil, lawn and plaster across the neighborhood. Apartment front-door
+wall fragments now share the same plaster as the remaining walls.
+Background window glass, frames and sills enlarged together by 15%.
+Three stair flights with solid connected landings now lead from the
+ground to the 11.6 m roof; handrails and smooth ramp collision included.
+
+Original mode restores the original materials and hides the added props;
+the review time and rendering preset remain fixed for comparison.
+
+ISOLATION
+No repository pushes, no live account login, and no remote career writes.
+The preview uses a separate AFewBuds-Visual-Lab-01 local save directory.
+The offline cloud adapter refuses every HTTP account request.
+This ZIP is a snapshot: updates made in the other chat will not appear here.
+
+LIMITS
+This is not a completed Schedule I-quality makeover or a mobile build.
+The Light preset is an experiment, not a measured phone performance result.
+The fire escape has collision; small decorative props remain visual only.
+Existing furniture, characters and trees retain their authored assets.
+Background buildings remain closed shells; no new playable interiors.
+
+SOURCE
+FFDevelopment/afewbuds-3d-prototype main
+Snapshot: 2149be5b78e1eb17b88c595d54d127cb61059595
+Study additions: visual_lab/; project.godot selects the offline boot.
+Local adapter edits: prototype/neighborhood.gd, prototype/apartment.gd,
+prototype/player.gd and prototype/house_controls.gd.
+No edits were pushed to the source repositories.
+All existing art is from the supplied AFewBuds repository. No Schedule I assets.
+
+VALIDATION
+Godot 4.6 import and boot; material and transform restoration; eleven viewpoints;
+Light preset; matching apartment-wall materials; connected stair landings;
+all ten house glass panes, roof/eave coverage, 11-light overlap budget; player-capsule traversal
+from ground to roof and house-to-basement return trip; offline adapter and isolated
+local directory checks.
+See visual_lab/validate.gd. Render-review evidence is included under review/.
+
+01.8: Three full stories and aligned exterior windows on background residences; matching garage brick and roof materials.
+
+01.9: Restyled sedan, pickup and police cars, centered parking bays, curb-aligned street cars, and cleared rear alley. Vehicles are static scenery.
+
+01.10: Restyled grow tents and utilities. Each tent includes a basic light; its existing improved-light-kit upgrade replaces it with LED bars.
+To wall-mount auto water or ventilation: empty/unlock as needed, Move/Place, press Tab for controls and choose Mount: wall, then aim at a clear grow-room wall. Aim higher/lower to change height. Mount: floor restores normal placement.
+Hidden wall storage now places above baseboards using its actual cabinet bounds.

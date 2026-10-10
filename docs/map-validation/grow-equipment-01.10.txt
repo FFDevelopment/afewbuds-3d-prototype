@@ -1,0 +1,4 @@
+Godot Engine v4.6.stable.official.89cea1439 - https://godotengine.org
+
+STASH_MOUNT_PASS baseboard_clear=true own_collision_excluded=true
+GROW_EQUIPMENT_PASS four_tents=true per_tent_upgrade=true lights_off=true wall_mount_aim=true move_pack=true save_height=true

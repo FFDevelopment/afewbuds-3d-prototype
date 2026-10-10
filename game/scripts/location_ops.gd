@@ -243,6 +243,7 @@ func market_furniture() -> void:
 func market_grow_tents() -> void:
 	host.inventory_system.furniture.shop("grow")
 func market_navigation() -> void:
+	host.inventory_system.furniture.cart.toolbar(ui.body)
 	ui.label("Cash: $%d  |  %s" % [host.cash,host.inventory_system.backpack_summary()],16)
 	var row:=GridContainer.new();row.columns=2;row.add_theme_constant_override("h_separation",6);row.add_theme_constant_override("v_separation",6);ui.body.add_child(row)
 	for category_name in ["Seeds","Supplies","Upgrades","Furniture"]:
@@ -262,20 +263,15 @@ func market_card(item:String,title:String,detail:String,callback:Callable,disabl
 	if disabled:row.modulate=Color(1,1,1,.5)
 func supplies() -> void:
 	clear("CENTRAL MARKET - SUPPLIES");market_navigation()
-	market_card("fertilizer","Fertilizer - Pack of 5","$45 | 5 lb total\nOrder for pickup",func():order_fertilizer();supplies(),host.cash<45)
+	host.inventory_system.furniture.cart.supplies(ui.body)
 	ui.button("BACK TO CHECKOUT",market)
 	ui.button("CLOSE",close)
+
 func seeds() -> void:
 	clear("CENTRAL MARKET - SEEDS");market_navigation()
-	ui.label("Order seeds here and collect them into your backpack.",18)
-	for name in host.SEED_ORDER:
-		if not host.seed_catalog.has(name):continue
-		var data: Dictionary=host.seed_catalog[name]
-		if bool(data.get("recipe_only",false)):continue
-		var price: int=int(data.get("cost",10))
-		var level: int=int(data.get("unlock",1))
-		market_card("seed|"+name,name,"$%d | 0.02 lb each\n%s" % [price,"Order for pickup" if host.grower_level>=level else "Unlocks at Level %d" % level],func():order_seed(name);seeds(),host.cash<price or host.grower_level<level or total(host.location_state.pickup_seeds)>=50)
+	host.inventory_system.furniture.cart.seeds(ui.body)
 	ui.button("BACK TO CHECKOUT",market)
+
 func equipment() -> void:
 	clear("CENTRAL MARKET - EQUIPMENT");market_navigation()
 	market_card("equipment|Grow Tent","Grow tents · 1 / 2 / 3 / 4 plants","Purchase packed tents and choose where to place them.",market_grow_tents)
@@ -484,7 +480,7 @@ func computer_upgrades() -> void:
 		var item:Dictionary=model.state.items[id]
 		if str(item.get("property",""))!=property:continue
 		count+=1
-		ui.label(model.item_name(id)+" · "+("LOCKED" if bool(item.get("locked",false)) else "AVAILABLE"))
+		ui.label(model.item_name(id)+" · "+("FIXED IN PLACE" if bool(item.get("locked",false)) else "READY TO MOVE"))
 	if count==0:ui.label("No equipment or furniture is installed at this property. Apartment equipment stays at the apartment.")
 	b("ARRANGE "+property.to_upper()+" FURNITURE & EQUIPMENT",func():close();host.inventory_system.furniture.open_property(property))
 	ui.label("Buy additional equipment at Central Market. Purchases must be delivered or carried to this property.")
@@ -1453,6 +1449,9 @@ func rent_ui(parent: VBoxContainer) -> void:
 
 
 func equipment_ui(parent: VBoxContainer) -> void:
+	_property_label(parent,"Equipment is available to buy when you can afford it. There is no story goal required. Upgrade an empty owned item to its next tier, or buy a replacement.")
+	_property_label(parent,"Furniture locks keep items fixed in place; they are not progression locks.",15)
+	host.inventory_system.furniture.cart.toolbar(parent)
 	_property_label(parent,"Owned equipment stays with you when packed. Upgrade an empty item, or buy and place a better replacement.")
 	_property_button(parent,"MANAGE OWNED EQUIPMENT",host.inventory_system.furniture.open)
 	_property_button(parent,"ORDER EQUIPMENT",func():host.inventory_system.furniture.shop("equipment"))
@@ -1531,19 +1530,7 @@ func order_fertilizer() -> void:
 	host._update_cash_ui();host._save_game();host._refresh_phone()
 	host.status_label.text="Fertilizer ready for pickup at Central Market."
 func phone_supplies() -> void:
-	var note:=Label.new()
-	note.text="Order fertilizer for Central Market pickup. Collect it at checkout and use it from your backpack."
-	note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;host.phone_list.add_child(note)
-	order_summary(host.phone_list)
-	var buy:=Button.new()
-	buy.text="ORDER FERTILIZER · PACK OF 5 · $45"
-	buy.custom_minimum_size.y=76
-	buy.disabled=host.cash<45 or int(host.location_state.pickup_fertilizer)>45
-	buy.pressed.connect(order_fertilizer);host.phone_list.add_child(buy)
-
-	b("Order furniture / curbside delivery",func():host.inventory_system.furniture.shop("furniture"))
-	b("Order equipment / curbside delivery",func():host.inventory_system.furniture.shop("equipment"))
-	b("Order grow tents",market_grow_tents)
+	host.inventory_system.furniture.cart.supplies(host.phone_list)
 
 func format_management() -> void:
 	for item in ui.body.find_children("*","Control",true,false):

@@ -86,7 +86,7 @@ func sync() -> void:
     label(root,"DELIVERY\n"+model.item_name(id),Vector3(0,1.1,0));interaction(root,id,e.property,Vector3(.65,1,.65));continue
    if e.get("property","") not in model.ROOMS or not e.has("position"):continue
    var root:=Node3D.new();root.name="Owned_"+id;root.set_meta("equipment_id",id);host.add_child(root);rendered[id]=root
-   root.position=Vector3(e.position[0],0,e.position[2]);root.rotation.y=deg_to_rad(float(e.get("yaw",0)))
+   root.position=Vector3(e.position[0],e.position[1],e.position[2]);root.rotation.y=deg_to_rad(float(e.get("yaw",0)))
    if model.is_tent(e):tent(root,id)
    elif not clone_computer(root,id,e) and not clone_supply(root,id,e) and not clone_cabinet(root,id,e) and not clone_legacy(root,id,e):editor.build_prop(root,id,e.sku)
    if not model.station_kind(id).is_empty():
@@ -103,6 +103,10 @@ func sync() -> void:
   var entry:Dictionary=model.state.items[id]
   var house_grow_on:bool=bool(host.house_control_state.get("grow_lights",false))
   var grow_on:bool=house_grow_on if entry.get("property","")=="house" else host.grow_lights_on
+  var visual=rendered[id].get_node_or_null("GrowEquipmentVisual")
+  if visual!=null:
+   var vent_on:bool=bool(host.house_control_state.get("grow_ventilation",false)) if entry.get("property","")=="house" else host.ventilation_on
+   visual.set_power(vent_on if entry.sku=="ventilation" else grow_on)
   var tent_light:Node3D=rendered[id].get_node_or_null("TentGrowLight")
   if tent_light!=null:tent_light.visible=grow_on
   var light:Node3D=rendered[id].get_node_or_null("ItemLight")
@@ -118,7 +122,7 @@ func sync() -> void:
   var e:Dictionary=model.state.items[id];var slots:Array=e.slots
   var width:float=model.size_of(id).x
   var x:float=(float(slots.find(i))-(slots.size()-1)*.5)*(width-.35)/slots.size()
-  plant.global_transform=Transform3D(Basis(Vector3.UP,deg_to_rad(float(e.get("yaw",0)))),Vector3(e.position[0],0,e.position[2]))*Transform3D(Basis.IDENTITY,Vector3(x,.26,0))
+  plant.global_transform=Transform3D(Basis(Vector3.UP,deg_to_rad(float(e.get("yaw",0)))),Vector3(e.position[0],e.position[1],e.position[2]))*Transform3D(Basis.IDENTITY,Vector3(x,.26,0))
  sync_levels()
  sync_supply_labels()
  if host.neighborhood!=null and host.neighborhood.house_controls!=null:host.neighborhood.house_controls.refresh_grow_panel()
@@ -165,22 +169,10 @@ func colliders(node:Node,id:String) -> void:
  for child in node.get_children():
   if not child is CollisionObject3D:colliders(child,id)
 func tent(root:Node3D,id:String) -> void:
- var s:Vector3=model.size_of(id)
- editor.piece(root,id,Vector3(0,s.y*.5,-s.z*.5+.04),Vector3(s.x,s.y,.08),"191c23")
- for side in [-1,1]:
-  editor.piece(root,id,Vector3(side*(s.x*.5-.04),s.y*.5,0),Vector3(.08,s.y,s.z),"20232c")
-  editor.piece(root,id,Vector3(side*(s.x*.5-.06),s.y*.5,s.z*.5-.06),Vector3(.06,s.y,.06),"5a6770")
- editor.piece(root,id,Vector3(0,s.y-.04,0),Vector3(s.x,.08,s.z),"232833")
- editor.piece(root,id,Vector3(0,.2,0),Vector3(s.x-.14,.08,s.z-.12),"353441")
- editor.piece(root,id,Vector3(0,s.y-.3,0),Vector3(s.x*.75,.05,.3),"d7f5d7")
- var bulb:=OmniLight3D.new()
- bulb.name="TentGrowLight"
- bulb.position=Vector3(0,s.y-.38,0)
- bulb.light_color=Color("e5f8d5")
- bulb.light_energy=.65
- bulb.omni_range=3.0
- root.add_child(bulb)
- label(root,model.item_name(id),Vector3(0,s.y+.12,0))
+ var entry:Dictionary=model.state.items[id]
+ var visual=load("res://scripts/grow_equipment_visuals.gd").new();visual.name="GrowEquipmentVisual";root.add_child(visual)
+ visual.build_tent(id,model.size_of(id),int(entry.get("quality",1)),int(model.CATALOG[entry.sku].plants))
+
 func label(root:Node3D,text:String,position:Vector3) -> void:
  var caption:=Label3D.new();caption.text=text;caption.font_size=24;caption.pixel_size=.004;caption.position=position;caption.billboard=BaseMaterial3D.BILLBOARD_ENABLED;root.add_child(caption)
 func sync_levels() -> void:
@@ -256,6 +248,7 @@ func nearby_seat() -> String:
  for id in model.state.items:
   var e:Dictionary=model.state.items[id]
   if e.sku not in ["sofa","armchair","dining_chair"] or e.get("property","") not in model.ROOMS or not e.has("position"):continue
+  if absf(float(e.position[1])-(host.camera.global_position.y-1.6))>2.0:continue
   var at:=Vector3(e.position[0],host.camera.global_position.y,e.position[2])
   var gap:float=host.camera.global_position.distance_to(at)
   if gap<distance:nearest=id;distance=gap
@@ -264,7 +257,7 @@ func seat_eye() -> Vector3:
  seated_id=nearby_seat()
  if seated_id.is_empty():return host.camera.global_position
  var e:Dictionary=model.state.items[seated_id]
- var at:=Vector3(e.position[0],0,e.position[2]);var yaw:float=deg_to_rad(float(e.get("yaw",0)))
+ var at:=Vector3(e.position[0],e.position[1],e.position[2]);var yaw:float=deg_to_rad(float(e.get("yaw",0)))
  if e.get("legacy_group","")=="sofa":at+=Vector3(.5072,0,-.035).rotated(Vector3.UP,yaw)
  return host.neighborhood.bench_seating.eyes(at,yaw,load("res://scripts/scale_policy.gd").SEAT_HEIGHT)
 func toggle_lamp() -> void:

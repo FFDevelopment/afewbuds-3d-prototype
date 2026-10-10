@@ -53,9 +53,12 @@ func run():
  game.camera.global_position=Vector3(41.8,1.64,-10)
  inv.open_backpack();inv.place_backpack_item(placement_tent)
  check(inv.furniture.is_placing() and inv.furniture.property=="house" and not inv.is_open(),"Backpack placement uses current house despite previously browsing apartment")
- for near_wall in [Vector3(39.35,0,-10),Vector3(44.25,0,-10),Vector3(41.8,0,-13.2),Vector3(43.5,0,-7.8)]:
+ for near_wall in [Vector3(39.35,0,-10),Vector3(40.45,0,-13.2)]:
   inv.furniture.point=near_wall;inv.furniture.yaw=0
   check(inv.furniture.obstacle().is_empty(),"House tent can place near wall at "+str(near_wall)+": "+inv.furniture.obstacle())
+ for stair_edge in [Vector3(44.25,0,-10),Vector3(41.8,0,-13.2),Vector3(43.5,0,-7.8)]:
+  inv.furniture.point=stair_edge
+  check(not inv.furniture.obstacle().is_empty(),"Stair opening and rails stay clear: "+str(stair_edge))
  check(not model.validate(placement_tent,"house",Vector3(38.9,0,-10),0).is_empty(),"Tent still cannot cross the grow-room wall")
  inv.furniture.close()
  inv.furniture.open_property("house");inv.furniture.close()
@@ -242,7 +245,7 @@ func run():
  var house_growth_after:float=float(model.growth_settings(house_slot,game._plant_growth_settings(false,house_slot),false).light_factor)
  check(house_light_before!=house_light_after and game.grow_lights_on==apartment_light_before,"House grow light switch changes house lighting without touching apartment")
  check(absf(house_growth_after-house_growth_before)>.05,"House plant growth reacts to actual house light state")
- var house_bulb=inv.furniture.equipment_world.rendered["isolation_house_tent"].get_node_or_null("TentGrowLight")
+ var house_bulb=inv.furniture.equipment_world.rendered["isolation_house_tent"].get_node_or_null("GrowEquipmentVisual/GrowBeam")
  check(house_bulb!=null and house_bulb.visible==house_light_after,"Placed house tent's real light follows house grow panel switch")
  # Independently installed ventilation: no unit means no house air toggle or
  # growth benefit, even if apartment ventilation happens to be turned on.
