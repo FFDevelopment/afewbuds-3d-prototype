@@ -19,14 +19,15 @@ func run():
  var bench:Node3D=Actions.station(game);bench.reparent(root,true);bench.show()
  var plant:Node3D=game.plant_visuals[0];plant.reparent(root,true);plant.show()
  var crew=game.neighborhood.location_ops.crew
- for task in ["trim","bag","harvest"]:
-  game.production_worker_pending_action=task;game.production_worker_pending_slot=0 if task=="harvest" else -1;game.production_worker_pending_strain=strain
+ for task in ["plant","water","fertilize"]:
+  plant.get_node("Canopy").visible=task!="plant"
+  game.production_worker_pending_action=task;game.production_worker_pending_slot=0 if task in Actions.GROW_TASKS else -1;game.production_worker_pending_strain=strain
   var at:Variant=Actions.target(game,task,game.production_worker_pending_slot)
   if not at is Vector3:push_error("Missing target");quit(1);return
   game.production_worker_target_position=at;game.production_worker_node.global_position=at;game.production_worker_action_dwell=Actions.duration(task)*.45
   crew.update_malik();var pose=crew.malik_worker.get_node("ProductionActions");pose.sync()
   var worker:Node3D=game.production_worker_node
-  camera.global_position=worker.global_position+worker.global_basis*Vector3(1.3,2.1,1.2)
+  camera.global_position=worker.global_position+worker.global_basis*Vector3(-1.6,1.3,-1.4)
   camera.look_at(worker.global_position+Vector3(0,1.2,0)-worker.global_basis.z*.35)
   await process_frame;await process_frame;await RenderingServer.frame_post_draw
   var path:String="/tmp/production_"+task+".png"
