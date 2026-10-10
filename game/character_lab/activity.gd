@@ -193,7 +193,7 @@ func cigarette_frame()->Transform3D:
  var spread:Vector3=(a-b).normalized()
  var axis:Vector3=along.cross(spread).normalized()
  var hand:Transform3D=sk.get_bone_global_pose(sk.find_bone("Hand_R"))
- if axis.dot(hand.basis.y)<0:axis=-axis
+ if axis.dot(Vector3.BACK)<0:axis=-axis
  var x:Vector3=(along-axis*along.dot(axis)).normalized()
  var y:Vector3=axis.cross(x).normalized()
  finger_gap=a.distance_to(b)
@@ -217,11 +217,13 @@ func arm(side:String,wrist:Vector3,finger_dir:Vector3,curl:float):
  var smoking:=action in ["light","smoke"] and side=="R"
  var palm:=Vector3.BACK if smoking else Vector3.UP
  var hand_basis:=oriented_basis(finger_dir*sg,palm)
- var roll_weight:=pass_roll if side=="R" else (1-smoothstep(2.5,3.1,fmod(maxf(0,clock-1),6.0)) if action=="light" else 0.0)
- if roll_weight>0:
-  var thumb_up_palm:=Vector3.DOWN.cross(finger_dir*sg).normalized()
-  if thumb_up_palm.length()>.01:
-   hand_basis=hand_basis.slerp(oriented_basis(finger_dir*sg,thumb_up_palm),roll_weight)
+ # Use one continuous neutral roll through lift, handoff and lowering.
+ # Thumb goes forward as fingers hang down, avoiding a vertical-axis singularity.
+ if action in ["idle","light","smoke"]:
+  var thumb_direction:Vector3=(Vector3.UP+Vector3.FORWARD*.9*smoothstep(.55,.95,-finger_dir.y)).normalized()
+  var neutral_palm:Vector3=(-thumb_direction).cross(finger_dir*sg).normalized()
+  if neutral_palm.length()>.01:
+   hand_basis=oriented_basis(finger_dir*sg,neutral_palm)
  var lower_basis:=oriented_basis(forearm*sg,hand_basis.y)
  var upper_basis:=Basis(Quaternion(Vector3(sg,0,0),(elbow-shoulder).normalized()))
  sk.set_bone_global_pose_override(u,Transform3D(upper_basis,shoulder),1,true)

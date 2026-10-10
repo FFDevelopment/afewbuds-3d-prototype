@@ -46,7 +46,7 @@ func _ready():
  var scroll:=ScrollContainer.new();scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED;panel.add_child(scroll)
  var column:=VBoxContainer.new();column.add_theme_constant_override("separation",8);scroll.add_child(column)
  title=Label.new();title.add_theme_font_size_override("font_size",24);column.add_child(title)
- var note:=Label.new();note.text="ANIMATION LAB / REVIEW 06\nProps + shared actions";note.modulate=Color("9ac1b0");column.add_child(note)
+ var note:=Label.new();note.text="ANIMATION LAB / REVIEW 07\nProps + shared actions";note.modulate=Color("9ac1b0");column.add_child(note)
  var grid:=GridContainer.new();grid.columns=2;column.add_child(grid)
  for i in NAMES.size():
   var idx:=i;button(grid,NAMES[i],func():set_clip("idle");selected=idx;count=1;full_view();arrange())
