@@ -62,6 +62,11 @@ func run()->void:
  await process_frame
  check(phone.native_mode and phone.skeleton!=null and phone.skeleton.get_bone_count()==56,"Web/native rig loads all 56 original AFewBuds bones")
  if phone.skeleton!=null:
+  var native_sk:Skeleton3D=phone.skeleton
+  var head_y:float=native_sk.get_bone_global_pose(native_sk.find_bone("Head")).origin.y
+  var foot_y:float=native_sk.get_bone_global_pose(native_sk.find_bone("Foot_L")).origin.y
+  check(head_y>1.4 and foot_y<.20 and head_y-foot_y>1.3,"Web rig preserves standing skeleton poses instead of collapsing at the floor")
+ if phone.skeleton!=null:
   check(phone.part_count("body")>=10 and phone.part_count("top")>0 and phone.part_count("shoes")>=2,"Native avatar has independently rendered body and clothing")
   phone.play_preview("walk")
   check(phone.preview_motion=="walk","Phone rig supports procedural walk preview")
