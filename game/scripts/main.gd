@@ -440,6 +440,7 @@ var chapter_four_story_stage: int = 0
 var property_offer_unlocked: bool = false
 var property_opportunity_state: Dictionary = {}
 var location_state: Dictionary = {}
+var mission_story_engine: RefCounted
 var apartment_rent_state: Dictionary = {}
 var critical_staff_event_active: bool = false
 var dealer_arrested: bool = false
@@ -738,6 +739,7 @@ func _ready() -> void:
 	_apply_cloud_boot_save()
 	_load_game()
 	genetics_system=load("res://scripts/tent_genetics.gd").new();genetics_system.setup(self)
+	mission_story_engine=load("res://scripts/mission_story_engine.gd").new();mission_story_engine.setup(self)
 	_ensure_tent_capacity()
 	_build_world()
 	_apply_visual_upgrades()
@@ -8960,6 +8962,7 @@ func _build_story_progress_section() -> void:
 	objectives.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	objectives.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	story_box.add_child(objectives)
+	if mission_story_engine!=null:mission_story_engine.render(story_box)
 
 func _advancement_lane_name(entry: Dictionary) -> String:
 	var advancement_id: String = str(entry.get("id", ""))
@@ -9343,6 +9346,7 @@ func _increment_advancement_stat(metric_name: String, amount: int = 1) -> void:
 	elif metric_name == "reeves_missed_payments":
 		_lock_advancement_choice("reeves_miss")
 	advancement_stats[metric_name] = int(advancement_stats.get(metric_name, 0)) + amount
+	if mission_story_engine!=null:mission_story_engine.record(metric_name,amount)
 
 func _debug_trigger_reeves() -> void:
 	heat = maxf(heat, REEVES_TRIGGER_HEAT)
