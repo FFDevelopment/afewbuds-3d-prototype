@@ -15,6 +15,7 @@ var applying := false
 var shop:RefCounted
 var manager_attempted := false
 var manager_node: Node3D
+var house_approach_cache:Dictionary={}
 func setup(owner: Node3D) -> void:
 	world=owner;host=world.host
 	shop=load("res://scripts/property_shop.gd").new();shop.setup(host,self)
@@ -406,43 +407,46 @@ func update(delta: float) -> void:
 			manager_node.set_meta("property",active_site)
 			for tag in manager_node.find_children("*","Label3D",true,false):tag.text=name+(" · DOOR DEALER" if role(name)=="door" else " · APARTMENT DEALER")
 		manager_node.visible=not host.dealer_arrested or role(name)=="door"
-		var couch: Dictionary=idle_couch(active_site)
-		var relax: bool=not couch.is_empty() and not host.customer_waiting and not world.couch_seated
-		var seat: Vector3=idle_spot(true,false,active_site)
-		var before: Vector3=manager_node.position
-		var already_seated: bool=bool(manager_node.get_meta("seated",false))
-		var previous_seat: Vector3=manager_node.get_meta("idle_seat_position",Vector3.ZERO)
-		var same_seat: bool=already_seated and str(manager_node.get_meta("idle_seat_id",""))==str(couch.get("id","")) and previous_seat.distance_to(seat)<0.03
-		var seated: bool=relax and same_seat
-		if not seated:
-			# Movement is horizontal. Never chase the zero-height navigation
-			# target after the sitting pose lowers a character's visual root.
-			manager_node.position.y=0.0
-			var door_position:Vector3=Vector3(35,0,2.1) if active_site=="house" else Vector3(1.45,0,4.45)
-			var destination: Vector3=seat if relax else (door_position if host.customer_waiting else idle_spot(true,true,active_site))
-			var waypoint:Vector3=host.house_route_next("door_"+name,manager_node.position,destination) if active_site=="house" else destination
-			manager_node.position=manager_node.position.move_toward(waypoint,delta*2.0)
-			var arrived:bool=(host.house_route_arrived("door_"+name,manager_node.position,destination) and manager_node.position.distance_to(seat)<1.1) if active_site=="house" else Vector2(manager_node.position.x-seat.x,manager_node.position.z-seat.z).length()<0.12
-			seated=relax and arrived and (not already_seated or same_seat)
-		if seated:
-			manager_node.position.x=seat.x
-			manager_node.position.z=seat.z
-			manager_node.rotation.y=float(couch.get("yaw",0.0))
-			manager_node.set_meta("idle_seat_id",str(couch.get("id","")))
-			manager_node.set_meta("idle_seat_position",seat)
+		if active_site=="house":
+			_update_house_door_manager(delta,name)
 		else:
-			manager_node.set_meta("idle_seat_id","")
-		seated_pose(manager_node,seated)
-		animate_manager(Vector3(manager_node.position.x-before.x,0,manager_node.position.z-before.z),seated,delta)
-		var visit_target:Vector3=Vector3(35,0,2.1) if active_site=="house" else Vector3(1.45,0,4.45)
-		var at_door:bool=host.house_route_arrived("door_"+name,manager_node.position,visit_target) if active_site=="house" else manager_node.position.distance_to(visit_target)<0.2
-		if host.customer_waiting and not host.customer_answered and not host.customer_departing and can_handle(active_site) and not manager_attempted and at_door and str(host.current_customer.get("special","")).is_empty():
-			manager_attempted=true
-			var client: Dictionary=host.current_customer.duplicate(true)
-			var request: Dictionary=host.active_request.duplicate(true)
-			if not serve_visit(client,request):
-				send(name,say(name,"short_stock",{"client":str(client.get("name","client")),"qty":int(request.get("qty",0)),"product":str(request.get("product",""))}))
-				if not world.client_visits.is_home():world.client_visits._release_visit();world.client_visits._send_missed(client,request,"Your dealer could not fill my order. Let me know when you have stock.")
+			var couch: Dictionary=idle_couch(active_site)
+			var relax: bool=not couch.is_empty() and not host.customer_waiting and not world.couch_seated
+			var seat: Vector3=idle_spot(true,false,active_site)
+			var before: Vector3=manager_node.position
+			var already_seated: bool=bool(manager_node.get_meta("seated",false))
+			var previous_seat: Vector3=manager_node.get_meta("idle_seat_position",Vector3.ZERO)
+			var same_seat: bool=already_seated and str(manager_node.get_meta("idle_seat_id",""))==str(couch.get("id","")) and previous_seat.distance_to(seat)<0.03
+			var seated: bool=relax and same_seat
+			if not seated:
+				# Movement is horizontal. Never chase the zero-height navigation
+				# target after the sitting pose lowers a character's visual root.
+				manager_node.position.y=0.0
+				var door_position:Vector3=Vector3(35,0,2.1) if active_site=="house" else Vector3(1.45,0,4.45)
+				var destination: Vector3=seat if relax else (door_position if host.customer_waiting else idle_spot(true,true,active_site))
+				var waypoint:Vector3=host.house_route_next("door_"+name,manager_node.position,destination) if active_site=="house" else destination
+				manager_node.position=manager_node.position.move_toward(waypoint,delta*2.0)
+				var arrived:bool=(host.house_route_arrived("door_"+name,manager_node.position,destination) and manager_node.position.distance_to(seat)<1.1) if active_site=="house" else Vector2(manager_node.position.x-seat.x,manager_node.position.z-seat.z).length()<0.12
+				seated=relax and arrived and (not already_seated or same_seat)
+			if seated:
+				manager_node.position.x=seat.x
+				manager_node.position.z=seat.z
+				manager_node.rotation.y=float(couch.get("yaw",0.0))
+				manager_node.set_meta("idle_seat_id",str(couch.get("id","")))
+				manager_node.set_meta("idle_seat_position",seat)
+			else:
+				manager_node.set_meta("idle_seat_id","")
+			seated_pose(manager_node,seated)
+			animate_manager(Vector3(manager_node.position.x-before.x,0,manager_node.position.z-before.z),seated,delta)
+			var visit_target:Vector3=Vector3(35,0,2.1) if active_site=="house" else Vector3(1.45,0,4.45)
+			var at_door:bool=host.house_route_arrived("door_"+name,manager_node.position,visit_target) if active_site=="house" else manager_node.position.distance_to(visit_target)<0.2
+			if host.customer_waiting and not host.customer_answered and not host.customer_departing and can_handle(active_site) and not manager_attempted and at_door and str(host.current_customer.get("special","")).is_empty():
+				manager_attempted=true
+				var client: Dictionary=host.current_customer.duplicate(true)
+				var request: Dictionary=host.active_request.duplicate(true)
+				if not serve_visit(client,request):
+					send(name,say(name,"short_stock",{"client":str(client.get("name","client")),"qty":int(request.get("qty",0)),"product":str(request.get("product",""))}))
+					if not world.client_visits.is_home():world.client_visits._release_visit();world.client_visits._send_missed(client,request,"Your dealer could not fill my order. Let me know when you have stock.")
 	elif manager_node!=null:manager_node.hide()
 	tick+=delta
 	if tick<10 or host._simulation_blocked():return
@@ -452,6 +456,132 @@ func update(delta: float) -> void:
 		var worker: String=host._critical_production_sender()
 		alert(worker,"seeds",property_supply_empty(assignment(worker),"seed|"),"We're out of seeds. Collect an order at Central Market and deposit it at the computer.")
 		alert(worker,"fertilizer",property_supply_empty(assignment(worker),"fertilizer"),"Fertilizer is out. I'll keep watering existing plants, but you'll need to restock fertilizer at Central Market.")
+
+
+const HOUSE_DOOR_WALK_SPEED:float=1.05
+const HOUSE_DOOR_STAND_SECONDS:float=0.72
+const HOUSE_DOOR_SERVICE_SECONDS:float=1.45
+const HOUSE_DOOR_SIT_SPEED:float=0.85
+const HOUSE_DOOR_TARGET:=Vector3(35.0,0.0,2.1)
+
+# Use the moved sofa's world transform, not coordinates baked into the floor.
+# A worker must stand in an accessible pocket in front of the seat before routing.
+func house_couch_approach(manager:bool=true) -> Vector3:
+	var couch:Dictionary=idle_couch("house")
+	if couch.is_empty():return Vector3.INF
+	var nav:RefCounted=host._house_npc_route()
+	nav.refresh()
+	var key:String=nav.stamp+"|"+str(couch.get("id",""))+"|"+str(couch.get("origin",Vector3.ZERO))+"|"+str(couch.get("yaw",0.0))+"|"+str(manager)+"|"+str(host.packing_employee_hired)
+	if str(house_approach_cache.get("key",""))==key:return house_approach_cache.get("at",Vector3.INF)
+	var occupied:Array[Dictionary]=nav._installed_footprints()
+	var across:float=0.615 if manager and host.packing_employee_hired else -0.375
+	for delta_x in [0.0,0.55,-0.55,1.05,-1.05]:
+		for forward in [1.10,1.25,1.45]:
+			var offset:Vector3=Vector3(across+delta_x,0,-forward)
+			var point:Vector3=(couch["origin"] as Vector3)+offset.rotated(Vector3.UP,float(couch["yaw"]))
+			if nav._blocked(point,occupied):continue
+			var path:Array[Vector3]=nav.plan(HOUSE_DOOR_TARGET,point)
+			if not path.is_empty() and path[-1].distance_to(point)<0.3:
+				house_approach_cache={"key":key,"at":point}
+				return point
+	house_approach_cache={"key":key,"at":Vector3.INF}
+	return Vector3.INF
+
+func _update_house_door_manager(delta:float,name:String) -> void:
+	if manager_node==null or host._simulation_blocked():return
+	var couch:Dictionary=idle_couch("house")
+	var seat:Vector3=idle_spot(true,false,"house")
+	var approach:Vector3=house_couch_approach()
+	var usable_seat:bool=not couch.is_empty() and approach!=Vector3.INF
+	var relaxing:bool=usable_seat and not host.customer_waiting and not world.couch_seated
+	var previous_seat:Vector3=manager_node.get_meta("idle_seat_position",Vector3.INF)
+	var same_seat:bool=str(manager_node.get_meta("idle_seat_id",""))==str(couch.get("id","")) and previous_seat.distance_to(seat)<0.04
+	var mode:String=str(manager_node.get_meta("house_motion","walk"))
+	var before:Vector3=manager_node.position
+	var agent:String="door_"+name
+	if bool(manager_node.get_meta("seated",false)) and (not relaxing or not same_seat):
+		seated_pose(manager_node,false)
+		if not manager_node.has_meta("character"):manager_node.position.y=-0.57
+		manager_node.set_meta("house_stand_exit",manager_node.get_meta("house_stand_point",approach))
+		manager_node.set_meta("house_motion","stand")
+		manager_node.set_meta("house_timer",HOUSE_DOOR_STAND_SECONDS)
+		mode="stand"
+	if mode=="stand":
+		var remaining:float=maxf(0.0,float(manager_node.get_meta("house_timer",0.0))-delta)
+		manager_node.set_meta("house_timer",remaining)
+		if not manager_node.has_meta("character"):manager_node.position.y=-0.57*remaining/HOUSE_DOOR_STAND_SECONDS
+		if remaining<=0.0:
+			manager_node.set_meta("house_motion","exit")
+			host._house_npc_route().reset(agent)
+	elif mode=="exit":
+		var exit_point:Vector3=manager_node.get_meta("house_stand_exit",Vector3.INF)
+		if exit_point==Vector3.INF:
+			manager_node.set_meta("house_motion","walk")
+		else:
+			manager_node.position.y=0.0
+			manager_node.position=manager_node.position.move_toward(exit_point,delta*HOUSE_DOOR_SIT_SPEED)
+			if manager_node.position.distance_to(exit_point)<0.08:
+				manager_node.position=exit_point
+				manager_node.set_meta("house_motion","walk")
+				host._house_npc_route().reset(agent)
+	elif mode=="sit":
+		var sit_target:Vector3=manager_node.get_meta("house_sit_target",Vector3.INF)
+		var sit_id:String=str(manager_node.get_meta("house_sit_id",""))
+		if not relaxing or sit_id!=str(couch.get("id","")) or sit_target.distance_to(seat)>0.04:
+			manager_node.set_meta("house_motion","walk")
+			host._house_npc_route().reset(agent)
+		else:
+			var start:Vector3=manager_node.get_meta("house_sit_start",manager_node.position)
+			var seat_before:Vector3=Vector3(manager_node.position.x,0,manager_node.position.z)
+			var seat_step:Vector3=seat_before.move_toward(seat,delta*HOUSE_DOOR_SIT_SPEED)
+			manager_node.position.x=seat_step.x
+			manager_node.position.z=seat_step.z
+			manager_node.rotation.y=float(couch["yaw"])
+			var traveled:float=Vector2(seat_step.x-start.x,seat_step.z-start.z).length()
+			var full:float=maxf(0.1,Vector2(seat.x-start.x,seat.z-start.z).length())
+			if not manager_node.has_meta("character"):manager_node.position.y=-0.57*clampf(traveled/full,0.0,1.0)
+			if Vector2(seat_step.x-seat.x,seat_step.z-seat.z).length()<0.065:
+				manager_node.position=seat
+				manager_node.set_meta("idle_seat_id",str(couch.get("id","")))
+				manager_node.set_meta("idle_seat_position",seat)
+				manager_node.set_meta("house_stand_point",approach)
+				manager_node.set_meta("house_motion","seated")
+				seated_pose(manager_node,true)
+	elif mode=="seated":
+		if not bool(manager_node.get_meta("seated",false)):
+			manager_node.set_meta("house_motion","walk")
+	else:
+		manager_node.set_meta("house_motion","walk")
+		var desired:Vector3=approach if relaxing else (HOUSE_DOOR_TARGET if host.customer_waiting else Vector3(35,0,1.45))
+		var waypoint:Vector3=host.house_route_next(agent,manager_node.position,desired)
+		manager_node.position.y=0.0
+		manager_node.position=manager_node.position.move_toward(waypoint,delta*HOUSE_DOOR_WALK_SPEED)
+		if relaxing and manager_node.position.distance_to(approach)<0.16 and host.house_route_arrived(agent,manager_node.position,approach):
+			manager_node.set_meta("house_sit_start",manager_node.position)
+			manager_node.set_meta("house_sit_target",seat)
+			manager_node.set_meta("house_sit_id",str(couch.get("id","")))
+			manager_node.set_meta("house_motion","sit")
+	# Walking is only played while really moving on the floor.
+	var movement:Vector3=manager_node.position-before
+	var animating:bool=mode in ["walk","exit"] and movement.length()>0.003
+	animate_manager(movement if animating else Vector3.ZERO,bool(manager_node.get_meta("seated",false)),delta)
+	var serving:bool=host.customer_waiting and not host.customer_answered and not host.customer_departing and can_handle("house") and not manager_attempted and str(host.current_customer.get("special","")).is_empty()
+	var at_door:bool=manager_node.position.distance_to(HOUSE_DOOR_TARGET)<0.18 and str(manager_node.get_meta("house_motion",""))=="walk"
+	if serving and at_door:
+		var elapsed:float=float(manager_node.get_meta("house_service_elapsed",0.0))+delta
+		manager_node.set_meta("house_service_elapsed",elapsed)
+		if elapsed>=HOUSE_DOOR_SERVICE_SECONDS:
+			manager_attempted=true
+			manager_node.set_meta("house_service_elapsed",0.0)
+			var client:Dictionary=host.current_customer.duplicate(true)
+			var request:Dictionary=host.active_request.duplicate(true)
+			if not serve_visit(client,request):
+				send(name,say(name,"short_stock",{"client":str(client.get("name","client")),"qty":int(request.get("qty",0)),"product":str(request.get("product",""))}))
+				if not world.client_visits.is_home():
+					world.client_visits._release_visit()
+					world.client_visits._send_missed(client,request,"Your dealer could not fill my order. Let me know when you have stock.")
+	else:
+		manager_node.set_meta("house_service_elapsed",0.0)
 
 func generic_manager_instance(name: String) -> Node3D:
 	# Each generic character gets a fresh primitive visual hierarchy, independent
