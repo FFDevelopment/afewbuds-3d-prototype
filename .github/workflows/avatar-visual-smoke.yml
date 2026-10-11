@@ -1,7 +1,7 @@
 name: Verify visible avatar preview in OpenGL
 on:
   push:
-    branches: [fix/avatar-preview-invisible-20261011, fix/avatar-ios-native-rig-20261011]
+    branches: [fix/avatar-preview-invisible-20261011, fix/avatar-ios-native-rig-20261011, feature/avatar-art-v2-tailored-20261011]
   workflow_dispatch:
 concurrency:
   group: afb-avatar-visual-smoke-${{ github.ref }}
