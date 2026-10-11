@@ -86,7 +86,7 @@ func run()->void:
     var worker_next:Vector3=nav.next_waypoint("production",Vector3(35,0,1.4),Vector3(41.3,0,-9.0))
     var door_next:Vector3=nav.next_waypoint("door_Rod",Vector3(29.0,0,-2.5),Vector3(35,0,2.1))
     check(worker_next!=door_next and nav.routes.size()==2,"Multiple NPC routes do not overwrite each other")
-    var blocked_grid:=nav.grid
+    var blocked_grid:AStarGrid2D=nav.grid
     blocked_grid.fill_solid_region(blocked_grid.region,true)
     nav.reset()
     var stopped:Vector3=nav.next_waypoint("blocked",Vector3(28,0,0),Vector3(42,0,-10))
