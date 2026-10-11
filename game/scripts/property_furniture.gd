@@ -75,6 +75,9 @@ const HOUSE_ROOM_PLACEMENT={
 # the legacy 26.3..40.5 x -13.5..-.5 crop zone to the real safe walls gives
 # considerably more space without granting placement on the stairs.
 const BASEMENT_GROW_PLACEMENT:=Rect2(26.105,-13.695,14.795,15.090)
+# A second safe wing extends to the physical east wall north of the stairwell.
+# The stairs themselves (x >= 41.15, z <= -8.3) remain an exclusion zone.
+const BASEMENT_EAST_PLACEMENT:=Rect2(40.90,-7.60,3.795,8.995)
 var host:Node
 var registry:RefCounted
 var item_registry:RefCounted
@@ -209,7 +212,7 @@ func upgrade_reason(id:String)->String:
 func placement_rooms(property:String,floor_y:float=0.0)->Dictionary:
  var rooms:Dictionary=registry.rooms_for(property)
  if property=="house":
-  if floor_y<-.5:return {"basement_grow":BASEMENT_GROW_PLACEMENT}
+  if floor_y<-.5:return {"basement_grow":BASEMENT_GROW_PLACEMENT,"basement_east":BASEMENT_EAST_PLACEMENT}
   for room in HOUSE_ROOM_PLACEMENT:
    if rooms.has(room):rooms[room]=HOUSE_ROOM_PLACEMENT[room]
  return rooms
@@ -318,7 +321,7 @@ func validate(id:String,property:String,point:Vector3,yaw:int) -> String:
  var allowed_rooms:Dictionary=placement_rooms(property,point.y)
  if basement and elevated:
   # Wall-mounted utilities still require an actual wall behind them.
-  allowed_rooms={"basement_grow":BASEMENT_GROW_PLACEMENT.grow(.12)}
+  allowed_rooms={"basement_grow":BASEMENT_GROW_PLACEMENT.grow(.12),"basement_east":BASEMENT_EAST_PLACEMENT.grow(.12)}
  for key in allowed_rooms:
   if not basement and not registry._within_height(property,key,point.y):continue
   var edge_tolerance:float=0.0 if property=="house" and HOUSE_ROOM_PLACEMENT.has(key) and not elevated else (.35 if e.sku=="storage_5" or elevated else .015)
