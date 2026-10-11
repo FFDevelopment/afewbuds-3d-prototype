@@ -307,6 +307,18 @@ func obstacle() -> String:
  var box:AABB=model.occupied_box(selected,point,yaw)
  if model.state.items[selected].sku!="storage_5":box.position.y+=.08;box.size.y-=.08
  if box.grow(.35).has_point(Vector3(host.camera.global_position.x,placement_floor()+.5,host.camera.global_position.z)):return "Leave room for yourself to stand."
+ # Closed packing-room blinds are decorative meshes without collision. Check
+ # their real artwork so a flush bench never clips through the window cover.
+ if property=="house" and placement_floor()>-.5:
+  for blind_name in ["PackingSideBlind","PackingFrontBlind"]:
+   var shade:Dictionary=host.neighborhood.house_controls.shades.get(blind_name,{})
+   if not bool(shade.get("closed",false)):continue
+   var blind_root:Node3D=shade.get("node") as Node3D
+   if blind_root==null:continue
+   for mesh in blind_root.find_children("*","MeshInstance3D",true,false):
+    if mesh.mesh==null or not mesh.is_visible_in_tree():continue
+    if box.intersects(mesh.global_transform*mesh.get_aabb()):
+     return "Window covering overlaps furniture. Use a solid wall section or open the blind."
  # Physics edge tolerance removes false positives at flush-touching surfaces.
  # The ownership validator still uses full, unshrunk furniture footprints.
  var shape:=BoxShape3D.new()
