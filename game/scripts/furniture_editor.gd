@@ -9,6 +9,7 @@ var layout_panel:PanelContainer
 var layout_hint:Label
 var layout_move:Button
 var layout_pickup:Button
+var layout_upgrade:Button
 var wall_found:=false
 var wall_mount:=false
 var mount_button:Button
@@ -71,6 +72,7 @@ func setup(owner:Node3D,inv:Node) -> void:
  var layout_row:=HBoxContainer.new();layout_box.add_child(layout_row)
  layout_move=inventory.button("Move",layout_move_item,layout_row)
  layout_pickup=inventory.button("Pick up",layout_pickup_item,layout_row)
+ layout_upgrade=inventory.button("Upgrade selected equipment",layout_upgrade_item,layout_box)
  inventory.button("All furniture",func():open_property(layout_property),layout_row)
  inventory.button("Done",close,layout_row)
  layout_panel.hide()
@@ -115,6 +117,21 @@ func pickup(id:String) -> void:
  if not inside(str(model.state.items[id].get("property",""))):hint.text="Enter this property before picking up furniture.";return
  if model.pack(id):render_list()
  else:hint.text=model.error
+func upgrade_furniture(id:String) -> void:
+ if not model.state.items.has(id):return
+ var place:String=str(model.state.items[id].get("property",""))
+ if not inside(place):
+  if layout_mode:layout_hint.text="Visit the property's room to upgrade this item."
+  else:hint.text="Visit the item's property to upgrade it."
+  return
+ if model.upgrade(id):
+  sync_world()
+  if panel.visible:render_list()
+  elif layout_mode:refresh_layout(true)
+ else:
+  if panel.visible:hint.text=model.error
+  elif layout_mode:layout_hint.text=model.error
+
 func toggle_lock(id:String) -> void:
  if not inside(str(model.state.items[id].get("property",""))):hint.text="Enter this property before changing furniture.";return
  model.lock(id,not bool(model.state.items[id].get("locked",false)));render_list()
@@ -129,11 +146,11 @@ func render_list() -> void:
  restore_camera();clear();hint.text="FURNITURE & EQUIPMENT" if portfolio_property.is_empty() else portfolio_property.to_upper()+" · FURNITURE"
  var current_property:String=portfolio_property if not portfolio_property.is_empty() else ("house" if inside("house") else "apartment")
  inventory.button("Walk-around edit mode",start_layout.bind(current_property),list).disabled=not inside(current_property)
- inventory.label("Empty and unlock equipment before picking it up. Packed items go into your backpack with their upgrades intact.",list)
+ inventory.label("Buy Level I equipment at Central Market. Upgrade a placed station here, or select its tent for an LED light upgrade. Empty equipment before moving it; upgraded items keep their tiers.",list)
  for id in model.state.items:
   var e:Dictionary=model.state.items[id]
   if not portfolio_property.is_empty() and e.get("property","") not in [portfolio_property,"backpack"]:continue
-  inventory.label(model.item_name(id)+" · "+str(e.get("property","backpack")).capitalize(),list)
+  inventory.label(model.item_name(id)+" · "+str(e.get("property","backpack")).capitalize()+" · "+model.level_label(id),list)
   var reason:String=model.empty_reason(id)
   if not reason.is_empty():inventory.label(reason,list,13)
   var row:=HBoxContainer.new();list.add_child(row)
@@ -143,19 +160,22 @@ func render_list() -> void:
    inventory.button("Pick up",pickup.bind(id),row).disabled=not inside(str(e.property)) or bool(e.get("locked",false)) or not reason.is_empty()
   elif e.get("property","")=="backpack":inventory.button("Place",begin.bind(id),row).disabled=not (inside(portfolio_property) if not portfolio_property.is_empty() else (inside("apartment") or inside("house")))
   var upgrade:String=model.next_upgrade(id)
-  if not upgrade.is_empty() and e.get("property","") in ["apartment","house","backpack"]:
-   inventory.button(model.upgrade_label(id),func():
-    if model.upgrade(id):render_list()
-    else:hint.text=model.error,list).disabled=not reason.is_empty()
+  if not upgrade.is_empty() and e.get("property","") in model.ROOMS:
+   var upgrade_price:int=model.upgrade_cost(id)
+   var can_retrofit:bool=model.is_tent(e) or reason.is_empty()
+   inventory.button(model.upgrade_label(id),upgrade_furniture.bind(id),list).disabled=not inside(str(e.property)) or not can_retrofit or host.cash<upgrade_price
+   if not can_retrofit and not model.is_tent(e):inventory.label("Empty this station before upgrading; its stock will be preserved.",list,13)
+   elif host.cash<upgrade_price:inventory.label("Need $%d more for this upgrade." % (upgrade_price-host.cash),list,13)
 func shop(shop_id:String) -> void:
  open();clear();hint.text="CENTRAL MARKET / "+shop_id.to_upper()
- inventory.label("Choose quantities and add them to your cart. Pay once at checkout; collect what fits and leave the rest for later.",list)
+ inventory.label("Buy starter equipment here. Upgrade installed benches, shelves, vaults and lockers in Furniture Arrangement. All tents include a basic light; upgrade each tent to LED from Arrangement.",list)
  cart.toolbar(list)
  for sku in model.CATALOG:
   var item:Dictionary=model.CATALOG[sku]
-  if item.shop!=shop_id:continue
+  if item.shop!=shop_id or not model.market_available(sku):continue
   inventory.label("%s · $%d · %d lb"%[item.name,model.price_for(sku),item.get("weight",8)],list,18)
-  if model.is_tent({"sku":sku}):inventory.label("%d plants · grow rooms only"%item.plants,list,14)
+  if model.is_tent({"sku":sku}):inventory.label("%d-plant footprint · Basic Light I included, LED II is an on-site upgrade."%item.plants,list,14)
+  elif str(item.get("kind",""))!="":inventory.label("Level I · Upgrade this item after placement.",list,14)
   cart.chooser(list,"item|"+sku)
  inventory.button("Review cart / checkout",cart.show,list,true)
  inventory.button("Back to market",func():close();host.neighborhood.location_ops.market(),list)
@@ -184,7 +204,7 @@ func begin(id:String) -> void:
  editing_camera=true
  layout_panel.hide();build_preview()
  point=host.camera.global_position-host.camera.global_basis.z*2.0;point.y=placement_floor()
- point.x=snappedf(point.x,.05);point.z=snappedf(point.z,.05);yaw=0
+ point.x=snappedf(point.x,.01);point.z=snappedf(point.z,.01);yaw=0
  if e.get("property","")==property and e.has("position"):
   point=Vector3(e.position[0],e.position[1],e.position[2]);yaw=int(e.yaw)
  panel.hide();placement_panel.show()
@@ -203,7 +223,7 @@ func aim() -> void:
  if forward.y<-.05:distance=(origin.y-placement_floor()) / -forward.y * Vector2(forward.x,forward.z).length()
  distance=clampf(distance,nearest,5.5)
  point=origin+flat*distance;point.y=placement_floor()
- point.x=snappedf(point.x,.05);point.z=snappedf(point.z,.05)
+ point.x=snappedf(point.x,.01);point.z=snappedf(point.z,.01)
  if model.state.items[selected].sku=="storage_5":snap_stash_to_wall()
  elif model.wall_mountable(selected) and wall_mount:snap_utility_to_wall()
 func handle_placement_input(event:InputEvent) -> bool:
@@ -248,7 +268,10 @@ func obstacle() -> String:
  var box:AABB=model.occupied_box(selected,point,yaw)
  if model.state.items[selected].sku!="storage_5":box.position.y+=.08;box.size.y-=.08
  if box.grow(.35).has_point(Vector3(host.camera.global_position.x,placement_floor()+.5,host.camera.global_position.z)):return "Leave room for yourself to stand."
- var shape:=BoxShape3D.new();shape.size=box.size
+ # Physics edge tolerance removes false positives at flush-touching surfaces.
+ # The ownership validator still uses full, unshrunk furniture footprints.
+ var shape:=BoxShape3D.new()
+ shape.size=Vector3(maxf(.05,box.size.x-.008),box.size.y,maxf(.05,box.size.z-.008))
  var query:=PhysicsShapeQueryParameters3D.new();query.shape=shape;query.transform=Transform3D(Basis.IDENTITY,box.get_center());query.collision_mask=1
  var excluded:Array[RID]=[]
  for body in host.find_children("*","CollisionObject3D",true,false):
@@ -429,16 +452,27 @@ func refresh_layout(force:bool=false) -> void:
   var hit=box.intersects_ray(origin,direction)
   if hit!=null and origin.distance_to(hit)<distance:layout_focus=id;distance=origin.distance_to(hit)
  var reason:String="" if layout_focus.is_empty() else model.empty_reason(layout_focus)
- layout_hint.text=layout_property.capitalize()+" · "+("Look at furniture to select it" if layout_focus.is_empty() else model.item_name(layout_focus))
+ layout_hint.text=layout_property.capitalize()+" · "+("Look at furniture to select it" if layout_focus.is_empty() else model.item_name(layout_focus)+" · "+model.level_label(layout_focus))
  if host.get("fp_player")!=null:layout_hint.text+="\nTab / Y: controls · E / A: move · X (pad): pick up"
  if not reason.is_empty():layout_hint.text+="\n"+reason
  layout_move.disabled=layout_focus.is_empty() or not reason.is_empty();layout_pickup.disabled=layout_move.disabled
+ var upgrade:String=model.next_upgrade(layout_focus)
+ var upgrade_price:int=model.upgrade_cost(layout_focus)
+ var can_upgrade:bool=not layout_focus.is_empty() and not upgrade.is_empty() and (reason.is_empty() or model.is_tent(model.state.items[layout_focus]))
+ layout_upgrade.text=model.upgrade_label(layout_focus) if can_upgrade else "No upgrade available"
+ layout_upgrade.disabled=not can_upgrade or host.cash<upgrade_price
+ if can_upgrade and host.cash<upgrade_price:layout_hint.text+="\nNeed $%d more." % (upgrade_price-host.cash)
  var screen:Vector2=host.get_viewport().get_visible_rect().size
  layout_panel.size=Vector2(minf(440,screen.x-24),0);layout_panel.position=Vector2((screen.x-layout_panel.size.x)/2,80)
 func layout_move_item() -> void:
  refresh_layout()
  if layout_focus.is_empty() or not model.empty_reason(layout_focus).is_empty():return
  model.lock(layout_focus,false);begin(layout_focus)
+func layout_upgrade_item() -> void:
+ refresh_layout(true)
+ if layout_focus.is_empty() or model.next_upgrade(layout_focus).is_empty():return
+ upgrade_furniture(layout_focus)
+
 func layout_pickup_item() -> void:
  refresh_layout()
  if layout_focus.is_empty() or not model.empty_reason(layout_focus).is_empty():return
