@@ -15,6 +15,7 @@ var applying := false
 var shop:RefCounted
 var manager_attempted := false
 var manager_node: Node3D
+var house_approach_cache:Dictionary={}
 func setup(owner: Node3D) -> void:
 	world=owner;host=world.host
 	shop=load("res://scripts/property_shop.gd").new();shop.setup(host,self)
@@ -469,6 +470,9 @@ func house_couch_approach(manager:bool=true) -> Vector3:
 	var couch:Dictionary=idle_couch("house")
 	if couch.is_empty():return Vector3.INF
 	var nav:RefCounted=host._house_npc_route()
+	nav.refresh()
+	var key:String=nav.stamp+"|"+str(couch.get("id",""))+"|"+str(couch.get("origin",Vector3.ZERO))+"|"+str(couch.get("yaw",0.0))+"|"+str(manager)+"|"+str(host.packing_employee_hired)
+	if str(house_approach_cache.get("key",""))==key:return house_approach_cache.get("at",Vector3.INF)
 	var occupied:Array[Dictionary]=nav._installed_footprints()
 	var across:float=0.615 if manager and host.packing_employee_hired else -0.375
 	for delta_x in [0.0,0.55,-0.55,1.05,-1.05]:
@@ -477,7 +481,10 @@ func house_couch_approach(manager:bool=true) -> Vector3:
 			var point:Vector3=(couch["origin"] as Vector3)+offset.rotated(Vector3.UP,float(couch["yaw"]))
 			if nav._blocked(point,occupied):continue
 			var path:Array[Vector3]=nav.plan(HOUSE_DOOR_TARGET,point)
-			if not path.is_empty() and path[-1].distance_to(point)<0.3:return point
+			if not path.is_empty() and path[-1].distance_to(point)<0.3:
+				house_approach_cache={"key":key,"at":point}
+				return point
+	house_approach_cache={"key":key,"at":Vector3.INF}
 	return Vector3.INF
 
 func _update_house_door_manager(delta:float,name:String) -> void:
