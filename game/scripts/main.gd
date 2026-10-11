@@ -6433,7 +6433,12 @@ func _process_daily_payroll(show_feedback: bool) -> void:
 	var paid_parts: Array[String] = []
 	var missed_parts: Array[String] = []
 	last_production_payroll_cost = 0
-	if packing_employee_hired and packing_employee_active:
+	if production_crew!=null:
+		var wages:Dictionary=production_crew.charge_wages()
+		last_production_payroll_cost=int(wages.get("spent",0))
+		for entry in wages.get("paid",[]):paid_parts.append(str(entry))
+		for entry in wages.get("missed",[]):missed_parts.append(str(entry))
+	elif packing_employee_hired and packing_employee_active:
 		if cash >= PACKER_DAILY_WAGE:
 			cash -= PACKER_DAILY_WAGE
 			last_production_payroll_cost = PACKER_DAILY_WAGE
@@ -8225,7 +8230,7 @@ func _handle_critical_heat_staff() -> void:
 		return
 	critical_staff_event_active = true
 	var had_dealers: bool = dealers_active and _total_dealer_count() > 0
-	var had_production: bool = packing_employee_hired and packing_employee_active
+	var had_production: bool = production_crew.any_duty() if production_crew!=null else (packing_employee_hired and packing_employee_active)
 	if not had_dealers and not had_production:
 		return
 	var arrest_target: String = ""
@@ -8244,7 +8249,9 @@ func _handle_critical_heat_staff() -> void:
 			_push_phone_text(dealer_sender, "I got picked up. Bail is $%d. I cannot go back to work until you send it, and I am staying home until the heat cools down." % dealer_bail_due)
 		else:
 			_push_phone_text(dealer_sender, "The heat is way too hot. We are heading home. Do not put us back out until things cool down.")
-	if had_production:
+	if had_production and production_crew!=null:
+		production_crew.heat_shutdown(arrest_target=="production")
+	elif had_production:
 		packing_employee_active = false
 		production_worker_pending_action = ""
 		production_worker_task = "Off duty"
