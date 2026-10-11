@@ -159,6 +159,11 @@ func register_item(sku:String,item:Dictionary) -> bool:
  return item_registry.register_definition(sku,item)
 func items_in_shop(shop_id:String) -> Array[String]:
  return item_registry.keys_for_shop(shop_id)
+# The Market sells starter stations only. Existing high-tier purchases are
+# retained and can still be repaired/migrated by their original SKU.
+func market_available(sku:String)->bool:
+ if not CATALOG.has(sku):return false
+ return int(CATALOG[sku].get("tier",1))<=1
 func item_name(id:String) -> String:return str(CATALOG[state.items[id].sku].name)
 func own(sku:String,destination:String="backpack") -> String:
  error=""
@@ -260,12 +265,12 @@ func validate(id:String,property:String,point:Vector3,yaw:int) -> String:
  if elevated:
   if not wall_mountable(id) or point.y-floor_y<.84 or point.y-floor_y+size_of(id).y>2.66:return "Mount utilities between waist and head height."
   if not has_mount_support(id,point,yaw):return "Mount against a solid wall, clear of windows and doors."
- var rect:=bounds(id,point,yaw).grow(.015);var room:=""
+ var rect:=bounds(id,point,yaw);var room:=""
  var allowed_rooms:Dictionary={"grow":Rect2(26.3,-13.5,14.2,13.0)} if basement else registry.rooms_for(property)
  if basement and elevated:allowed_rooms={"grow":Rect2(26.1,-13.7,14.4,13.2)}
  for key in allowed_rooms:
   if not basement and not registry._within_height(property,key,point.y):continue
-  if (allowed_rooms[key] as Rect2).grow(.35 if e.sku=="storage_5" or elevated else 0.14).encloses(rect):room=key;break
+  if (allowed_rooms[key] as Rect2).grow(.35 if e.sku=="storage_5" or elevated else .015).encloses(rect):room=key;break
  if room.is_empty():return "Keep the entire item inside one room and clear of doorways."
  if not item_registry.permits_room(str(e.sku),str(registry.state.properties[property].get("room_uses",{}).get(room,room))):return "This equipment is not allowed in this room."
  for other in state.items:
@@ -273,7 +278,7 @@ func validate(id:String,property:String,point:Vector3,yaw:int) -> String:
   var item:Dictionary=state.items[other]
   if item.get("property","")!=property or not item.has("position"):continue
   var p:Array=item.position
-  if occupied_box(id,point,yaw).grow(.007).intersects(occupied_box(other,Vector3(p[0],p[1],p[2]),int(item.get("yaw",0)))):return "Furniture overlaps another item."
+  if occupied_box(id,point,yaw).intersects(occupied_box(other,Vector3(p[0],p[1],p[2]),int(item.get("yaw",0)))):return "Furniture overlaps another item."
  return ""
 func place(id:String,property:String,point:Vector3,yaw:int) -> bool:
  error=validate(id,property,point,yaw)
@@ -311,35 +316,78 @@ func sell(id:String) -> bool:
  if state.items[id].get("property","")!="backpack":error="Pick up the equipment before selling it.";return false
  var amount:=resale(id);state.items.erase(id);host.cash+=amount;save();return true
 func next_upgrade(id:String) -> String:
- if is_tent(state.items[id]):return "tent_quality" if int(state.items[id].get("quality",1))<2 else ""
- var e:Dictionary=state.items[id];var kind:=station_kind(id)
+ if not state.items.has(id):return ""
+ var e:Dictionary=state.items[id]
+ if is_tent(e):return "tent_quality" if int(e.get("quality",1))<2 else ""
+ var kind:String=station_kind(id)
  if kind.is_empty():return ""
  var prefix:String={"packing":"bench","supply":"shelf","storage":"storage","dealer":"dealer"}[kind]
- var sku:=prefix+"_"+str(int(CATALOG[e.sku].get("tier",1))+1)
+ var sku:String=prefix+"_"+str(int(CATALOG[e.sku].get("tier",1))+1)
  return sku if CATALOG.has(sku) else ""
+func upgrade_cost(id:String) -> int:
+ var next:String=next_upgrade(id)
+ if next.is_empty():return 0
+ if next=="tent_quality":return 320
+ return maxi(0,int(CATALOG[next].price)-int(CATALOG[state.items[id].sku].price))
+func level_label(id:String) -> String:
+ if not state.items.has(id):return "Unknown item"
+ var e:Dictionary=state.items[id]
+ if is_tent(e):return "Tent · %d plants · %s" % [int(CATALOG[e.sku].plants),"LED Light II" if int(e.get("quality",1))>=2 else "Basic Light I"]
+ var tier:int=int(CATALOG[e.sku].get("tier",1))
+ return "Equipment Level %d" % tier if not station_kind(id).is_empty() else "Standard furniture"
 func upgrade(id:String) -> bool:
+ error=""
+ if not state.items.has(id):error="Furniture is not owned.";return false
+ var e:Dictionary=state.items[id]
+ var property:String=str(e.get("property",""))
+ if not registry.exists(property) or not controlled(property):
+  error="Place the equipment at a property you hold before upgrading."
+  return false
+ var sku:String=next_upgrade(id)
+ if sku.is_empty():error="This equipment is already at its highest tier.";return false
+ var price:int=upgrade_cost(id)
+ if price<=0:error="This upgrade is unavailable.";return false
+ if host.cash<price:error="Not enough cash for this upgrade.";return false
+ # Grow light upgrades replace the fixture without disturbing live crops.
+ if sku=="tent_quality":
+  e.quality=2
+  if not e.get("upgrades",{}) is Dictionary:e.upgrades={}
+  e.upgrades["light_kit"]=true
+  e.paid=int(e.get("paid",0))+price
+  host.cash-=price
+  host._record_daily_expense("Tent LED light upgrade",price)
+  save()
+  return true
+ # Station upgrades may expand their footprint; verify the room and neighbors
+ # BEFORE charging, and never consume a station with active work or stock.
  error=empty_reason(id)
  if not error.is_empty():return false
- var sku:=next_upgrade(id)
- if sku.is_empty():error="This equipment is already at its highest tier.";return false
- var e:Dictionary=state.items[id]
- if sku=="tent_quality":
-  if host.cash<320:error="Not enough cash.";return false
-  e.quality=2;e.upgrades["light_kit"]=true;e.paid=int(e.get("paid",0))+320;host.cash-=320;host._record_daily_expense("Tent light kit",320);save();return true
- var price:int=int(CATALOG[sku].price)-int(CATALOG[e.sku].price)
- if host.cash<price:error="Not enough cash.";return false
- var old_sku:String=e.sku;var locked:bool=e.get("locked",false)
- var old_size:Array=e.get("size_override",[])
+ var old_sku:String=str(e.sku)
+ var locked:bool=bool(e.get("locked",false))
+ var had_size:bool=e.has("size_override")
+ var old_size:Variant=e.get("size_override",[])
  if not sku.begins_with("shelf_"):e.erase("size_override")
- e.sku=sku;e.locked=false
- if registry.exists(str(e.get("property",""))) and not sku.begins_with("shelf_"):
-  var p:Array=e.position;error=validate(id,e.property,Vector3(p[0],p[1],p[2]),int(e.yaw))
+ e.sku=sku
+ e.locked=false
+ if not sku.begins_with("shelf_"):
+  var p:Array=e.position
+  error=validate(id,property,Vector3(float(p[0]),float(p[1]),float(p[2])),int(e.yaw))
  if not error.is_empty():
-  e.sku=old_sku;e.locked=locked
-  if not old_size.is_empty():e.size_override=old_size
+  e.sku=old_sku
+  e.locked=locked
+  if had_size:e.size_override=old_size
+  else:e.erase("size_override")
+  error="Move the equipment to leave room for the next level. "+error
   return false
- e.locked=locked;e.paid=int(e.get("paid",0))+price;e.upgrades[sku]=true
- host.cash-=price;host._record_daily_expense("Equipment upgrade",price);save();return true
+ e.locked=locked
+ e.paid=int(e.get("paid",0))+price
+ if not e.get("upgrades",{}) is Dictionary:e.upgrades={}
+ e.upgrades[sku]=true
+ host.cash-=price
+ host._record_daily_expense("Equipment upgrade",price)
+ save()
+ return true
+
 func powered_tent_count(property:String) -> float:
  var total:=0.0
  for e in state.items.values():
@@ -365,8 +413,8 @@ func tent_quality(slot:int) -> int:
  var id:=item_for_slot(slot);return int(state.items[id].get("quality",1)) if not id.is_empty() else 1
 func upgrade_label(id:String) -> String:
  var sku:=next_upgrade(id)
- if sku=="tent_quality":return "Fit improved light kit · $320"
- return "Upgrade to %s · $%d"%[CATALOG[sku].name,CATALOG[sku].price-CATALOG[state.items[id].sku].price]
+ if sku=="tent_quality":return "Upgrade tent to LED Grow Light II · $320"
+ return "Upgrade to %s · $%d"%[CATALOG[sku].name,upgrade_cost(id)]
 
 func growth_settings(slot:int,base:Dictionary,offline:bool) -> Dictionary:
  var result:Dictionary=base.duplicate();result.erase("per_slot");result.erase("care_slots")
