@@ -36,6 +36,11 @@ jobs:
           set -o pipefail
           timeout 100s xvfb-run -a -s '-screen 0 1280x800x24' env LIBGL_ALWAYS_SOFTWARE=1 /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 --path game --script res://prototype/avatar_render_test.gd -- --native-preview 2>&1 | tee /tmp/afb-avatar-native-render.log
           grep -q 'AVATAR_RENDER_RESULT: PASS' /tmp/afb-avatar-native-render.log
+      - name: Verify tailored feminine fit and separate jacket/legs render
+        run: |
+          set -o pipefail
+          timeout 100s xvfb-run -a -s '-screen 0 1280x800x24' env LIBGL_ALWAYS_SOFTWARE=1 /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 --path game --script res://prototype/avatar_render_test.gd -- --native-preview --female-outfit 2>&1 | tee /tmp/afb-avatar-female-render.log
+          grep -q 'AVATAR_RENDER_RESULT: PASS' /tmp/afb-avatar-female-render.log
       - name: Save diagnostic screenshot
         if: always()
         uses: actions/upload-artifact@v4
@@ -47,6 +52,9 @@ jobs:
             /tmp/afb-avatar-native-preview.png
             /tmp/afb-avatar-native-ui.png
             /tmp/afb-avatar-native-render.log
+            /tmp/afb-avatar-feminine-preview.png
+            /tmp/afb-avatar-feminine-ui.png
+            /tmp/afb-avatar-female-render.log
             /tmp/afb-avatar-render.log
           if-no-files-found: warn
           retention-days: 7
