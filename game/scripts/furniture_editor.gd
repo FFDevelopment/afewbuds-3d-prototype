@@ -224,7 +224,7 @@ func fit_aim_to_room() -> void:
  var selected_room:String=""
  rooms=model.placement_rooms(property,floor_y)
  if property=="house" and floor_y<-.5:
-  selected_room="basement_grow"
+  selected_room="basement_east" if host.camera.global_position.x>40.90 and host.camera.global_position.z>-7.60 else "basement_grow"
  else:
   selected_room=host.neighborhood.location_ops.placement_room(property,host.camera.global_position)
  if not rooms.has(selected_room):return
