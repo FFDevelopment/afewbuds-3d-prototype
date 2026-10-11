@@ -12457,4 +12457,11 @@ func _guide_protects_plants() -> bool:
 
 func _house_worker_navigation_target()->Vector3:
 	if production_worker_node==null:return production_worker_target_position
-	return house_route_next("production",production_worker_node.position,production_worker_target_position)
+	var waypoint:Vector3=house_route_next("production",production_worker_node.position,production_worker_target_position)
+	# Mirror the route for existing map QA and in-game path debugging.
+	var record:Dictionary=_house_npc_route().routes.get("production",{})
+	production_worker_route_points.clear()
+	for point in record.get("points",[]):production_worker_route_points.append(point)
+	production_worker_route_index=int(record.get("index",0))
+	production_worker_route_valid=not production_worker_route_points.is_empty()
+	return waypoint
