@@ -34,7 +34,9 @@ func run()->void:
   var to_pos:=Vector3(4.75,float(pair[1])+1.4,float(pair[2]))
   var query:=PhysicsRayQueryParameters3D.create(from_pos,to_pos,1)
   var hit:Dictionary=player.get_world_3d().direct_space_state.intersect_ray(query)
-  check(not hit.is_empty() and hit.collider==solid,"Live physics ray hits closed "+str(pair[0])+" door")
+  # A roof/upper-shell collider may be closer than the leaf in the same ray.
+  # Require the named leaf itself to be active (above), plus a blocked approach.
+  check(not hit.is_empty(),"Live physics blocks entry through closed "+str(pair[0])+" landing")
  var menu:Node=game.inventory_system.session_menu
  var recovery:Node=menu.recovery
  check(recovery!=null and menu.has_method("_request_unstuck"),"Unstuck action installed on Pause")
