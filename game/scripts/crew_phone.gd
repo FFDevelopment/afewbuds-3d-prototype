@@ -418,7 +418,7 @@ func update(delta: float) -> void:
 			# Movement is horizontal. Never chase the zero-height navigation
 			# target after the sitting pose lowers a character's visual root.
 			manager_node.position.y=0.0
-			var door_position:Vector3=Vector3(35,0,1.45) if active_site=="house" else Vector3(1.45,0,4.45)
+			var door_position:Vector3=Vector3(35,0,2.1) if active_site=="house" else Vector3(1.45,0,4.45)
 			var destination: Vector3=seat if relax else (door_position if host.customer_waiting else idle_spot(true,true,active_site))
 			var waypoint:Vector3=host.house_route_next("door_"+name,manager_node.position,destination) if active_site=="house" else destination
 			manager_node.position=manager_node.position.move_toward(waypoint,delta*2.0)
@@ -434,7 +434,7 @@ func update(delta: float) -> void:
 			manager_node.set_meta("idle_seat_id","")
 		seated_pose(manager_node,seated)
 		animate_manager(Vector3(manager_node.position.x-before.x,0,manager_node.position.z-before.z),seated,delta)
-		var visit_target:Vector3=Vector3(35,0,1.45) if active_site=="house" else Vector3(1.45,0,4.45)
+		var visit_target:Vector3=Vector3(35,0,2.1) if active_site=="house" else Vector3(1.45,0,4.45)
 		var at_door:bool=host.house_route_arrived("door_"+name,manager_node.position,visit_target) if active_site=="house" else manager_node.position.distance_to(visit_target)<0.2
 		if host.customer_waiting and not host.customer_answered and not host.customer_departing and can_handle(active_site) and not manager_attempted and at_door and str(host.current_customer.get("special","")).is_empty():
 			manager_attempted=true
