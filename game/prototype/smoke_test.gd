@@ -155,6 +155,8 @@ func run() -> void:
 	game._close_active_panel()
 	check(not game.inventory_system.is_open(), "Escape closes dealer storage")
 	game.locker_weed.clear()
+	# Tier upgrades remain Grower-level gated. Exercise unlocked equipment in QA.
+	game.grower_level=maxi(game.grower_level,12)
 	for tier in range(2, 5):
 		check(model.upgrade(locker),"Empty locker upgrades to tier %d"%tier)
 		equipment.sync_world()
