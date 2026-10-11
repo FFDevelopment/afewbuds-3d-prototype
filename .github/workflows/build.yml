@@ -32,6 +32,12 @@ jobs:
           fi
       - name: Import editable assets
         run: Godot_v4.7.2-stable_linux.x86_64 --headless --path game --editor --import --quit
+      - name: Parse changed GDScript before gameplay tests
+        run: |
+          GODOT=/tmp/godot/Godot_v4.7.2-stable_linux.x86_64
+          for file in res://scripts/production_actions.gd res://scripts/property_production_crew.gd res://scripts/container_inventory.gd res://scripts/physical_packing.gd res://scripts/furniture_editor.gd res://scripts/main.gd; do
+            "$GODOT" --headless --path game --check-only --script "$file"
+          done
       - name: Test movement, interactions, and isolated saves
         run: python tools/test.py /tmp/godot/Godot_v4.7.2-stable_linux.x86_64
       - name: Export desktop builds
