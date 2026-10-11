@@ -26,6 +26,35 @@ func run():
  property.confirm_relocation(false)
  check(game.location_state.active_property=="apartment" and bool(game.property_opportunity_state.relocated),"Keep apartment option opens the house without making it primary")
  check(inv.operation()=="apartment" and JSON.stringify(model.state.items)==original_items,"Opening a second property does not move equipment or change stock ownership")
+ # Regression: keeping the apartment as primary must never block the
+ # furniture editor while physically inside the acquired house.
+ var property_ops=game.neighborhood.location_ops
+ var before_portfolio_camera:Vector3=game.camera.global_position
+ game.camera.global_position=Vector3(28.0,1.64,-2.0)
+ check(property_ops.active_property()=="apartment" and property_ops.portfolio_on_site("house"),"Owned house furniture is editable on-site when apartment stays primary")
+ check(not property_ops.portfolio_on_site("apartment"),"Being in house cannot remotely arrange apartment")
+ property_ops.portfolio_select("house")
+ var property_view:=VBoxContainer.new()
+ game.add_child(property_view)
+ property_ops.portfolio_ui(property_view)
+ var arrange_button:Button=null
+ for button in property_view.find_children("*","Button",true,false):
+  if (button as Button).text.begins_with("ARRANGE FURNITURE"):arrange_button=button as Button;break
+ check(arrange_button!=null and not arrange_button.disabled,"House Properties overview enables Arrange Furniture on-site")
+ property_view.queue_free()
+ var furniture_before_arrange:String=JSON.stringify(model.state.items)
+ property_ops.portfolio_furniture()
+ check(inv.furniture.is_open() and inv.furniture.portfolio_property=="house","House arrange action opens house furniture editor")
+ inv.furniture.close()
+ check(JSON.stringify(model.state.items)==furniture_before_arrange,"Opening and closing editor never moves or deletes furniture")
+ game.camera.global_position=Vector3(0,1.64,15)
+ check(not property_ops.portfolio_on_site("house"),"Outdoor player cannot arrange house remotely")
+ property_ops.portfolio_furniture()
+ check(not inv.furniture.is_open(),"Blocked remote request does not open furniture editor")
+ game.camera.global_position=Vector3(0,1.64,2)
+ check(property_ops.portfolio_on_site("apartment") and not property_ops.portfolio_on_site("house"),"Apartment location still works independently")
+ property_ops.portfolio_reset()
+ game.camera.global_position=before_portfolio_camera
  inv.furniture.equipment_world.sync()
  game.property_opportunity_state.relocated=false
  property.confirm_relocation(true)
