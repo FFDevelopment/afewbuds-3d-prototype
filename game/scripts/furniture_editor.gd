@@ -222,11 +222,10 @@ func fit_aim_to_room() -> void:
  var floor_y:float=placement_floor()
  var rooms:Dictionary={}
  var selected_room:String=""
+ rooms=model.placement_rooms(property,floor_y)
  if property=="house" and floor_y<-.5:
-  rooms={"grow":Rect2(26.3,-13.5,14.2,13.0)}
-  selected_room="grow"
+  selected_room="basement_grow"
  else:
-  rooms=model.placement_rooms(property,floor_y)
   selected_room=host.neighborhood.location_ops.placement_room(property,host.camera.global_position)
  if not rooms.has(selected_room):return
  var rect:Rect2=rooms[selected_room]
