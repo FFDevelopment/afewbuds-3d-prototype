@@ -6935,7 +6935,7 @@ func _phone_parent_app(app_name: String) -> String:
 	if app_name in ["employees","products","upgrades"]:return "realestate"
 	if app_name in ["bills","business"]:return "realestate"
 	if app_name in ["stats","heat","genetics"]:return "home"
-	if app_name in ["seeds","supplies"]:return "shop"
+	if app_name in ["seeds","supplies","shop_upgrades"]:return "shop"
 	if app_name=="account":return "settings"
 	return "home"
 
@@ -7017,6 +7017,9 @@ func _refresh_phone() -> void:
 		"shop":
 			phone_title.text = "Store"
 			_build_shop_app()
+		"shop_upgrades":
+			phone_title.text = "Shop Upgrades"
+			load("res://scripts/shop_upgrade_catalog.gd").phone(self,phone_list)
 		"bills":
 			phone_title.text = "Bills"
 			_build_bills_app()
@@ -7349,12 +7352,13 @@ func _phone_category_grid() -> GridContainer:
 func _build_shop_app() -> void:
 	if neighborhood!=null and neighborhood.location_ops!=null:neighborhood.location_ops.order_summary(phone_list)
 	var intro: Label = Label.new()
-	intro.text = "Order seeds and fertilizer here for Central Market pickup. Equipment is sold at its checkout. Manage operations in Properties. Stock, employees, bills and furniture belong to their selected property."
+	intro.text = "Order seeds and fertilizer for Central Market pickup. Browse backpack/equipment upgrades below; at Central Market, send purchased furniture to your house or apartment curb. Existing property stock stays where it is."
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	phone_list.add_child(intro)
 	var grid: GridContainer = _phone_category_grid()
 	_add_phone_app_tile(grid, "", "Supplies", "Fertilizer orders & pickup", "supplies")
 	_add_phone_app_tile(grid, "", "Seed Orders", "Order for Central Market pickup", "seeds")
+	_add_phone_app_tile(grid, "", "Shop Upgrades", "Backpacks, packing benches, grow and storage tiers", "shop_upgrades")
 
 func _add_phone_app_tile(parent: GridContainer, icon_text: String, title_text: String, detail_text: String, app_name: String) -> void:
 	var tile: Button = Button.new()
