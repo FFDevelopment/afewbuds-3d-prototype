@@ -712,30 +712,38 @@ func production_worker_animation(worker: Node3D) -> String:
 	var to_waypoint: float=Vector2(worker.position.x-next_waypoint.x,worker.position.z-next_waypoint.z).length()
 	return "walk" if to_waypoint>0.10 else "idle"
 
+var house_worker_rig:Node3D
+func _sync_property_worker_character(place:String) -> void:
+ var worker:Node3D=host.production_worker_node
+ var name:String=host.production_worker_friend_name
+ var rig:Node3D=malik_worker if place=="apartment" else house_worker_rig
+ if FriendCharacters.has_character(name) and worker!=null:
+  if rig!=null and str(rig.get_meta("character",""))!=name:rig.queue_free();rig=null
+  if rig==null:rig=character_instance(name);worker.add_child(rig)
+  rig.show()
+  for child in worker.get_children():
+   if child is MeshInstance3D:child.hide()
+  var work_pose:Node3D=rig.get_node_or_null("ProductionActions")
+  if work_pose==null:
+   work_pose=load("res://scripts/production_actions.gd").new();work_pose.name="ProductionActions";rig.add_child(work_pose);work_pose.setup(host,rig)
+  work_pose.sync()
+  for player in rig.find_children("*","AnimationPlayer",true,false):
+   var wanted:String=production_worker_animation(worker)
+   for clip in player.get_animation_list():
+    if str(clip).ends_with(wanted) and player.current_animation!=clip:player.play(clip)
+ else:
+  if rig!=null:rig.queue_free();rig=null
+  if worker!=null:
+   for child in worker.get_children():
+    if child is MeshInstance3D and child!=host.production_worker_face_shell:child.show()
+ if place=="apartment":malik_worker=rig
+ else:house_worker_rig=rig
+
 func update_malik() -> void:
-	var worker: Node3D=host.production_worker_node
-	var name: String=host.production_worker_friend_name
-	if FriendCharacters.has_character(name) and worker!=null:
-		if malik_worker!=null and str(malik_worker.get_meta("character",""))!=name:malik_worker.queue_free();malik_worker=null
-		if malik_worker==null:malik_worker=character_instance(name);worker.add_child(malik_worker)
-		malik_worker.show()
-		for child in worker.get_children():
-			if child is MeshInstance3D:child.hide()
-		var work_pose:Node3D=malik_worker.get_node_or_null("ProductionActions")
-		if work_pose==null:
-			work_pose=load("res://scripts/production_actions.gd").new();work_pose.name="ProductionActions";malik_worker.add_child(work_pose);work_pose.setup(host,malik_worker)
-		work_pose.sync()
-		for player in malik_worker.find_children("*","AnimationPlayer",true,false):
-			var wanted: String=production_worker_animation(worker)
-			for clip in player.get_animation_list():
-				if str(clip).ends_with(wanted) and player.current_animation!=clip:player.play(clip)
-	else:
-		if malik_worker!=null:
-			malik_worker.queue_free()
-			malik_worker=null
-		if worker!=null:
-			for child in worker.get_children():
-				if child is MeshInstance3D and child!=host.production_worker_face_shell:child.show()
+ if host.production_crew!=null and host.production_crew.initialized:
+  for property_id in ["apartment","house"]:
+   host.production_crew.with_property(property_id,_sync_property_worker_character.bind(property_id))
+ else:_sync_property_worker_character("apartment")
 	var visitor: String=str(host.current_customer.get("name",""))
 	if host.customer_waiting and FriendCharacters.has_character(visitor):
 		if malik_visitor!=null and str(malik_visitor.get_meta("character",""))!=visitor:malik_visitor.queue_free();malik_visitor=null
