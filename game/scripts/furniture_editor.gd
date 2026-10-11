@@ -226,16 +226,29 @@ func fit_aim_to_room() -> void:
   rooms={"grow":Rect2(26.3,-13.5,14.2,13.0)}
   selected_room="grow"
  else:
-  rooms=model.registry.rooms_for(property)
+  rooms=model.placement_rooms(property,floor_y)
   selected_room=host.neighborhood.location_ops.placement_room(property,host.camera.global_position)
  if not rooms.has(selected_room):return
  var rect:Rect2=rooms[selected_room]
  var size:Vector3=model.size_of(selected,yaw)
- var hx:float=size.x*.5+.022
- var hz:float=size.z*.5+.022
+ # Only a few millimetres separate placed art from the real wall collider.
+ # The old 2.2 cm margin was applied on top of a 30-50 cm room inset.
+ var hx:float=size.x*.5+.005
+ var hz:float=size.z*.5+.005
  if rect.size.x<hx*2.0 or rect.size.y<hz*2.0:return
- point.x=clampf(point.x,rect.position.x+hx,rect.end.x-hx)
- point.z=clampf(point.z,rect.position.y+hz,rect.end.y-hz)
+ var min_x:float=rect.position.x+hx
+ var max_x:float=rect.end.x-hx
+ var min_z:float=rect.position.y+hz
+ var max_z:float=rect.end.y-hz
+ point.x=clampf(point.x,min_x,max_x)
+ point.z=clampf(point.z,min_z,max_z)
+ # When the player aims near a wall, finish the last few centimetres
+ # automatically. Leave middle-of-room positioning fully precise.
+ var wall_snap:float=.18 if str(model.state.items[selected].get("sku","")).begins_with("bench_") else .065
+ if absf(point.x-min_x)<wall_snap:point.x=min_x
+ elif absf(point.x-max_x)<wall_snap:point.x=max_x
+ if absf(point.z-min_z)<wall_snap:point.z=min_z
+ elif absf(point.z-max_z)<wall_snap:point.z=max_z
 
 func aim() -> void:
  var origin:Vector3=host.camera.global_position
