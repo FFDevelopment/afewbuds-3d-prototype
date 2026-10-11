@@ -1,0 +1,40 @@
+name: Verify visible avatar preview in OpenGL
+on:
+  push:
+    branches: [fix/avatar-preview-invisible-20261011]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Godot and Linux software graphics
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 -o /tmp/godot.zip https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          mkdir -p /tmp/godot
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          if ! command -v xvfb-run >/dev/null; then sudo apt-get update && sudo apt-get install -y xvfb; fi
+      - name: Restore editable game assets
+        run: |
+          if [ ! -f game/assets/.recovered-source ]; then python tools/recover_assets.py /tmp/godot/Godot_v4.7.2-stable_linux.x86_64; fi
+      - name: Import game
+        run: /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path game --editor --import --quit
+      - name: Verify the actual preview viewport renders a visible character
+        run: |
+          set -o pipefail
+          xvfb-run -a -s '-screen 0 1280x800x24' env LIBGL_ALWAYS_SOFTWARE=1 /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 --path game --script res://prototype/avatar_render_test.gd 2>&1 | tee /tmp/afb-avatar-render.log
+          grep -q 'AVATAR_RENDER_RESULT: PASS' /tmp/afb-avatar-render.log
+      - name: Save diagnostic screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: avatar-preview-render-debug
+          path: |
+            /tmp/afb-avatar-preview.png
+            /tmp/afb-avatar-render.log
+          if-no-files-found: warn
+          retention-days: 7
