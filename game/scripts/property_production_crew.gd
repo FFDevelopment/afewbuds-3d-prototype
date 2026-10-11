@@ -133,6 +133,7 @@ func setup(owner:Node3D)->void:
  host.location_state["production_workers_v1"]=slots
  _sync_assignments()
  _load("apartment")
+ host.auto_bagger_unlocked=hired_count()>0
 
 func _sync_assignments()->void:
  var assignments:Dictionary=host.location_state.get("staff_assignments",{})
@@ -204,8 +205,13 @@ func hire(place:String)->bool:
 func recruit(name:String,place:String)->bool:
  if not can_hire(place):return false
  if not host._friend_is_recruitable(host._customer_by_name(name)):return false
+ var prior:Variant=host.location_state.get("staff_assignments",{}).get(name,null)
+ host.location_state["staff_assignments"][name]=place
  with_property(place,func():host._recruit_friend_staff(name,"production",place))
- if not bool(slots[place].get("hired",false)) or str(slots[place].get("friend",""))!=name:return false
+ if not bool(slots[place].get("hired",false)) or str(slots[place].get("friend",""))!=name:
+  if prior==null:host.location_state["staff_assignments"].erase(name)
+  else:host.location_state["staff_assignments"][name]=prior
+  return false
  var assignments:Dictionary=host.location_state.get("staff_assignments",{})
  assignments[name]=place
  host.location_state["staff_assignments"]=assignments
