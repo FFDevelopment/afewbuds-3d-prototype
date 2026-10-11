@@ -163,7 +163,8 @@ func render_list() -> void:
   if not upgrade.is_empty() and e.get("property","") in model.ROOMS:
    var upgrade_price:int=model.upgrade_cost(id)
    var can_retrofit:bool=model.is_tent(e) or reason.is_empty()
-   inventory.button(model.upgrade_label(id),upgrade_furniture.bind(id),list).disabled=not inside(str(e.property)) or not can_retrofit or host.cash<upgrade_price
+   inventory.button(model.upgrade_label(id),upgrade_furniture.bind(id),list).disabled=not inside(str(e.property)) or not can_retrofit or host.cash<upgrade_price or not model.upgrade_reason(id).is_empty()
+   if not model.upgrade_reason(id).is_empty():inventory.label(model.upgrade_reason(id),list,13)
    if not can_retrofit and not model.is_tent(e):inventory.label("Empty this station before upgrading; its stock will be preserved.",list,13)
    elif host.cash<upgrade_price:inventory.label("Need $%d more for this upgrade." % (upgrade_price-host.cash),list,13)
 func shop(shop_id:String) -> void:
@@ -176,6 +177,8 @@ func shop(shop_id:String) -> void:
   inventory.label("%s · $%d · %d lb"%[item.name,model.price_for(sku),item.get("weight",8)],list,18)
   if model.is_tent({"sku":sku}):inventory.label("%d-plant footprint · Basic Light I included, LED II is an on-site upgrade."%item.plants,list,14)
   elif str(item.get("kind",""))!="":inventory.label("Level I · Upgrade this item after placement.",list,14)
+  var lock_reason:String=model.unlock_reason(sku)
+  if not lock_reason.is_empty():inventory.label(lock_reason,list,14)
   cart.chooser(list,"item|"+sku)
  inventory.button("Review cart / checkout",cart.show,list,true)
  inventory.button("Back to market",func():close();host.neighborhood.location_ops.market(),list)
@@ -460,7 +463,8 @@ func refresh_layout(force:bool=false) -> void:
  var upgrade_price:int=model.upgrade_cost(layout_focus)
  var can_upgrade:bool=not layout_focus.is_empty() and not upgrade.is_empty() and (reason.is_empty() or model.is_tent(model.state.items[layout_focus]))
  layout_upgrade.text=model.upgrade_label(layout_focus) if can_upgrade else "No upgrade available"
- layout_upgrade.disabled=not can_upgrade or host.cash<upgrade_price
+ layout_upgrade.disabled=not can_upgrade or host.cash<upgrade_price or not model.upgrade_reason(layout_focus).is_empty()
+ if can_upgrade and not model.upgrade_reason(layout_focus).is_empty():layout_hint.text+="\n"+model.upgrade_reason(layout_focus)
  if can_upgrade and host.cash<upgrade_price:layout_hint.text+="\nNeed $%d more." % (upgrade_price-host.cash)
  var screen:Vector2=host.get_viewport().get_visible_rect().size
  layout_panel.size=Vector2(minf(440,screen.x-24),0);layout_panel.position=Vector2((screen.x-layout_panel.size.x)/2,80)
