@@ -27,6 +27,7 @@ func label(parent: Node, text: String) -> void:
 func button(parent: Node,text: String,action: Callable,disabled: bool=false) -> void:
 	var node:=Button.new();node.text=text;node.custom_minimum_size.y=54;node.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;node.disabled=disabled;node.pressed.connect(action);parent.add_child(node)
 func role(name: String) -> String:
+	if host.production_crew!=null and host.production_crew.property_for_name(name)!="":return "production"
 	if host.packing_employee_hired and name==host._critical_production_sender():return "production"
 	if host._friend_staff_role(name)=="door":return "door"
 	if host._friend_staff_role(name)=="dealer" or (name.begins_with("Hired Dealer ") and int(name.trim_prefix("Hired Dealer "))>0 and int(name.trim_prefix("Hired Dealer "))<=host.dealer_count) or (name=="Dealer Team" and host._total_dealer_count()>0):return "dealer"
@@ -36,9 +37,16 @@ func roster() -> Array[String]:
 	for worker_name in host._friend_staff_names("door"):
 		if not names.has(worker_name):names.append(worker_name)
 	for idx in range(host.dealer_count):names.append("Hired Dealer %d" % (idx+1))
-	if host.packing_employee_hired and not names.has(host._critical_production_sender()):names.append(host._critical_production_sender())
+	if host.production_crew!=null:
+		for worker in host.production_crew.all_names():
+			if not names.has(worker):names.append(worker)
+	elif host.packing_employee_hired and not names.has(host._critical_production_sender()):names.append(host._critical_production_sender())
 	return names
-func assignment(name: String) -> String:return str(host.location_state.staff_assignments.get(name,"apartment"))
+func assignment(name: String) -> String:
+	if host.production_crew!=null:
+		var assigned:String=host.production_crew.property_for_name(name)
+		if not assigned.is_empty():return assigned
+	return str(host.location_state.staff_assignments.get(name,"apartment"))
 func reeves_available() -> bool:
 	return host.reeves_met or host.reeves_arrangement_active or host.reeves_arrangement_ended
 
@@ -124,10 +132,13 @@ func render_actions() -> void:
 			if not host.dealers_active and not dealer_reason.is_empty():label(host.phone_list,"WHY OFF DUTY: "+dealer_reason)
 			button(host.phone_list,("SEND ALL DEALERS HOME" if host.dealers_active else "PUT ALL DEALERS ON DUTY")+" (TEAM-WIDE)",toggle_crew_duty.bind("dealer"),not host.dealers_active and not dealer_reason.is_empty())
 		elif job=="production":
-			label(host.phone_list,"PRODUCTION: %s · Today: %d tasks · Current: %s" % ["ON DUTY" if host.packing_employee_active else "OFF DUTY",host.production_worker_tasks_today,host.production_worker_last_action])
-			var production_reason:String=host._staff_duty_blocker("production")
-			if not host.packing_employee_active and not production_reason.is_empty():label(host.phone_list,"WHY OFF DUTY: "+production_reason)
-			button(host.phone_list,"SEND PRODUCTION WORKER HOME" if host.packing_employee_active else "PUT PRODUCTION WORKER ON DUTY",toggle_crew_duty.bind("production"),not host.packing_employee_active and not production_reason.is_empty())
+			var property_id:String=assignment(thread)
+			var info:Dictionary=host.production_crew.record(property_id) if host.production_crew!=null else {}
+			var on:bool=bool(info.get("active",host.packing_employee_active))
+			label(host.phone_list,"%s PRODUCTION: %s · Today: %d tasks · Current: %s" % [property_id.to_upper(),"ON DUTY" if on else "OFF DUTY",int(info.get("tasks",host.production_worker_tasks_today)),str(info.get("last",host.production_worker_last_action))])
+			var production_reason:String=host.production_crew.with_property(property_id,func():return host._staff_duty_blocker("production")) if host.production_crew!=null else host._staff_duty_blocker("production")
+			if not on and not production_reason.is_empty():label(host.phone_list,"WHY OFF DUTY: "+production_reason)
+			button(host.phone_list,"SEND PRODUCTION WORKER HOME" if on else "PUT PRODUCTION WORKER ON DUTY",toggle_crew_duty.bind("production",property_id),not on and not production_reason.is_empty())
 		if thread!="Dealer Team":
 			var alternate:String="house" if assignment(thread)=="apartment" else "apartment"
 			if ops._property_controlled(alternate):
@@ -140,14 +151,21 @@ func render_actions() -> void:
 		button(host.phone_list,"TEXT: "+assignment(thread).to_upper()+" STATUS",command.bind(thread,"status"))
 		if job=="dealer":button(host.phone_list,"GO BACK TO STREET DEALS" if manager(assignment(thread))==thread else "HANDLE APARTMENT DOOR",return_to_street.bind(thread) if manager(assignment(thread))==thread else assign_manager.bind(thread))
 		if job=="dealer" and host.dealer_arrested:button(host.phone_list,"SEND DEALER BAIL · $%d" % host.dealer_bail_due,host._pay_dealer_bail,host.cash<host.dealer_bail_due)
-		if job=="production" and host.production_worker_arrested:button(host.phone_list,"SEND WORKER BAIL · $%d" % host.production_worker_bail_due,host._pay_production_bail,host.cash<host.production_worker_bail_due)
+		if job=="production":
+			var record:Dictionary=host.production_crew.record(assignment(thread)) if host.production_crew!=null else {}
+			if bool(record.get("arrested",host.production_worker_arrested)):
+				var bail:int=int(record.get("bail",host.production_worker_bail_due))
+				button(host.phone_list,"SEND WORKER BAIL · $%d" % bail,host.production_crew.pay_bail.bind(assignment(thread)) if host.production_crew!=null else host._pay_production_bail,host.cash<bail)
 	else:
 		var client: Dictionary=host._customer_by_name(thread)
 		if not client.is_empty() and host._customer_is_known(client):
 			button(host.phone_list,"TEXT: STOP BY / I'M OPEN",invite.bind(thread),not host.business_open)
 			if host._friend_is_recruitable(client):
 				button(host.phone_list,"OFFER DEALER WORK · APARTMENT",recruit.bind(thread,"dealer"),host._total_dealer_count()>=host._dealer_capacity())
-				button(host.phone_list,"OFFER PRODUCTION WORK · APARTMENT",recruit.bind(thread,"production"),host.grower_level<5 or host.packing_employee_hired)
+				for property_id in ["apartment","house"]:
+					if ops._property_controlled(property_id):
+						var occupied:bool=host.production_crew.hired_count()>0 and bool(host.production_crew.record(property_id).get("hired",false)) if host.production_crew!=null else host.packing_employee_hired
+						button(host.phone_list,"OFFER PRODUCTION WORK · "+property_id.to_upper(),recruit.bind(thread,"production",property_id),host.grower_level<5 or occupied or host._staff_heat_locked())
 				for property_id in ["apartment","house"]:
 					if ops._property_controlled(property_id):button(host.phone_list,"OFFER DOOR WORK · "+property_id.to_upper()+" · $500",recruit_door.bind(thread,property_id),not manager(property_id).is_empty() or host.cash<500)
 			elif str(client.get("tier",""))=="Friend":label(host.phone_list,"Recruiting requires %d loyalty and %d personal sales." % [host.FRIEND_RECRUIT_LOYALTY,host.FRIEND_RECRUIT_PLAYER_SALES])
@@ -193,8 +211,9 @@ func confirm_staff_release(name:String) -> void:
 	actions=false
 	host._refresh_phone()
 
-func toggle_crew_duty(job:String) -> void:
+func toggle_crew_duty(job:String,property_id:String="apartment") -> void:
 	if job=="dealer" and host._total_dealer_count()>0:host._toggle_dealers()
+	elif job=="production" and host.production_crew!=null:host.production_crew.toggle(property_id)
 	elif job=="production" and host.packing_employee_hired:host._toggle_packing_employee()
 	host._refresh_phone()
 
@@ -283,6 +302,11 @@ func assign(name: String,property: String) -> void:
 	# The anonymous Dealer Team is part of apartment street-sales accounting.
 	# Named recruits may be reassigned; this does not duplicate anyone.
 	if name=="Dealer Team" and property=="house":return
+	if role(name)=="production" and host.production_crew!=null:
+		if host.production_crew.transfer(name,property):
+			outgoing(name,"Report to the "+property+".")
+			send(name,say(name,"assigned",{"property":property}))
+		return
 	var previous:String=assignment(name)
 	if previous==property:return
 	if role(name)=="door" and not manager(property).is_empty():return
@@ -309,10 +333,10 @@ func assign(name: String,property: String) -> void:
 	outgoing(name,"Report to the "+property+".")
 	send(name,say(name,"assigned",{"property":property}))
 	host._refresh_phone();host._save_game()
-func recruit(name: String,job: String) -> void:
+func recruit(name: String,job: String,property_id:String="apartment") -> void:
 	actions=false
-	host._recruit_friend_staff(name,job)
-	if role(name)==job:assign(name,"apartment")
+	host._recruit_friend_staff(name,job,property_id)
+	if job!="production" and role(name)==job:assign(name,"apartment")
 func recruit_door(name: String, property_id: String) -> void:
 	actions=false
 	host._recruit_friend_staff(name,"door",property_id)
