@@ -396,22 +396,19 @@ func update(delta: float) -> void:
 	update_seating(delta)
 	if bool(host.location_state.get("crew_idle",false)) and not host.lay_low_active:host.location_state["crew_idle"]=false
 	var active_site:String=ops.active_property()
-	var name:=manager(active_site) if active_site=="apartment" else ""
-	if active_site=="house" and host.customer_waiting and can_handle("house") and not manager_attempted and str(host.current_customer.get("special","")).is_empty():
-		manager_attempted=true
-		var visit_customer:Dictionary=host.current_customer.duplicate(true)
-		var visit_request:Dictionary=host.active_request.duplicate(true)
-		if not serve_visit(visit_customer,visit_request):send(manager("house"),say(manager("house"),"short_stock",{"client":str(visit_customer.get("name","client")),"qty":int(visit_request.get("qty",0)),"product":str(visit_request.get("product",""))}))
-	if manager_node!=null and str(manager_node.get_meta("contact",""))!=name:manager_node.queue_free();manager_node=null
+	var name:=manager(active_site) if active_site in ["apartment","house"] else ""
+	if manager_node!=null and (str(manager_node.get_meta("contact",""))!=name or str(manager_node.get_meta("property","apartment"))!=active_site):manager_node.queue_free();manager_node=null
 	if not name.is_empty() and host.production_worker_node!=null:
 		if manager_node==null:
 			manager_node=character_instance(name) if FriendCharacters.has_character(name) else generic_manager_instance(name)
-			manager_node.name="ApartmentDoorManager";host.add_child(manager_node);manager_node.set_meta("contact",name)
+			manager_node.name="PropertyDoorManager";host.add_child(manager_node);manager_node.set_meta("contact",name)
+			if active_site=="house":manager_node.position=Vector3(35,0,1.45)
+			manager_node.set_meta("property",active_site)
 			for tag in manager_node.find_children("*","Label3D",true,false):tag.text=name+(" · DOOR DEALER" if role(name)=="door" else " · APARTMENT DEALER")
 		manager_node.visible=not host.dealer_arrested or role(name)=="door"
-		var couch: Dictionary=idle_couch()
+		var couch: Dictionary=idle_couch(active_site)
 		var relax: bool=not couch.is_empty() and not host.customer_waiting and not world.couch_seated
-		var seat: Vector3=idle_spot(true,false)
+		var seat: Vector3=idle_spot(true,false,active_site)
 		var before: Vector3=manager_node.position
 		var already_seated: bool=bool(manager_node.get_meta("seated",false))
 		var previous_seat: Vector3=manager_node.get_meta("idle_seat_position",Vector3.ZERO)
@@ -421,9 +418,11 @@ func update(delta: float) -> void:
 			# Movement is horizontal. Never chase the zero-height navigation
 			# target after the sitting pose lowers a character's visual root.
 			manager_node.position.y=0.0
-			var destination: Vector3=seat if relax else (Vector3(1.45,0,4.45) if host.customer_waiting else idle_spot(true,true))
-			manager_node.position=manager_node.position.move_toward(destination,delta*2.0)
-			var arrived: bool=Vector2(manager_node.position.x-seat.x,manager_node.position.z-seat.z).length()<0.12
+			var door_position:Vector3=Vector3(35,0,1.45) if active_site=="house" else Vector3(1.45,0,4.45)
+			var destination: Vector3=seat if relax else (door_position if host.customer_waiting else idle_spot(true,true,active_site))
+			var waypoint:Vector3=host.house_route_next("door_"+name,manager_node.position,destination) if active_site=="house" else destination
+			manager_node.position=manager_node.position.move_toward(waypoint,delta*2.0)
+			var arrived:bool=(host.house_route_arrived("door_"+name,manager_node.position,destination) and manager_node.position.distance_to(seat)<1.1) if active_site=="house" else Vector2(manager_node.position.x-seat.x,manager_node.position.z-seat.z).length()<0.12
 			seated=relax and arrived and (not already_seated or same_seat)
 		if seated:
 			manager_node.position.x=seat.x
@@ -435,7 +434,9 @@ func update(delta: float) -> void:
 			manager_node.set_meta("idle_seat_id","")
 		seated_pose(manager_node,seated)
 		animate_manager(Vector3(manager_node.position.x-before.x,0,manager_node.position.z-before.z),seated,delta)
-		if host.customer_waiting and not host.customer_answered and not host.customer_departing and can_handle() and not manager_attempted and manager_node.position.distance_to(Vector3(1.45,0,4.45))<0.2 and str(host.current_customer.get("special","")).is_empty():
+		var visit_target:Vector3=Vector3(35,0,1.45) if active_site=="house" else Vector3(1.45,0,4.45)
+		var at_door:bool=host.house_route_arrived("door_"+name,manager_node.position,visit_target) if active_site=="house" else manager_node.position.distance_to(visit_target)<0.2
+		if host.customer_waiting and not host.customer_answered and not host.customer_departing and can_handle(active_site) and not manager_attempted and at_door and str(host.current_customer.get("special","")).is_empty():
 			manager_attempted=true
 			var client: Dictionary=host.current_customer.duplicate(true)
 			var request: Dictionary=host.active_request.duplicate(true)
@@ -603,23 +604,24 @@ func seated_pose(model: Node3D,seated: bool) -> void:
 
 # Resolve idle furniture from the actual save. A packed couch or one moved
 # to the house must never leave an invisible apartment seating target.
-func idle_couch() -> Dictionary:
+func idle_couch(property_id:String="apartment") -> Dictionary:
 	if host.inventory_system == null or host.inventory_system.furniture == null:return {}
 	var model: RefCounted=host.inventory_system.furniture.model
 	var candidate: Dictionary={}
 	for id in model.state.items:
 		var e: Dictionary=model.state.items[id]
-		if e.get("sku","")!="sofa" or e.get("property","")!="apartment" or not e.has("position"):continue
+		if e.get("sku","")!="sofa" or e.get("property","")!=property_id or not e.has("position"):continue
 		var p: Array=e.position
 		candidate={"id":id,"origin":Vector3(float(p[0]),0.0,float(p[2])),"yaw":deg_to_rad(float(e.get("yaw",0.0)))}
 		if str(id)=="legacy_sofa":break
+	if candidate.is_empty() and property_id=="house":return {"id":"house_fitted_couch","origin":Vector3(29.2,0,-3.6),"yaw":PI}
 	return candidate
 
-func idle_spot(manager: bool=false,approach: bool=false) -> Vector3:
-	var couch: Dictionary=idle_couch()
+func idle_spot(manager: bool=false,approach: bool=false,property_id:String="apartment") -> Vector3:
+	var couch: Dictionary=idle_couch(property_id)
 	if couch.is_empty():
 		# No apartment couch means crew stay standing in a clear idle area.
-		return Vector3(0.75 if manager else -0.75,0.0,1.25)
+		return Vector3(35.0 if manager else 34.3,0.0,1.45) if property_id=="house" else Vector3(0.75 if manager else -0.75,0.0,1.25)
 	var second: bool=manager and host.packing_employee_hired
 	var offset: Vector3=Vector3(0.615 if second else -0.375,0.0,-1.10 if approach else -0.165)
 	return (couch["origin"] as Vector3)+offset.rotated(Vector3.UP,float(couch["yaw"]))
@@ -628,12 +630,13 @@ func update_seating(_delta: float) -> void:
 	var worker: Node3D=host.production_worker_node
 	if worker!=null and worker.visible:
 		var idle: bool=host.production_worker_pending_action.is_empty() and (not host.packing_employee_active or host.production_worker_task=="Waiting for work" or host.lay_low_active)
-		var couch: Dictionary=idle_couch()
-		var seat: Vector3=idle_spot(false,false)
+		var property_id:String=host.inventory_system.worker_property() if host.inventory_system!=null else "apartment"
+		var couch: Dictionary=idle_couch(property_id)
+		var seat: Vector3=idle_spot(false,false,property_id)
 		var already_seated: bool=bool(worker.get_meta("seated",false))
 		var previous_seat: Vector3=worker.get_meta("idle_seat_position",Vector3.ZERO)
 		var same_seat: bool=already_seated and str(worker.get_meta("idle_seat_id",""))==str(couch.get("id","")) and previous_seat.distance_to(seat)<0.03
-		var arrived: bool=Vector2(worker.position.x-seat.x,worker.position.z-seat.z).length()<0.15
+		var arrived: bool=(host.house_route_arrived("production",worker.position,seat) and worker.position.distance_to(seat)<1.1) if property_id=="house" else Vector2(worker.position.x-seat.x,worker.position.z-seat.z).length()<0.15
 		var seated: bool=idle and not couch.is_empty() and not world.couch_seated and arrived and (not already_seated or same_seat)
 		if seated:
 			# Hold the cushion position. Navigation must not pull us back
