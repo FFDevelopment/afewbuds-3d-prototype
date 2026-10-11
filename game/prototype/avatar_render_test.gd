@@ -18,7 +18,9 @@ func run()->void:
  var editor=load("res://scripts/avatar_editor.gd").new()
  host.add_child(editor)
  menu.avatar_editor=editor
- print("AVATAR_RENDER_STAGE: opening")
+ var native_test:bool="--native-preview" in OS.get_cmdline_user_args()
+ editor.force_native_preview=native_test
+ print("AVATAR_RENDER_STAGE: opening "+("NATIVE" if native_test else "IMPORT"))
  editor.open(host,menu)
  print("AVATAR_RENDER_STAGE: editor opened")
  if editor.preview_viewport==null:
@@ -47,13 +49,14 @@ func run()->void:
    in_frustum+=1
   if examples.size()<4:examples.append({"part":mesh.name,"pos":center,"projected":projected,"layer":mesh.layers})
  var image:Image=preview.get_texture().get_image()
+ var name_prefix:String="/tmp/afb-avatar-native" if native_test else "/tmp/afb-avatar"
  var ui:Image=root.get_texture().get_image()
- if ui!=null and not ui.is_empty():ui.save_png("/tmp/afb-avatar-ui.png")
+ if ui!=null and not ui.is_empty():ui.save_png(name_prefix+"-ui.png")
  var meaningful_pixels:int=0
  var central_pixels:int=0
  var total_pixels:int=0
  if image!=null and not image.is_empty():
-  image.save_png("/tmp/afb-avatar-preview.png")
+  image.save_png(name_prefix+"-preview.png")
   for y in range(55,image.get_height()-70,3):
    for x in range(50,image.get_width()-50,3):
     var pixel:Color=image.get_pixel(x,y)
@@ -61,7 +64,7 @@ func run()->void:
     if difference>.12:meaningful_pixels+=1
     if difference>.05:central_pixels+=1
     total_pixels+=1
- print("AVATAR_RENDER_DIAGNOSTIC ",JSON.stringify({"preview_size":preview.size,"preview_visible":editor.preview_image.is_visible_in_tree(),"camera_current":camera.current,"camera_pos":camera.global_position,"camera_basis":camera.global_transform.basis,"world":render_world!=null,"visible_meshes":visible_count,"in_frustum":in_frustum,"example_centers":examples,"pixels_colorful":meaningful_pixels,"pixels_changed":central_pixels,"samples":total_pixels,"image_size":image.get_size() if image!=null else Vector2i.ZERO,"container_size":editor.preview_image.size,"ui_size":ui.get_size() if ui!=null else Vector2i.ZERO}))
+ print("AVATAR_RENDER_DIAGNOSTIC ",JSON.stringify({"native_mode":native_test,"preview_size":preview.size,"preview_visible":editor.preview_image.is_visible_in_tree(),"camera_current":camera.current,"camera_pos":camera.global_position,"camera_basis":camera.global_transform.basis,"world":render_world!=null,"visible_meshes":visible_count,"in_frustum":in_frustum,"example_centers":examples,"pixels_colorful":meaningful_pixels,"pixels_changed":central_pixels,"samples":total_pixels,"image_size":image.get_size() if image!=null else Vector2i.ZERO,"container_size":editor.preview_image.size,"ui_size":ui.get_size() if ui!=null else Vector2i.ZERO}))
  var ok:bool=visible_count>=15 and in_frustum>=12 and meaningful_pixels>=150
  print("AVATAR_RENDER_RESULT: "+("PASS" if ok else "FAIL"))
  editor._cancel()

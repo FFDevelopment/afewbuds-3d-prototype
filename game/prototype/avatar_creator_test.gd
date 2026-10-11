@@ -55,6 +55,18 @@ func run()->void:
   avatar.rebuild(alternate)
   check(avatar.part_count("hair")>1 and avatar.part_count("outerwear")>0 and avatar.part_count("headwear")>0 and avatar.part_count("glasses")>0 and avatar.part_count("gloves")>0 and avatar.part_count("bag")>0 and avatar.part_count("jewelry")>0,"All garment/accessory modules regenerate on appearance changes")
   check(avatar.current.body=="feminine","Feminine body fit preserves common skeleton")
+ # Test the phone/WebGL rig explicitly with the same slots as the desktop.
+ var phone:Node3D=load("res://scripts/avatar_visual.gd").new()
+ phone.force_native_rig=true
+ root.add_child(phone)
+ await process_frame
+ check(phone.native_mode and phone.skeleton!=null and phone.skeleton.get_bone_count()==56,"Web/native rig loads all 56 original AFewBuds bones")
+ if phone.skeleton!=null:
+  check(phone.part_count("body")>=10 and phone.part_count("top")>0 and phone.part_count("shoes")>=2,"Native avatar has independently rendered body and clothing")
+  phone.play_preview("walk")
+  check(phone.preview_motion=="walk","Phone rig supports procedural walk preview")
+ phone.queue_free()
+ phone=null
  avatar.queue_free()
  avatar=null
  for i in 5:await process_frame

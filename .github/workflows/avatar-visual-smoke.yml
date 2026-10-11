@@ -1,10 +1,10 @@
 name: Verify visible avatar preview in OpenGL
 on:
   push:
-    branches: [fix/avatar-preview-invisible-20261011]
+    branches: [fix/avatar-preview-invisible-20261011, fix/avatar-ios-native-rig-20261011]
   workflow_dispatch:
 concurrency:
-  group: afb-avatar-visual-smoke
+  group: afb-avatar-visual-smoke-${{ github.ref }}
   cancel-in-progress: true
 permissions:
   contents: read
@@ -31,6 +31,11 @@ jobs:
           set -o pipefail
           timeout 100s xvfb-run -a -s '-screen 0 1280x800x24' env LIBGL_ALWAYS_SOFTWARE=1 /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 --path game --script res://prototype/avatar_render_test.gd 2>&1 | tee /tmp/afb-avatar-render.log
           grep -q 'AVATAR_RENDER_RESULT: PASS' /tmp/afb-avatar-render.log
+      - name: Verify the browser-safe native AFewBuds skeleton renders a visible character
+        run: |
+          set -o pipefail
+          timeout 100s xvfb-run -a -s '-screen 0 1280x800x24' env LIBGL_ALWAYS_SOFTWARE=1 /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 --path game --script res://prototype/avatar_render_test.gd -- --native-preview 2>&1 | tee /tmp/afb-avatar-native-render.log
+          grep -q 'AVATAR_RENDER_RESULT: PASS' /tmp/afb-avatar-native-render.log
       - name: Save diagnostic screenshot
         if: always()
         uses: actions/upload-artifact@v4
@@ -39,6 +44,9 @@ jobs:
           path: |
             /tmp/afb-avatar-preview.png
             /tmp/afb-avatar-ui.png
+            /tmp/afb-avatar-native-preview.png
+            /tmp/afb-avatar-native-ui.png
+            /tmp/afb-avatar-native-render.log
             /tmp/afb-avatar-render.log
           if-no-files-found: warn
           retention-days: 7
