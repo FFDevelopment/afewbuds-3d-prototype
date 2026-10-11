@@ -41,7 +41,7 @@ const MIN_LEVEL={
  "bench_2":3,"bench_3":6,
  "shelf_2":2,"shelf_3":5,
  "storage_2":2,"storage_3":5,"storage_4":7,"storage_5":9,
- "dealer_1":6,"dealer_2":9,"dealer_3":12,"dealer_4":15,
+ "dealer_1":6,"dealer_2":6,"dealer_3":6,"dealer_4":6,
  "ventilation":2,"water_kit":4,"grow_light":3,
  "tent_quality":3
 }
