@@ -236,7 +236,7 @@ func market() -> void:
 	market_card("seed|Street Green","Seeds","Parent strains for planting and breeding.",seeds)
 	market_card("fertilizer","Supplies","Fertilizer and everyday growing supplies.",supplies)
 	market_card("equipment|Grow Tent upgrade","Upgrades","Grow tents, equipment and larger backpacks.",equipment)
-	market_card("equipment|Storage Shelving II","Furniture","Furnish your properties. Delivered to Property Storage.",market_furniture)
+	market_card("equipment|Storage Shelving II","Furniture","Order furniture for Central Market pickup or an owned property curbside delivery.",market_furniture)
 	ui.button("CLOSE",close)
 func market_furniture() -> void:
 	host.inventory_system.furniture.shop("furniture")
@@ -275,7 +275,8 @@ func seeds() -> void:
 func equipment() -> void:
 	clear("CENTRAL MARKET - EQUIPMENT");market_navigation()
 	market_card("equipment|Grow Tent","Grow tents · 1 / 2 / 3 / 4 plants","Purchase packed tents and choose where to place them.",market_grow_tents)
-	market_card("equipment|Packing Bench","Stations & equipment","Buy basic or upgraded equipment; retain your old items.",func():host.inventory_system.furniture.shop("equipment"))
+	market_card("equipment|Packing Bench","Stations & equipment","Buy the same working benches used in the starter apartment.",func():host.inventory_system.furniture.shop("equipment"))
+	load("res://scripts/shop_upgrade_catalog.gd").market(host,ui.body)
 	b("Furniture",market_furniture)
 	b("Sell packed equipment",func():host.inventory_system.furniture.sell_menu())
 
