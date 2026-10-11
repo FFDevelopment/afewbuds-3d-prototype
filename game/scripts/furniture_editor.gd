@@ -422,6 +422,8 @@ func refresh_layout(force:bool=false) -> void:
  for id in model.state.items:
   var e:Dictionary=model.state.items[id]
   if e.get("property","")!=layout_property or not e.has("position"):continue
+  # Furniture on another floor must not intercept walk-around selection.
+  if absf(float(e.position[1])-placement_floor())>0.8:continue
   var size:Vector3=model.size_of(id,int(e.get("yaw",0)))
   var box:=AABB(Vector3(e.position[0]-size.x*.5,e.position[1],e.position[2]-size.z*.5),size)
   var hit=box.intersects_ray(origin,direction)
