@@ -167,8 +167,11 @@ func clone_packing(root:Node3D,id:String,e:Dictionary)->bool:
   found=true
  if found:
   var footprint:Vector3=model.size_of(id)
-  var xscale:float=clampf((footprint.x-.14)/maxf(combined.size.x,.1),.2,1.0)
-  var zscale:float=clampf((footprint.z-.10)/maxf(combined.size.z,.1),.2,1.0)
+  # Keep the approved bench's visible outer edge aligned with its physical
+  # footprint. The previous 14/10 cm reduction left a conspicuous wall gap
+  # even if the collision box had been positioned flush.
+  var xscale:float=clampf((footprint.x-.014)/maxf(combined.size.x,.1),.2,2.0)
+  var zscale:float=clampf((footprint.z-.014)/maxf(combined.size.z,.1),.2,2.0)
   holder.scale=Vector3(xscale,1,zscale)
   holder.position=Vector3(-combined.get_center().x*xscale,0,-combined.get_center().z*zscale)
  return true

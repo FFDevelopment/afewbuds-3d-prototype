@@ -53,6 +53,12 @@ const UTILITY_POSITIONS={
  "apartment":{"water_kit":Vector3(3.8,0,-5.1),"ventilation":Vector3(3.8,0,-6.4)},
  "house":{"water_kit":Vector3(39.65,0,-8.2),"ventilation":Vector3(40.65,0,-8.2)}}
 const CURBS={"apartment":Vector3(-2,0,7.2),"house":Vector3(34.8,0,4.8)}
+# The saved property registry keeps its historical logical room borders.
+# Placed furniture uses the *real inside wall faces* of the packing room:
+# partition x=36.50, exterior x=45.00, rear z=-5.00, front z=3.00.
+# Each wall is 0.22 m thick, leaving 0.11 m on its interior side.
+# The 5 mm inset prevents a flush bench from penetrating plaster/wall colliders.
+const HOUSE_PACKING_PLACEMENT:=Rect2(36.615,-4.885,8.270,7.770)
 var host:Node
 var registry:RefCounted
 var item_registry:RefCounted
@@ -182,6 +188,13 @@ func unlock_reason(sku:String)->String:
 func upgrade_reason(id:String)->String:
  var next:String=next_upgrade(id)
  return unlock_reason(next) if not next.is_empty() else ""
+# Placement-only bounds are recomputed each time, including on old careers.
+# Do NOT mutate persisted property_registry rooms: they govern ownership/access.
+func placement_rooms(property:String,floor_y:float=0.0)->Dictionary:
+ var rooms:Dictionary=registry.rooms_for(property)
+ if property=="house" and floor_y>-.5 and rooms.has("packing"):
+  rooms["packing"]=HOUSE_PACKING_PLACEMENT
+ return rooms
 func item_name(id:String) -> String:return str(CATALOG[state.items[id].sku].name)
 func own(sku:String,destination:String="backpack") -> String:
  error=""
@@ -284,11 +297,12 @@ func validate(id:String,property:String,point:Vector3,yaw:int) -> String:
   if not wall_mountable(id) or point.y-floor_y<.84 or point.y-floor_y+size_of(id).y>2.66:return "Mount utilities between waist and head height."
   if not has_mount_support(id,point,yaw):return "Mount against a solid wall, clear of windows and doors."
  var rect:=bounds(id,point,yaw);var room:=""
- var allowed_rooms:Dictionary={"grow":Rect2(26.3,-13.5,14.2,13.0)} if basement else registry.rooms_for(property)
+ var allowed_rooms:Dictionary={"grow":Rect2(26.3,-13.5,14.2,13.0)} if basement else placement_rooms(property,point.y)
  if basement and elevated:allowed_rooms={"grow":Rect2(26.1,-13.7,14.4,13.2)}
  for key in allowed_rooms:
   if not basement and not registry._within_height(property,key,point.y):continue
-  if (allowed_rooms[key] as Rect2).grow(.35 if e.sku=="storage_5" or elevated else .015).encloses(rect):room=key;break
+  var edge_tolerance:float=0.0 if property=="house" and key=="packing" and not elevated else (.35 if e.sku=="storage_5" or elevated else .015)
+  if (allowed_rooms[key] as Rect2).grow(edge_tolerance).encloses(rect):room=key;break
  if room.is_empty():return "Keep the entire item inside one room and clear of doorways."
  if not item_registry.permits_room(str(e.sku),str(registry.state.properties[property].get("room_uses",{}).get(room,room))):return "This equipment is not allowed in this room."
  for other in state.items:
