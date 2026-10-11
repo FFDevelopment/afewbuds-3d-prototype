@@ -5426,6 +5426,26 @@ func _build_production_worker_visual() -> void:
 	production_worker_task_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	production_worker_task_label.modulate = Color("e5f0e8")
 	production_worker_node.add_child(production_worker_task_label)
+	# Generic hired workers have the primitive character instead of a GLB rig.
+	# Give them visible scissors/bag props while actually working at the bench.
+	var trimming_prop:=MeshInstance3D.new()
+	trimming_prop.name="WorkerTrimScissors"
+	var trimming_mesh:=BoxMesh.new()
+	trimming_mesh.size=Vector3(.025,.012,.18)
+	trimming_prop.mesh=trimming_mesh
+	trimming_prop.position=Vector3(-.27,1.05,-.28)
+	trimming_prop.visible=false
+	trimming_prop.set_meta("no_collision",true)
+	production_worker_node.add_child(trimming_prop)
+	var bagging_prop:=MeshInstance3D.new()
+	bagging_prop.name="WorkerPackingBag"
+	var bagging_mesh:=BoxMesh.new()
+	bagging_mesh.size=Vector3(.15,.20,.025)
+	bagging_prop.mesh=bagging_mesh
+	bagging_prop.position=Vector3(.28,1.03,-.29)
+	bagging_prop.visible=false
+	bagging_prop.set_meta("no_collision",true)
+	production_worker_node.add_child(bagging_prop)
 
 	_refresh_production_worker_friend_face()
 
@@ -5671,6 +5691,18 @@ func _update_production_worker_visual(delta: float) -> void:
 		var worker_name: String = production_worker_friend_name if not production_worker_friend_name.is_empty() else "PRODUCTION WORKER"
 		production_worker_task_label.text = "%s  |  %s" % [worker_name.to_upper(), production_worker_task.to_upper()]
 	_refresh_production_worker_friend_face()
+	var generic_worker:bool=production_worker_friend_name.is_empty()
+	var work_at_bench:bool=generic_worker and not moving and production_worker_action_dwell>0.0 and production_worker_pending_action in ["trim","bag"]
+	var trim_prop:MeshInstance3D=production_worker_node.get_node_or_null("WorkerTrimScissors") as MeshInstance3D
+	var bag_prop:MeshInstance3D=production_worker_node.get_node_or_null("WorkerPackingBag") as MeshInstance3D
+	if trim_prop!=null:trim_prop.visible=work_at_bench and production_worker_pending_action=="trim"
+	if bag_prop!=null:bag_prop.visible=work_at_bench and production_worker_pending_action=="bag"
+	if work_at_bench:
+		var pulse:float=sin(production_worker_action_dwell*TAU*2.4)
+		if arm_l!=null:arm_l.rotation.x=-.82+.23*pulse
+		if arm_r!=null:arm_r.rotation.x=-1.08+.36*sin(production_worker_action_dwell*TAU*2.4+1.2)
+		if trim_prop!=null:trim_prop.position.y=1.07+.035*pulse
+		if bag_prop!=null:bag_prop.rotation.z=.08*pulse
 
 	if production_worker_pending_action.is_empty():
 		production_worker_action_dwell = 0.0
