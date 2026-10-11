@@ -215,6 +215,28 @@ func begin(id:String) -> void:
  aim();preview()
 func rotate_item() -> void:
  yaw=posmod(yaw+90,360);preview()
+# Fit the aim point against the room's usable perimeter instead of projecting
+# a large bench through the wall whenever the player stands nearby.
+func fit_aim_to_room() -> void:
+ if selected.is_empty():return
+ var floor_y:float=placement_floor()
+ var rooms:Dictionary={}
+ var selected_room:String=""
+ if property=="house" and floor_y<-.5:
+  rooms={"grow":Rect2(26.3,-13.5,14.2,13.0)}
+  selected_room="grow"
+ else:
+  rooms=model.registry.rooms_for(property)
+  selected_room=host.neighborhood.location_ops.placement_room(property,host.camera.global_position)
+ if not rooms.has(selected_room):return
+ var rect:Rect2=rooms[selected_room]
+ var size:Vector3=model.size_of(selected,yaw)
+ var hx:float=size.x*.5+.022
+ var hz:float=size.z*.5+.022
+ if rect.size.x<hx*2.0 or rect.size.y<hz*2.0:return
+ point.x=clampf(point.x,rect.position.x+hx,rect.end.x-hx)
+ point.z=clampf(point.z,rect.position.y+hz,rect.end.y-hz)
+
 func aim() -> void:
  var origin:Vector3=host.camera.global_position
  var forward:Vector3=-host.camera.global_basis.z
@@ -227,6 +249,7 @@ func aim() -> void:
  distance=clampf(distance,nearest,5.5)
  point=origin+flat*distance;point.y=placement_floor()
  point.x=snappedf(point.x,.01);point.z=snappedf(point.z,.01)
+ if model.state.items[selected].sku!="storage_5" and not (model.wall_mountable(selected) and wall_mount):fit_aim_to_room()
  if model.state.items[selected].sku=="storage_5":snap_stash_to_wall()
  elif model.wall_mountable(selected) and wall_mount:snap_utility_to_wall()
 func handle_placement_input(event:InputEvent) -> bool:
@@ -282,12 +305,17 @@ func obstacle() -> String:
   while node!=null and node!=host:
    var own_piece:bool=str(node.get_meta("furniture_id",""))==selected
    if originals.has(node.get_instance_id()):own_piece=own_piece or int(str(originals[node.get_instance_id()].id).trim_prefix("legacy_tent_"))==int(model.state.items[selected].get("legacy_slot",-1))
+   # Decorative skirting/baseboards may be concealed by furniture.
+   # Real walls, doors and furniture still participate in collision tests.
+   if str(node.name).to_lower().contains("baseboard"):
+    excluded.append(body.get_rid());break
    if own_piece:excluded.append(body.get_rid());break
    node=node.get_parent()
  query.exclude=excluded
  if not host.get_world_3d().direct_space_state.intersect_shape(query,1).is_empty():return "Clear the existing furniture, fixture or doorway first."
  for mesh in host.find_children("*","MeshInstance3D",true,false):
   if mesh==ghost or not mesh.is_visible_in_tree() or not mesh.mesh is BoxMesh or mesh.get_meta("no_collision",false):continue
+  if str(mesh.name).to_lower().contains("baseboard"):continue
   if mesh.get_meta("furniture_id","")==selected:continue
   if originals.has(mesh.get_instance_id()):
    var original_slot:int=int(str(originals[mesh.get_instance_id()].id).trim_prefix("legacy_tent_"))
