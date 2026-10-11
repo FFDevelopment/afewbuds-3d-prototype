@@ -59,6 +59,22 @@ const CURBS={"apartment":Vector3(-2,0,7.2),"house":Vector3(34.8,0,4.8)}
 # Each wall is 0.22 m thick, leaving 0.11 m on its interior side.
 # The 5 mm inset prevents a flush bench from penetrating plaster/wall colliders.
 const HOUSE_PACKING_PLACEMENT:=Rect2(36.615,-4.885,8.270,7.770)
+# The other legacy registry rectangles stop 25-45 cm short of the walls.
+# These are *placement-only* safe inner faces from interiors.house()'s
+# 22 cm structural walls plus 5 mm clearance. They do not edit save keys.
+const HOUSE_ROOM_PLACEMENT={
+ "living":Rect2(25.115,-4.885,8.270,7.770),
+ "packing":HOUSE_PACKING_PLACEMENT,
+ "kitchen":Rect2(25.115,-13.885,6.070,6.770),
+ "bathroom":Rect2(31.415,-13.885,2.670,6.770),
+ "bedroom":Rect2(34.315,-13.885,4.170,6.770),
+ "grow":Rect2(38.715,-13.885,6.170,6.770)
+}
+# Basement physical walls: x=26/44.8 and z=-13.8/1.5, 20 cm thick.
+# Reserve the staircase/railing wing x>=41.15 as an access path. Extending
+# the legacy 26.3..40.5 x -13.5..-.5 crop zone to the real safe walls gives
+# considerably more space without granting placement on the stairs.
+const BASEMENT_GROW_PLACEMENT:=Rect2(26.105,-13.695,14.795,15.090)
 var host:Node
 var registry:RefCounted
 var item_registry:RefCounted
@@ -192,8 +208,10 @@ func upgrade_reason(id:String)->String:
 # Do NOT mutate persisted property_registry rooms: they govern ownership/access.
 func placement_rooms(property:String,floor_y:float=0.0)->Dictionary:
  var rooms:Dictionary=registry.rooms_for(property)
- if property=="house" and floor_y>-.5 and rooms.has("packing"):
-  rooms["packing"]=HOUSE_PACKING_PLACEMENT
+ if property=="house":
+  if floor_y<-.5:return {"basement_grow":BASEMENT_GROW_PLACEMENT}
+  for room in HOUSE_ROOM_PLACEMENT:
+   if rooms.has(room):rooms[room]=HOUSE_ROOM_PLACEMENT[room]
  return rooms
 func item_name(id:String) -> String:return str(CATALOG[state.items[id].sku].name)
 func own(sku:String,destination:String="backpack") -> String:
@@ -297,11 +315,13 @@ func validate(id:String,property:String,point:Vector3,yaw:int) -> String:
   if not wall_mountable(id) or point.y-floor_y<.84 or point.y-floor_y+size_of(id).y>2.66:return "Mount utilities between waist and head height."
   if not has_mount_support(id,point,yaw):return "Mount against a solid wall, clear of windows and doors."
  var rect:=bounds(id,point,yaw);var room:=""
- var allowed_rooms:Dictionary={"grow":Rect2(26.3,-13.5,14.2,13.0)} if basement else placement_rooms(property,point.y)
- if basement and elevated:allowed_rooms={"grow":Rect2(26.1,-13.7,14.4,13.2)}
+ var allowed_rooms:Dictionary=placement_rooms(property,point.y)
+ if basement and elevated:
+  # Wall-mounted utilities still require an actual wall behind them.
+  allowed_rooms={"basement_grow":BASEMENT_GROW_PLACEMENT.grow(.12)}
  for key in allowed_rooms:
   if not basement and not registry._within_height(property,key,point.y):continue
-  var edge_tolerance:float=0.0 if property=="house" and key=="packing" and not elevated else (.35 if e.sku=="storage_5" or elevated else .015)
+  var edge_tolerance:float=0.0 if property=="house" and HOUSE_ROOM_PLACEMENT.has(key) and not elevated else (.35 if e.sku=="storage_5" or elevated else .015)
   if (allowed_rooms[key] as Rect2).grow(edge_tolerance).encloses(rect):room=key;break
  if room.is_empty():return "Keep the entire item inside one room and clear of doorways."
  if not item_registry.permits_room(str(e.sku),str(registry.state.properties[property].get("room_uses",{}).get(room,room))):return "This equipment is not allowed in this room."
