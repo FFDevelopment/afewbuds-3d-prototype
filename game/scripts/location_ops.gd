@@ -1069,7 +1069,8 @@ func portfolio_name(property:String) -> String:
 	return "Starter Apartment" if property=="apartment" else "Maple Flats House"
 
 func portfolio_on_site(property:String) -> bool:
-	return property==active_property() and not placement_room(property,host.camera.global_position).is_empty()
+	if not _property_controlled(property):return false
+	return not placement_room(property,host.camera.global_position).is_empty()
 
 func portfolio_furniture() -> void:
 	if portfolio_property.is_empty() or not _property_controlled(portfolio_property):return
