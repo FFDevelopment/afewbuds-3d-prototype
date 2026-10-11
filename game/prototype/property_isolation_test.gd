@@ -29,7 +29,7 @@ func run():
  # Regression: keeping the apartment as primary must never block the
  # furniture editor while physically inside the acquired house.
  var property_ops=game.neighborhood.location_ops
- var saved_camera:Vector3=game.camera.global_position
+ var before_portfolio_camera:Vector3=game.camera.global_position
  game.camera.global_position=Vector3(28.0,1.64,-2.0)
  check(property_ops.active_property()=="apartment" and property_ops.portfolio_on_site("house"),"Owned house furniture is editable on-site when apartment stays primary")
  check(not property_ops.portfolio_on_site("apartment"),"Being in house cannot remotely arrange apartment")
@@ -54,7 +54,7 @@ func run():
  game.camera.global_position=Vector3(0,1.64,2)
  check(property_ops.portfolio_on_site("apartment") and not property_ops.portfolio_on_site("house"),"Apartment location still works independently")
  property_ops.portfolio_reset()
- game.camera.global_position=saved_camera
+ game.camera.global_position=before_portfolio_camera
  inv.furniture.equipment_world.sync()
  game.property_opportunity_state.relocated=false
  property.confirm_relocation(true)
