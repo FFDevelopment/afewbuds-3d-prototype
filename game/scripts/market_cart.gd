@@ -17,6 +17,24 @@ func quote(key:String)->Dictionary:
  if kind=="item" and inv.furniture.model.CATALOG.has(name):
   return {"name":str(inv.furniture.model.CATALOG[name].name),"price":inv.furniture.model.price_for(name),"reason":""}
  return {"name":"Unavailable item","price":0,"reason":"This item is no longer available."}
+# Equipment delivery choice is additive; preserve the legacy cart item->quantity map.
+func destination()->String:
+ var target:String=str(host.location_state.get("market_cart_delivery_v1","market:orders"))
+ return target if target in ["market:orders","apartment","house"] else "market:orders"
+func delivery_allowed(target:String)->bool:
+ if target=="market:orders":return true
+ return target in ["apartment","house"] and inv.furniture!=null and inv.furniture.model!=null and inv.furniture.model.controlled(target)
+func choose_delivery(target:String)->void:
+ if not delivery_allowed(target):
+  host.status_label.text="That property is not available for deliveries."
+  return
+ host.location_state["market_cart_delivery_v1"]=target
+ host._save_game()
+ show()
+func has_equipment()->bool:
+ for key in state().keys():
+  if str(key).begins_with("item|"):return true
+ return false
 func total()->int:
  var value:=0
  for key in state():value+=int(quote(key).price)*int(state()[key])
@@ -47,7 +65,17 @@ func show()->void:
  if host.phone_open:host._toggle_phone()
  if host.neighborhood.location_ops.is_open():host.neighborhood.location_ops.close()
  editor.open();editor.clear();editor.hint.text="CENTRAL MARKET · CART"
- inv.label("Pay once for the whole order. At checkout, collect what fits; the rest stays here for your next visit.",editor.list)
+ inv.label("Pay once for the whole order. Seeds and fertilizer use Central Market pickup. Equipment can be delivered to a property curb.",editor.list)
+ if has_equipment():
+  inv.label("DELIVERY FOR FURNITURE / EQUIPMENT",editor.list,19)
+  for target in ["market:orders","apartment","house"]:
+   var allowed:bool=delivery_allowed(target)
+   var chosen:bool=destination()==target
+   var caption:String="MARKET PICKUP" if target=="market:orders" else target.to_upper()+" CURBSIDE DELIVERY"
+   var choice:Button=inv.button(caption+(" · SELECTED" if chosen else ""),choose_delivery.bind(target),editor.list,chosen)
+   choice.disabled=chosen or not allowed
+   if not allowed and target!="market:orders":inv.label("You do not control "+target+".",editor.list,13)
+  inv.label("Collect delivered equipment from the labeled crate at the selected property curb. Existing stock stays where it is.",editor.list,14)
  if state().is_empty():inv.label("Your cart is empty.",editor.list)
  for key in state().keys():
   var info:=quote(key);inv.label("%s · $%d each"%[info.name,info.price],editor.list,18)
