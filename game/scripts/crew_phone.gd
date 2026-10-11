@@ -501,6 +501,7 @@ func _update_house_door_manager(delta:float,name:String) -> void:
 	var agent:String="door_"+name
 	if bool(manager_node.get_meta("seated",false)) and (not relaxing or not same_seat):
 		seated_pose(manager_node,false)
+		if not manager_node.has_meta("character"):manager_node.position.y=-0.57
 		manager_node.set_meta("house_stand_exit",manager_node.get_meta("house_stand_point",approach))
 		manager_node.set_meta("house_motion","stand")
 		manager_node.set_meta("house_timer",HOUSE_DOOR_STAND_SECONDS)
@@ -508,6 +509,7 @@ func _update_house_door_manager(delta:float,name:String) -> void:
 	if mode=="stand":
 		var remaining:float=maxf(0.0,float(manager_node.get_meta("house_timer",0.0))-delta)
 		manager_node.set_meta("house_timer",remaining)
+		if not manager_node.has_meta("character"):manager_node.position.y=-0.57*remaining/HOUSE_DOOR_STAND_SECONDS
 		if remaining<=0.0:
 			manager_node.set_meta("house_motion","exit")
 			host._house_npc_route().reset(agent)
@@ -529,10 +531,16 @@ func _update_house_door_manager(delta:float,name:String) -> void:
 			manager_node.set_meta("house_motion","walk")
 			host._house_npc_route().reset(agent)
 		else:
-			manager_node.position.y=0.0
-			manager_node.position=manager_node.position.move_toward(seat,delta*HOUSE_DOOR_SIT_SPEED)
+			var start:Vector3=manager_node.get_meta("house_sit_start",manager_node.position)
+			var seat_before:Vector3=Vector3(manager_node.position.x,0,manager_node.position.z)
+			var seat_step:Vector3=seat_before.move_toward(seat,delta*HOUSE_DOOR_SIT_SPEED)
+			manager_node.position.x=seat_step.x
+			manager_node.position.z=seat_step.z
 			manager_node.rotation.y=float(couch["yaw"])
-			if manager_node.position.distance_to(seat)<0.065:
+			var traveled:float=Vector2(seat_step.x-start.x,seat_step.z-start.z).length()
+			var full:float=maxf(0.1,Vector2(seat.x-start.x,seat.z-start.z).length())
+			if not manager_node.has_meta("character"):manager_node.position.y=-0.57*clampf(traveled/full,0.0,1.0)
+			if Vector2(seat_step.x-seat.x,seat_step.z-seat.z).length()<0.065:
 				manager_node.position=seat
 				manager_node.set_meta("idle_seat_id",str(couch.get("id","")))
 				manager_node.set_meta("idle_seat_position",seat)
@@ -549,6 +557,7 @@ func _update_house_door_manager(delta:float,name:String) -> void:
 		manager_node.position.y=0.0
 		manager_node.position=manager_node.position.move_toward(waypoint,delta*HOUSE_DOOR_WALK_SPEED)
 		if relaxing and manager_node.position.distance_to(approach)<0.16 and host.house_route_arrived(agent,manager_node.position,approach):
+			manager_node.set_meta("house_sit_start",manager_node.position)
 			manager_node.set_meta("house_sit_target",seat)
 			manager_node.set_meta("house_sit_id",str(couch.get("id","")))
 			manager_node.set_meta("house_motion","sit")
