@@ -35,6 +35,16 @@ const LEGACY_CATALOG={
  "fridge":{"name":"Refrigerator","shop":"furniture","price":400,"size":[1.05,2.4,1],"weight":32},
  "floor_lamp":{"name":"Floor Lamp","shop":"furniture","price":85,"size":[.5,1.8,.5],"weight":5},
  "computer":{"name":"Computer Desk","shop":"furniture","price":550,"size":[1.5,1.65,.85],"weight":22}}
+# Preserve progression locks from the original Grower career.
+# Existing owned higher-tier items remain valid regardless of the current level.
+const MIN_LEVEL={
+ "bench_2":3,"bench_3":6,
+ "shelf_2":2,"shelf_3":5,
+ "storage_2":2,"storage_3":5,"storage_4":7,"storage_5":9,
+ "dealer_1":6,"dealer_2":9,"dealer_3":12,"dealer_4":15,
+ "ventilation":2,"water_kit":4,"grow_light":3,
+ "tent_quality":3
+}
 const ROOMS={
  "apartment":{"main":Rect2(-4.7,-3.65,9.4,9.1),"grow":Rect2(-4.7,-10.0,9.4,5.5)},
  "house":{"living":Rect2(25.4,-4.6,7.65,7.15),"packing":Rect2(37,-4.6,7.6,7.15),"kitchen":Rect2(25.4,-13.55,5.5,6.1),"bathroom":Rect2(31.7,-13.55,2.05,6.1),"bedroom":Rect2(34.65,-13.55,3.5,6.1),"grow":Rect2(38.71,-13.89,6.18,6.78)}}
@@ -164,6 +174,14 @@ func items_in_shop(shop_id:String) -> Array[String]:
 func market_available(sku:String)->bool:
  if not CATALOG.has(sku):return false
  return int(CATALOG[sku].get("tier",1))<=1
+func unlock_level(sku:String)->int:
+ return maxi(1,int(MIN_LEVEL.get(sku,1)))
+func unlock_reason(sku:String)->String:
+ var required:int=unlock_level(sku)
+ return "Reach Grower Level %d to unlock %s (current: %d)." % [required,str(CATALOG.get(sku,{}).get("name","this equipment")),host.grower_level] if host.grower_level<required else ""
+func upgrade_reason(id:String)->String:
+ var next:String=next_upgrade(id)
+ return unlock_reason(next) if not next.is_empty() else ""
 func item_name(id:String) -> String:return str(CATALOG[state.items[id].sku].name)
 func own(sku:String,destination:String="backpack") -> String:
  error=""
@@ -347,6 +365,8 @@ func upgrade(id:String) -> bool:
  if sku.is_empty():error="This equipment is already at its highest tier.";return false
  var price:int=upgrade_cost(id)
  if price<=0:error="This upgrade is unavailable.";return false
+ var level_gate:String=upgrade_reason(id)
+ if not level_gate.is_empty():error=level_gate;return false
  if host.cash<price:error="Not enough cash for this upgrade.";return false
  # Grow light upgrades replace the fixture without disturbing live crops.
  if sku=="tent_quality":
