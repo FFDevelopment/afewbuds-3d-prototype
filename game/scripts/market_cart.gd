@@ -109,16 +109,22 @@ func checkout()->Dictionary:
   if not str(info.reason).is_empty():return {"ok":false,"reason":info.name+": "+info.reason}
   price+=int(info.price)*amount
  if host.cash<price:return {"ok":false,"reason":"Order costs $%d. You have $%d—need $%d more. Nothing was charged."%[price,host.cash,price-host.cash]}
+ var delivery:String=destination()
+ if has_equipment() and not delivery_allowed(delivery):
+  return {"ok":false,"reason":"Delivery property is unavailable. Choose market pickup or an owned property. Nothing was charged."}
  busy=true
- # Validate everything before charging. No awaits or callbacks while committing.
+ # Validate before payment. No awaits/callbacks inside the transaction.
  host.cash-=price
+ var delivered:int=0
  for key in basket:
   var amount:int=int(basket[key]);var name:String=str(key).get_slice("|",1)
   if str(key).begins_with("item|"):
    var model=inv.furniture.model
    for i in amount:
     var id:="furniture_%d"%int(model.state.next_id);model.state.next_id=int(model.state.next_id)+1
-    model.state.items[id]={"sku":name,"property":"market:orders","locked":false,"paid":model.price_for(name),"condition":100,"upgrades":{}}
+    var target:String="market:orders" if delivery=="market:orders" else delivery+":delivery"
+    model.state.items[id]={"sku":name,"property":target,"locked":false,"paid":model.price_for(name),"condition":100,"upgrades":{}}
+    if delivery!="market:orders":delivered+=1
   elif str(key).begins_with("seed|"):
    inv.set_amount("market:orders",key,int(inv.contents("market:orders").get(key,0))+amount)
    host._increment_advancement_stat("seeds_bought",amount)
@@ -131,7 +137,11 @@ func checkout()->Dictionary:
  host._record_daily_expense("Market order",price)
  host._update_cash_ui();host._save_game();busy=false
  if inv.reachable("market:orders"):inv.collect_all()
- return {"ok":true,"reason":"Paid $%d. %d item(s) awaiting pickup at Central Market; everything that fits is in your backpack."%[price,pickup_count()] if inv.reachable("market:orders") else "Paid $%d. Your order is waiting at Central Market checkout."%price}
+ var receipt:String="Paid $%d." % price
+ if delivered>0:receipt+=" %d furniture/equipment item(s) delivered to the %s curb." % [delivered,delivery.capitalize()]
+ if pickup_count()>0:receipt+=" %d item(s) still at Central Market pickup." % pickup_count()
+ elif delivered==0:receipt+=" Pickup completed."
+ return {"ok":true,"reason":receipt}
 
 func seeds(parent:Node)->void:
  inv.label("Choose quantities, add seeds to your cart, then check out once. Paid orders wait at Central Market.",parent)
