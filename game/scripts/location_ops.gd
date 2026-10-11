@@ -481,10 +481,10 @@ func computer_upgrades() -> void:
 		var item:Dictionary=model.state.items[id]
 		if str(item.get("property",""))!=property:continue
 		count+=1
-		ui.label(model.item_name(id)+" · "+("FIXED IN PLACE" if bool(item.get("locked",false)) else "READY TO MOVE"))
+		ui.label(model.item_name(id)+" · "+model.level_label(id)+" · "+("FIXED IN PLACE" if bool(item.get("locked",false)) else "READY TO MOVE"))
 	if count==0:ui.label("No equipment or furniture is installed at this property. Apartment equipment stays at the apartment.")
 	b("ARRANGE "+property.to_upper()+" FURNITURE & EQUIPMENT",func():close();host.inventory_system.furniture.open_property(property))
-	ui.label("Buy additional equipment at Central Market. Purchases must be delivered or carried to this property.")
+	ui.label("Buy starter equipment at Central Market. Upgrade each installed piece from Furniture Arrangement; deliveries stay at this property curb until collected.")
 func computer_bills() -> void:
 	var property:String=computer_context
 	var due:Dictionary=utility_state(property)
@@ -1453,10 +1453,10 @@ func rent_ui(parent: VBoxContainer) -> void:
 
 
 func equipment_ui(parent: VBoxContainer) -> void:
-	_property_label(parent,"Equipment is available to buy when you can afford it. There is no story goal required. Upgrade an empty owned item to its next tier, or buy a replacement.")
+	_property_label(parent,"Buy Level I equipment at Central Market, then upgrade each placed item through Furniture Arrangement. Grow tents include basic lighting; select a tent to fit LED lights for $320.")
 	_property_label(parent,"Furniture locks keep items fixed in place; they are not progression locks.",15)
 	host.inventory_system.furniture.cart.toolbar(parent)
-	_property_label(parent,"Owned equipment stays with you when packed. Upgrade an empty item, or buy and place a better replacement.")
+	_property_label(parent,"Station tier upgrades require an empty station and enough floor space. Tent LED upgrades can be fitted with crops growing. Your owned upgrades stay with the item if packed.")
 	_property_button(parent,"MANAGE OWNED EQUIPMENT",host.inventory_system.furniture.open)
 	_property_button(parent,"ORDER EQUIPMENT",func():host.inventory_system.furniture.shop("equipment"))
 	_property_button(parent,"ORDER GROW TENTS",market_grow_tents)
