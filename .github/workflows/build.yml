@@ -1,7 +1,7 @@
 name: Build desktop baseline
 on:
   push:
-    branches: [main, feature/property-phone-hub-v1, feature/friend-characters-20261010]
+    branches: [main, feature/property-phone-hub-v1, feature/friend-characters-20261010, feature/door-staff-substitutions-20261010]
   workflow_dispatch:
 permissions:
   contents: read

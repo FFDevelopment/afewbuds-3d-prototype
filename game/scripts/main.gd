@@ -5936,7 +5936,7 @@ func _record_friend_dealer_sale(customer_name: String, grams: int, gross: int, c
 		generic[customer_name]=record
 		location_state["hired_dealer_stats"]=generic
 		return
-	if customer_name.is_empty() or _friend_staff_role(customer_name) != "dealer":
+	if customer_name.is_empty() or _friend_staff_role(customer_name) not in ["dealer", "door"]:
 		return
 	var stats: Dictionary = _ensure_friend_dealer_stats(customer_name)
 	stats["sales"] = int(stats.get("sales", 0)) + 1
@@ -5951,7 +5951,8 @@ func _record_friend_dealer_sale(customer_name: String, grams: int, gross: int, c
 
 func _friend_dealer_daily_report(_pay_wages: bool) -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
-	for friend_name: String in _friend_staff_names("dealer"):
+	for friend_name: String in _friend_staff_names():
+		if _friend_staff_role(friend_name) not in ["dealer", "door"]:continue
 		var stats: Dictionary = _ensure_friend_dealer_stats(friend_name)
 		rows.append({
 			"name": friend_name,
@@ -6044,7 +6045,7 @@ func _dealer_hire_cost() -> int:
 	return DEALER_BASE_HIRE_COST + _total_dealer_count() * 300
 
 func _staff_count() -> int:
-	return (1 if packing_employee_hired else 0) + _total_dealer_count()
+	return (1 if packing_employee_hired else 0) + _total_dealer_count() + _friend_staff_names("door").size()
 
 func _current_power_rate_per_game_minute() -> float:
 	var rate: float = 0.0 if lay_low_active else POWER_BASE_COST_PER_GAME_MINUTE
@@ -6251,6 +6252,52 @@ func _dealer_eligible_customers() -> Array[Dictionary]:
 		eligible.append(customer)
 	return eligible
 
+func _customer_favorite(customer: Dictionary) -> String:
+	var name: String = str(customer.get("name", ""))
+	var relationship: Dictionary = customer_relationships.get(name, {}) as Dictionary
+	var learned: String = str(relationship.get("preferred_strain", ""))
+	return learned if not learned.is_empty() else str(customer.get("favorite", ""))
+
+func _record_customer_strain_experience(customer_name: String, requested: String, sold: String) -> void:
+	if customer_name.is_empty() or sold.is_empty():return
+	var relationship: Dictionary = (customer_relationships.get(customer_name, {}) as Dictionary).duplicate(true)
+	var tastes: Dictionary = (relationship.get("strain_tastes", {}) as Dictionary).duplicate(true)
+	tastes[sold] = mini(99, int(tastes.get(sold, 0)) + (2 if sold != requested else 1))
+	relationship["strain_tastes"] = tastes
+	if sold != requested and int(tastes[sold]) >= 4:
+		relationship["secondary_strain"] = sold
+	if sold != requested and int(tastes[sold]) >= 10:
+		var old_preference: String = str(relationship.get("preferred_strain", requested))
+		if int(tastes[sold]) >= int(tastes.get(old_preference, 0)) + 4:
+			relationship["preferred_strain"] = sold
+	customer_relationships[customer_name] = relationship
+
+func _dealer_product_amount(strain_name: String, doorstep: bool, listed_only: bool = true) -> int:
+	if not products.has(strain_name):return 0
+	if doorstep and listed_only and not bool(products[strain_name].get("listed", false)):return 0
+	var result: int = maxi(0, int(locker_weed.get(strain_name, 0)))
+	if doorstep:
+		result += _available_amount(strain_name) + maxi(0, int(bagged_inventory.get(strain_name, 0)))
+	return result
+
+func _dealer_best_offer(customer: Dictionary, requested: String, minimum_grams: int, doorstep: bool, listed_only: bool = true) -> String:
+	if products.has(requested) and _dealer_product_amount(requested, doorstep, listed_only) >= minimum_grams:
+		return requested
+	if doorstep:
+		for strain_name in bagged_inventory.keys():
+			if int(bagged_inventory[strain_name]) > 0:_ensure_product_exists(str(strain_name))
+	var best: String = ""
+	var best_chance: float = -1.0
+	for strain_name in products.keys():
+		var candidate: String = str(strain_name)
+		if candidate == requested or _dealer_product_amount(candidate, doorstep, listed_only) < minimum_grams:continue
+		var chance: float = _substitute_acceptance_chance_for(customer, requested, candidate)
+		if chance > best_chance or (is_equal_approx(chance, best_chance) and (best.is_empty() or candidate < best)):
+			best = candidate
+			best_chance = chance
+	# One actual chance roll against the highest percentage. No repeated fallback rerolls.
+	return best if not best.is_empty() and rng.randf() <= best_chance else ""
+
 func _dealer_sell_one(show_feedback: bool, assigned_dealer_name: String = "", door_customer: Dictionary = {}, door_order: Dictionary = {}) -> bool:
 	if assigned_dealer_name.is_empty():
 		var candidates:Array[String]=_active_dealer_roster()
@@ -6262,13 +6309,15 @@ func _dealer_sell_one(show_feedback: bool, assigned_dealer_name: String = "", do
 	return _dealer_sell_one_local(show_feedback,assigned_dealer_name,door_customer,door_order)
 
 func _dealer_sell_one_local(show_feedback: bool, assigned_dealer_name: String = "", door_customer: Dictionary = {}, door_order: Dictionary = {}) -> bool:
-	if dealer_arrested:return false
-	if door_customer.is_empty() and neighborhood!=null and assigned_dealer_name==neighborhood.location_ops.crew.manager() and not assigned_dealer_name.is_empty():return false
+	if dealer_arrested and door_customer.is_empty():return false
+	if door_customer.is_empty() and neighborhood!=null and assigned_dealer_name==neighborhood.location_ops.crew.manager(inventory_system.staff_property(assigned_dealer_name)) and not assigned_dealer_name.is_empty():return false
+	var dedicated_door: bool = not door_customer.is_empty() and _friend_staff_role(assigned_dealer_name) == "door"
+	if dedicated_door and not bool(location_state.get("staff_duty", {}).get(assigned_dealer_name, true)):return false
 	if _simulation_blocked():
 		return false
-	if dealer_balance_due > 0:
+	if dealer_balance_due > 0 and not dedicated_door:
 		return false
-	if not dealers_active or _total_dealer_count() <= 0:
+	if not dedicated_door and (not dealers_active or _total_dealer_count() <= 0):
 		return false
 	if door_customer.is_empty() and (dealer_locker_level <= 0 or _dealer_locker_total() <= 0):
 		return false
@@ -6291,25 +6340,11 @@ func _dealer_sell_one_local(show_feedback: bool, assigned_dealer_name: String = 
 			if candidate.get("name","")==door_customer.get("name",""):matches=true
 		if not matches:return false
 		chosen_customer=door_customer
-	var favorite: String = str(door_order.get("product",chosen_customer.get("favorite", "")))
-	if not door_customer.is_empty() and int(bagged_inventory.get(favorite,0))>0:_ensure_product_exists(favorite)
-	var product_name: String = ""
-	if products.has(favorite) and (int(locker_weed.get(favorite, 0))+(_available_amount(favorite)+int(bagged_inventory.get(favorite,0)) if not door_customer.is_empty() else 0)) > 0:
-		product_name = favorite
-	if product_name.is_empty():
-		if not door_customer.is_empty():return false
-		var alternatives: Array[String] = []
-		for name_variant: Variant in locker_weed.keys():
-			var candidate: String = str(name_variant)
-			if int(locker_weed.get(candidate, 0)) > 0 and products.has(candidate):
-				alternatives.append(candidate)
-		if alternatives.is_empty():
-			return false
-		if rng.randf() > float(chosen_customer.get("flexibility", 0.0)):
-			return false
-		product_name = alternatives[rng.randi_range(0, alternatives.size() - 1)]
-	var available: int = maxi(0, int(locker_weed.get(product_name, 0)))
-	if not door_customer.is_empty():available+=_available_amount(product_name)+maxi(0,int(bagged_inventory.get(product_name,0)))
+	var favorite: String = str(door_order.get("product", _customer_favorite(chosen_customer)))
+	var required_amount: int = maxi(1, int(door_order.get("qty", 1))) if not door_customer.is_empty() else 1
+	var product_name: String = _dealer_best_offer(chosen_customer, favorite, required_amount, not door_customer.is_empty(), dedicated_door)
+	if product_name.is_empty():return false
+	var available: int = _dealer_product_amount(product_name, not door_customer.is_empty(), dedicated_door)
 	if available <= 0:
 		return false
 	var max_qty: int = mini(available, int(chosen_customer.get("max_qty", 2)))
@@ -6320,6 +6355,9 @@ func _dealer_sell_one_local(show_feedback: bool, assigned_dealer_name: String = 
 	if not door_customer.is_empty():
 		qty=int(door_order.get("qty",0))
 		if qty<=0 or available<qty:return false
+	var dealer_roster: Array[String] = _active_dealer_roster()
+	if not dedicated_door and (dealer_roster.is_empty() or not dealer_roster.has(assigned_dealer_name)):return false
+	if dedicated_door and (assigned_dealer_name.is_empty() or neighborhood==null or not neighborhood.location_ops.crew.can_handle(inventory_system.staff_property(assigned_dealer_name))):return false
 	if door_customer.is_empty():
 		locker_weed[product_name]=available-qty
 	else:
@@ -6332,9 +6370,6 @@ func _dealer_sell_one_local(show_feedback: bool, assigned_dealer_name: String = 
 	if int(locker_weed.get(product_name,0))<=0:locker_weed.erase(product_name)
 	var gross_revenue: int = qty * _effective_price(product_name)
 	var commission: int = int(ceil(float(gross_revenue) * DEALER_COMMISSION_RATE))
-	var dealer_roster: Array[String] = _active_dealer_roster()
-	if dealer_roster.is_empty():return false
-	if not assigned_dealer_name.is_empty() and not dealer_roster.has(assigned_dealer_name):return false
 	var sale_dealer_name: String = assigned_dealer_name
 	if sale_dealer_name.is_empty() and not dealer_roster.is_empty():
 		sale_dealer_name = dealer_roster[dealer_sales_today % dealer_roster.size()]
@@ -6344,6 +6379,7 @@ func _dealer_sell_one_local(show_feedback: bool, assigned_dealer_name: String = 
 	_record_daily_sale(product_name, qty, gross_revenue, "dealer")
 	dealer_sales_today += 1
 	_record_friend_dealer_sale(sale_dealer_name, qty, gross_revenue, commission)
+	if not door_customer.is_empty():location_state["last_door_sale_strain"]=product_name
 	last_dealer_customer_name = str(chosen_customer.get("name", ""))
 	neighborhood.location_ops.record_dealer_sale(sale_dealer_name,last_dealer_customer_name,product_name,qty,gross_revenue,commission)
 	dealer_customers_served_today[last_dealer_customer_name] = sale_dealer_name
@@ -6355,6 +6391,7 @@ func _dealer_sell_one_local(show_feedback: bool, assigned_dealer_name: String = 
 	relationship["sales"] = int(relationship.get("sales", 0)) + 1
 	relationship["dealer_sales"] = int(relationship.get("dealer_sales", 0)) + 1
 	customer_relationships[last_dealer_customer_name] = relationship
+	_record_customer_strain_experience(last_dealer_customer_name, favorite, product_name)
 	_add_progress(qty * 4, 0)
 	_update_cash_ui()
 	if show_feedback:
@@ -8067,7 +8104,9 @@ func _build_clients_app() -> void:
 				staff_line = "\nSTAFF ROLE: %s  |  No longer visits as a customer while employed." % staff_role.to_upper()
 			elif str(customer.get("tier", "")) == "Friend":
 				staff_line = "\nLOYAL FRIEND  |  Recruit at %d loyalty + %d personal sales." % [FRIEND_RECRUIT_LOYALTY, FRIEND_RECRUIT_PLAYER_SALES]
-			detail.text = "Prefers: %s\nStyle: %s\n%s\nSubstitution flexibility: %d%%\nEncounters: %d  |  Personal sales: %d  |  Dealer sales: %d\nLoyalty: %d / 100%s" % [str(customer.get("favorite", "Any")), smoke_style, personality, int(round(float(customer.get("flexibility", 0.0)) * 100.0)), _customer_relationship_visits(client_name), int(client_relationship.get("player_sales", 0)), int(client_relationship.get("dealer_sales", 0)), _customer_loyalty(client_name), staff_line]
+			detail.text = "Prefers: %s\nStyle: %s\n%s\nSubstitution flexibility: %d%%\nEncounters: %d  |  Personal sales: %d  |  Dealer sales: %d\nLoyalty: %d / 100%s" % [_customer_favorite(customer), smoke_style, personality, int(round(float(customer.get("flexibility", 0.0)) * 100.0)), _customer_relationship_visits(client_name), int(client_relationship.get("player_sales", 0)), int(client_relationship.get("dealer_sales", 0)), _customer_loyalty(client_name), staff_line]
+			var secondary:String=str(client_relationship.get("secondary_strain",""))
+			if not secondary.is_empty() and secondary!=_customer_favorite(customer):detail.text+="\nAlso likes: "+secondary
 		else:
 			detail.text = "Preference: ???\nKeep dealing with this buyer to learn who they are."
 		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -8279,7 +8318,7 @@ func _text_known_customer(customer_name: String) -> void:
 		visit_timer.start()
 	_save_game()
 
-func _recruit_friend_staff(customer_name: String, role: String) -> void:
+func _recruit_friend_staff(customer_name: String, role: String, target_property: String = "apartment") -> void:
 	if _staff_heat_locked():
 		status_label.text = "Nobody wants to start work while Heat is 75 or higher."
 		return
@@ -8292,6 +8331,20 @@ func _recruit_friend_staff(customer_name: String, role: String) -> void:
 		friend_staff_roles[customer_name] = "dealer"
 		_ensure_friend_dealer_stats(customer_name)
 		dealers_active = true
+	elif role == "door":
+		if target_property not in ["apartment", "house"] or neighborhood==null or not neighborhood.location_ops._property_controlled(target_property):return
+		if not neighborhood.location_ops.crew.manager(target_property).is_empty():return
+		var hire_fee:int = 500
+		if cash < hire_fee:return
+		cash -= hire_fee
+		_record_daily_expense("Door worker hiring", hire_fee)
+		friend_staff_roles[customer_name] = "door"
+		_ensure_friend_dealer_stats(customer_name)
+		location_state["staff_assignments"][customer_name] = target_property
+		var managers:Dictionary=location_state.get("door_managers",{})
+		managers[target_property] = customer_name
+		location_state["door_managers"] = managers
+		_update_cash_ui()
 	elif role == "production":
 		if grower_level < 5 or packing_employee_hired:
 			return
@@ -8328,6 +8381,10 @@ func _release_friend_staff(customer_name: String) -> void:
 		location_state["staff_assignments"].erase(customer_name)
 	if str(location_state.get("apartment_manager",""))==customer_name:
 		location_state["apartment_manager"]=""
+	var door_managers:Dictionary=location_state.get("door_managers",{})
+	for property_id in door_managers.keys():
+		if str(door_managers[property_id])==customer_name:door_managers.erase(property_id)
+	location_state["door_managers"]=door_managers
 	if role == "production" and production_worker_friend_name == customer_name:
 		production_worker_friend_name = ""
 		_refresh_production_worker_friend_face()
@@ -8355,7 +8412,7 @@ func _process_friend_staff_purchases() -> int:
 		var customer: Dictionary = _customer_by_name(customer_name)
 		if customer.is_empty():
 			continue
-		var favorite: String = str(customer.get("favorite", ""))
+		var favorite: String = _customer_favorite(customer)
 		if not products.has(favorite):
 			continue
 		var product: Dictionary = products[favorite]
@@ -10772,7 +10829,7 @@ func _customer_arrives() -> void:
 		return
 	if neighborhood != null and neighborhood.client_visits.reserve_slot():
 		return
-	if not business_open:
+	if not (neighborhood.location_ops.crew.shop.is_open(neighborhood.location_ops.active_property()) if neighborhood!=null else business_open):
 		_schedule_next_customer(true)
 		return
 	var viable: Array[Dictionary] = _viable_customers()
@@ -10812,7 +10869,7 @@ func _customer_arrives() -> void:
 	var hype_visit: bool = hype_visits_remaining > 0 and hype_product_available
 	if hype_visit:
 		hype_visits_remaining -= 1
-	var requested: String = hype_product_name if hype_visit else str(current_customer.get("favorite", ""))
+	var requested: String = hype_product_name if hype_visit else _customer_favorite(current_customer)
 	if hype_visit and hype_visits_remaining <= 0:
 		hype_product_name = ""
 	customer_departing = false
@@ -10833,7 +10890,7 @@ func _customer_arrives() -> void:
 
 func _viable_customers() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
-	if not business_open or not _is_customer_time():
+	if not (neighborhood.location_ops.crew.shop.is_open(neighborhood.location_ops.active_property()) if neighborhood!=null else business_open) or not _is_customer_time():
 		return result
 	var listed_names: Array[String] = []
 	for name_variant in products.keys():
@@ -10855,7 +10912,7 @@ func _viable_customers() -> Array[Dictionary]:
 		if force_rod_test_visit and str(customer.get("name", "")) == "Rod" and not listed_names.is_empty():
 			result.append(customer)
 			continue
-		var favorite: String = str(customer.get("favorite", ""))
+		var favorite: String = _customer_favorite(customer)
 		if listed_names.has(favorite):
 			result.append(customer)
 		elif not listed_names.is_empty():
@@ -10974,15 +11031,16 @@ func _substitute_profile_family(profile: String) -> String:
 		_: return profile
 
 func _substitute_acceptance_chance(product_name: String) -> float:
-	if current_customer.is_empty() or not products.has(product_name):
-		return 0.05
+	return _substitute_acceptance_chance_for(current_customer, str(active_request.get("product", "")), product_name)
+
+func _substitute_acceptance_chance_for(customer: Dictionary, requested_name: String, product_name: String) -> float:
+	if customer.is_empty() or not products.has(product_name):return 0.05
 	var data: Dictionary = products[product_name]
-	var requested_name: String = str(active_request.get("product", ""))
 	var requested_data: Dictionary = products.get(requested_name, {}) as Dictionary
 	var candidate_profile: String = str(data.get("profile", ""))
-	var requested_profile: String = str(requested_data.get("profile", current_customer.get("fallback_profile", "")))
-	var fallback_profile: String = str(current_customer.get("fallback_profile", ""))
-	var chance: float = 0.08 + float(current_customer.get("flexibility", 0.0)) * 0.72
+	var requested_profile: String = str(requested_data.get("profile", customer.get("fallback_profile", "")))
+	var fallback_profile: String = str(customer.get("fallback_profile", ""))
+	var chance: float = 0.08 + float(customer.get("flexibility", 0.0)) * 0.72
 	if candidate_profile == requested_profile:
 		chance += 0.22
 	elif _substitute_profile_family(candidate_profile) == _substitute_profile_family(requested_profile):
@@ -10996,6 +11054,10 @@ func _substitute_acceptance_chance(product_name: String) -> float:
 	if requested_price > 0.0:
 		var value_ratio: float = candidate_price / requested_price
 		chance += clampf((value_ratio - 1.0) * 0.16, -0.09, 0.07)
+	var relationship:Dictionary=customer_relationships.get(str(customer.get("name","")), {}) as Dictionary
+	var tastes:Dictionary=relationship.get("strain_tastes",{}) as Dictionary
+	chance+=minf(0.08, float(int(tastes.get(product_name,0)))*0.012)
+	if str(relationship.get("preferred_strain",""))==product_name:chance+=0.04
 	return clampf(chance, 0.08, 0.95)
 
 func _show_substitutes() -> void:
@@ -11076,6 +11138,7 @@ func _complete_sale(product_name: String, qty: int) -> void:
 	cash += total
 	lifetime_revenue += total
 	_record_daily_sale(product_name, qty, total, "player")
+	_record_customer_strain_experience(str(current_customer.get("name", "")), str(active_request.get("product", "")), product_name)
 	if inventory_system!=null and inventory_system.guide!=null:inventory_system.guide.record("sale")
 	_increment_advancement_stat("sales")
 	_add_heat(1.2 + float(maxi(0, qty - 1)) * 0.65, "Door sale", false)
