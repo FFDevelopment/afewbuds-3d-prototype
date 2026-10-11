@@ -19,7 +19,7 @@ func _default()->Dictionary:
  return {"hired":false,"active":false,"friend":"","auto_plant":false,"tasks":0,"last":"Off duty",
  "task":"Off duty","pending":"","slot":-1,"strain":"","target":[0.75,0.0,2.55],
  "dwell":0.0,"stall":0.0,"walk":0.0,"route":[],"route_index":0,"route_end":[0,0,0],
- "route_valid":false,"arrested":false,"bail":0,"away_service":90.0,
+ "route_valid":false,"arrested":false,"bail":0,"away_service":5.0,
  "position":[0.75,0.0,2.55],"yaw":0.0}
 func _capture()->void:
  if not initialized:return
@@ -76,7 +76,7 @@ func _load(property:String)->void:
  host.production_worker_route_valid=bool(d.get("route_valid",false))
  host.production_worker_arrested=bool(d.get("arrested",false))
  host.production_worker_bail_due=int(d.get("bail",0))
- host.away_worker_next_service=float(d.get("away_service",90.0))
+ host.away_worker_next_service=float(d.get("away_service",5.0))
  if actors.has(property):
   var node:Node3D=actors[property]
   host.production_worker_node=node
@@ -324,3 +324,58 @@ func pay_bail(place:String)->void:
  if place not in PLACES:return
  with_property(place,func():host._pay_production_bail())
  host._refresh_phone()
+
+# Offline progression is split by property and merged once. Advancing all
+# slots twice would double crop growth; copying only the originating property's
+# slots makes that impossible. Water and fertilizer remain in that operation.
+func offline_plants(elapsed:float,worker_care:bool)->void:
+ if elapsed<=0.0 or not is_finite(elapsed) or not host._offline_crops_enabled():return
+ var original:Array[Dictionary]=host.plant_slots.duplicate(true)
+ var summary:Dictionary={"waterings":0,"fertilizes":0,"cared":false}
+ for place in PLACES:
+  if not host.inventory_system.furniture.model.controlled(place):continue
+  with_property(place,_offline_one.bind(place,original,elapsed,worker_care,summary))
+ var matured:int=0
+ var dead:int=0
+ var growing:int=0
+ for i in range(host.plant_slots.size()):
+  var before:Dictionary=original[i]
+  var after:Dictionary=host.plant_slots[i]
+  if int(before.get("stage",-1))<0 or int(before.get("stage",-1))>=3 or bool(before.get("dead",false)):continue
+  if bool(after.get("dead",false)):dead+=1
+  elif int(after.get("stage",-1))>=3:matured+=1
+  else:growing+=1
+ var report:Dictionary=host.offline_plant_report
+ report["seconds"]=float(report.get("seconds",0.0))+elapsed
+ report["matured"]=int(report.get("matured",0))+matured
+ report["died"]=int(report.get("died",0))+dead
+ report["growing"]=growing
+ report["worker_care"]=bool(report.get("worker_care",false)) or bool(summary.cared)
+ report["waterings"]=int(report.get("waterings",0))+int(summary.waterings)
+ report["fertilizes"]=int(report.get("fertilizes",0))+int(summary.fertilizes)
+
+func _offline_one(place:String,original:Array[Dictionary],elapsed:float,care:bool,summary:Dictionary)->void:
+ host.inventory_system.at_property(place,_offline_at_property.bind(place,original,elapsed,care,summary))
+func _offline_at_property(place:String,original:Array[Dictionary],elapsed:float,care:bool,summary:Dictionary)->void:
+ var model:RefCounted=host.inventory_system.furniture.model
+ var settings:Dictionary=host._plant_growth_settings(true)
+ var can_work:bool=care and host.packing_employee_hired and host.packing_employee_active and not host.production_worker_arrested and host.game_day>=host.raid_lockdown_until_day and not host.neighborhood.location_ops.crew.shop.laying_low(place)
+ var result:Dictionary=preload("res://scripts/offline_plant_care.gd").advance(original,elapsed,settings,host.fertilizer_units,can_work,host.away_worker_next_service)
+ var plants:Array=result.get("plants",[])
+ for i in range(host.plant_slots.size()):
+  if model.slot_property(i)==place:host.plant_slots[i]=plants[i]
+ host.fertilizer_units=int(result.get("fertilizer_units",host.fertilizer_units))
+ host.away_worker_next_service=float(result.get("service_in",5.0))
+ if can_work:
+  summary.cared=true
+  summary.waterings=int(summary.waterings)+int(result.get("waterings",0))
+  summary.fertilizes=int(summary.fertilizes)+int(result.get("fertilizes",0))
+  for idx in result.get("water_by_slot",{}):
+   if model.slot_property(int(idx))==place:
+    host._charge_water_use(int(result.water_by_slot[idx]),int(idx))
+  host.production_worker_pending_action=""
+  host.production_worker_pending_slot=-1
+  host.production_worker_pending_strain=""
+  host.production_worker_task="Checking plants after away care"
+  host.production_worker_last_action=host.production_worker_task
+  host._reset_production_worker_navigation()
