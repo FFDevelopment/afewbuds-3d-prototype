@@ -146,6 +146,8 @@ var production_worker_route_index: int = 0
 var production_worker_route_destination: Vector3 = Vector3.ZERO
 var production_worker_route_valid: bool = false
 var production_worker_friend_name: String = ""
+var production_crew:RefCounted
+var pending_saved_plant_clock:Dictionary={}
 var friend_staff_roles: Dictionary = {}
 var friend_dealer_stats: Dictionary = {}
 var dealer_count: int = 0
@@ -750,6 +752,11 @@ func _ready() -> void:
 	inventory_system=load("res://scripts/container_inventory.gd").new()
 	add_child(inventory_system)
 	inventory_system.setup(self)
+	production_crew=load("res://scripts/property_production_crew.gd").new()
+	production_crew.setup(self)
+	if not pending_saved_plant_clock.is_empty():
+		_restore_plant_clock(pending_saved_plant_clock)
+		pending_saved_plant_clock.clear()
 	_update_day_night_visuals()
 	_build_visit_timer()
 	_build_customer_patience_timers()
@@ -808,7 +815,8 @@ func _process(delta: float) -> void:
 		_advance_day_night(delta)
 		if daily_report_pending:
 			return
-		_update_production_worker_visual(delta)
+		if production_crew!=null:production_crew.update(delta)
+		else:_update_production_worker_visual(delta)
 	if camera == null or _any_modal_open():
 		return
 	var can_free_look: bool = room_ring.has(current_view) or current_view in ["grow", "grow2", "grow3"]
@@ -5177,9 +5185,14 @@ func _offline_crops_enabled() -> bool:
 	return not _guide_protects_plants() and not tutorial_active and (tutorial_panel == null or not tutorial_panel.visible)
 
 func _offline_worker_care_enabled() -> bool:
+	if production_crew!=null and production_crew.initialized:
+		return production_crew.any_duty() and game_day>=raid_lockdown_until_day and _offline_crops_enabled()
 	return packing_employee_hired and packing_employee_active and game_day >= raid_lockdown_until_day and _offline_crops_enabled() and (neighborhood==null or neighborhood.location_ops.crew.shop==null or neighborhood.location_ops.crew.shop.production_allowed())
 
 func _simulate_offline_plants(elapsed_seconds: float, worker_care: bool = false) -> void:
+	if production_crew!=null and production_crew.initialized:
+		production_crew.offline_plants(elapsed_seconds,worker_care)
+		return
 	if inventory_system!=null and inventory_system.furniture!=null and inventory_system.controlled(inventory_system.worker_property()+":packing"):
 		inventory_system.at_property(inventory_system.worker_property(),_simulate_offline_plants_local.bind(elapsed_seconds,worker_care))
 	else:_simulate_offline_plants_local(elapsed_seconds,worker_care and (inventory_system==null or inventory_system.controlled(inventory_system.worker_property()+":packing")))
@@ -5322,10 +5335,9 @@ func _build_automation_timer() -> void:
 func _on_automation_tick() -> void:
 	if _simulation_blocked():
 		return
-	if packing_employee_hired and packing_employee_active:
-		_assign_production_worker_task()
-	elif production_worker_node != null:
-		production_worker_node.visible = false
+	if production_crew!=null:production_crew.tick()
+	elif packing_employee_hired and packing_employee_active:_assign_production_worker_task()
+	elif production_worker_node != null:production_worker_node.visible = false
 	if _total_dealer_count() > 0 and dealers_active:
 		auto_sale_accumulator += AUTO_TICK_SECONDS
 		if auto_sale_accumulator >= AUTO_SALE_SECONDS:
@@ -6062,7 +6074,7 @@ func _dealer_hire_cost() -> int:
 	return DEALER_BASE_HIRE_COST + _total_dealer_count() * 300
 
 func _staff_count() -> int:
-	return (1 if packing_employee_hired else 0) + _total_dealer_count() + _friend_staff_names("door").size()
+	return (production_crew.hired_count() if production_crew!=null else (1 if packing_employee_hired else 0)) + _total_dealer_count() + _friend_staff_names("door").size()
 
 func _current_power_rate_per_game_minute() -> float:
 	var rate: float = 0.0 if lay_low_active else POWER_BASE_COST_PER_GAME_MINUTE
@@ -6144,10 +6156,8 @@ func _pay_power_bill() -> void:
 	if power_bill_due<=0:return
 
 func _staff_daily_payroll() -> int:
-	var total: int = 0
-	if packing_employee_hired and packing_employee_active:
-		total += PACKER_DAILY_WAGE
-	return total
+	if production_crew!=null:return production_crew.payroll_due("apartment")+production_crew.payroll_due("house")
+	return PACKER_DAILY_WAGE if packing_employee_hired and packing_employee_active else 0
 
 func _roman(value: int) -> String:
 	match value:
@@ -8207,7 +8217,8 @@ func _critical_dealer_sender() -> String:
 	return "Dealer Team"
 
 func _critical_production_sender() -> String:
-	return production_worker_friend_name if not production_worker_friend_name.is_empty() else "Production Worker"
+	if not production_worker_friend_name.is_empty():return production_worker_friend_name
+	return "House Production Worker" if production_crew!=null and production_crew.current=="house" else "Production Worker"
 
 func _handle_critical_heat_staff() -> void:
 	if critical_staff_event_active or heat < 100.0:
@@ -8340,6 +8351,9 @@ func _text_known_customer(customer_name: String) -> void:
 	_save_game()
 
 func _recruit_friend_staff(customer_name: String, role: String, target_property: String = "apartment") -> void:
+	if role=="production" and production_crew!=null and not production_crew.scoped:
+		production_crew.recruit(customer_name,target_property)
+		return
 	if _staff_heat_locked():
 		status_label.text = "Nobody wants to start work while Heat is 75 or higher."
 		return
@@ -8389,6 +8403,9 @@ func _recruit_friend_staff(customer_name: String, role: String, target_property:
 	_save_game()
 
 func _release_friend_staff(customer_name: String) -> void:
+	if production_crew!=null and not production_crew.scoped and production_crew.property_for_name(customer_name)!="":
+		production_crew.fire(production_crew.property_for_name(customer_name))
+		return
 	var held_role: String = _friend_staff_role(customer_name)
 	if (held_role == "production" and production_worker_arrested) or (held_role == "dealer" and dealer_arrested):
 		status_label.text = "Resolve the bail before ending this staff role."
@@ -8426,7 +8443,7 @@ func _process_friend_staff_purchases() -> int:
 		var role: String = _friend_staff_role(customer_name)
 		if role == "dealer" and not dealers_active:
 			continue
-		if role == "production" and not packing_employee_active:
+		if role == "production" and (not production_crew.active_for_name(customer_name) if production_crew!=null else not packing_employee_active):
 			continue
 		if rng.randf() > FRIEND_STAFF_PURCHASE_CHANCE:
 			continue
@@ -9863,6 +9880,7 @@ func _reset_failed(message: String) -> void:
 
 
 func _save_game() -> void:
+	if production_crew!=null and production_crew.initialized:production_crew._capture()
 	if phone_remote_stock_change:return
 	last_save_ok=false
 	if reset_in_progress:
@@ -10286,7 +10304,7 @@ func _load_game() -> void:
 		game_time_minutes = 1439.999
 		daily_report_data["next_day"] = game_day + 1
 		closeout_announced = true
-	_restore_plant_clock(data)
+	pending_saved_plant_clock=data
 
 func _customer_relationship_visits(customer_name: String) -> int:
 	if not customer_relationships.has(customer_name):
