@@ -3,6 +3,9 @@ on:
   push:
     branches: [fix/avatar-preview-invisible-20261011]
   workflow_dispatch:
+concurrency:
+  group: afb-avatar-visual-smoke
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -26,7 +29,7 @@ jobs:
       - name: Verify the actual preview viewport renders a visible character
         run: |
           set -o pipefail
-          xvfb-run -a -s '-screen 0 1280x800x24' env LIBGL_ALWAYS_SOFTWARE=1 /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 --path game --script res://prototype/avatar_render_test.gd 2>&1 | tee /tmp/afb-avatar-render.log
+          timeout 100s xvfb-run -a -s '-screen 0 1280x800x24' env LIBGL_ALWAYS_SOFTWARE=1 /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 --path game --script res://prototype/avatar_render_test.gd 2>&1 | tee /tmp/afb-avatar-render.log
           grep -q 'AVATAR_RENDER_RESULT: PASS' /tmp/afb-avatar-render.log
       - name: Save diagnostic screenshot
         if: always()
@@ -35,6 +38,7 @@ jobs:
           name: avatar-preview-render-debug
           path: |
             /tmp/afb-avatar-preview.png
+            /tmp/afb-avatar-ui.png
             /tmp/afb-avatar-render.log
           if-no-files-found: warn
           retention-days: 7
