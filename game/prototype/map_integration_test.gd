@@ -56,12 +56,14 @@ func run():
  game.production_worker_node.position=Vector3(43.8,0,-7.6)
  game.production_worker_target_position=Vector3(29,-3.8,-10);game._reset_production_worker_navigation()
  game._house_worker_navigation_target()
+ print("HOUSE_STAIR_DEBUG route=",game.production_worker_route_points)
  check(game.production_worker_route_points.size()>5,"House workers use switchback waypoints to change floors")
  var passed_landing:=false
  for i in 1000:
   var target:Vector3=game._house_worker_navigation_target()
   game.production_worker_node.position=game.production_worker_node.position.move_toward(target,.1)
   if game.production_worker_node.position.distance_to(Vector3(42,-1.9,-13))<.2:passed_landing=true
+ print("HOUSE_STAIR_DEBUG finished=",game.production_worker_node.position," index=",game.production_worker_route_index," route_size=",game.production_worker_route_points.size()," via_landing=",passed_landing)
  check(passed_landing and game.production_worker_node.position.distance_to(game.production_worker_target_position)<.1,"Worker reaches basement through stair landing")
  # Exercise the live collision refresh, not just freshly installed geometry.
  if desktop:game._add_physical_collisions(game)
