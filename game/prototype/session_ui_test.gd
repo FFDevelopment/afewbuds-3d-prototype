@@ -26,7 +26,7 @@ func run():
  game._resume_gameplay();game._pause_gameplay()
  var inv:Node=game.inventory_system
  var menu:Node=inv.session_menu
- check(buttons(menu.body)==["RESUME GAME","SETTINGS","HELP","SAVE & QUIT"],"Pause presents Resume, Settings, Help and Save & Quit in order")
+ check(buttons(menu.body)==["RESUME GAME","SETTINGS","HELP","UNSTUCK · RETURN TO SAFE SPOT","SAVE & QUIT"],"Pause presents Resume, Settings, Help, Unstuck and Save & Quit in order")
  menu.show_page("settings")
  check("ACCOUNT SETTINGS" in buttons(menu.body),"Account settings are available from Pause")
  if desktop:check("CONTROLS & DISPLAY" in buttons(menu.body),"Desktop settings retain controller and display controls")
