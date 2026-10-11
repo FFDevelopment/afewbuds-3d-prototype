@@ -61,7 +61,7 @@ func run()->void:
     if difference>.12:meaningful_pixels+=1
     if difference>.05:central_pixels+=1
     total_pixels+=1
- print("AVATAR_RENDER_DIAGNOSTIC ",JSON.stringify({"preview_size":preview.size,"preview_visible":preview.is_visible_in_tree(),"camera_current":camera.current,"camera_pos":camera.global_position,"camera_basis":camera.global_transform.basis,"world":render_world!=null,"visible_meshes":visible_count,"in_frustum":in_frustum,"example_centers":examples,"pixels_colorful":meaningful_pixels,"pixels_changed":central_pixels,"samples":total_pixels,"image_size":image.get_size() if image!=null else Vector2i.ZERO,"container_size":editor.preview_image.size,"ui_size":ui.get_size() if ui!=null else Vector2i.ZERO}))
+ print("AVATAR_RENDER_DIAGNOSTIC ",JSON.stringify({"preview_size":preview.size,"preview_visible":editor.preview_image.is_visible_in_tree(),"camera_current":camera.current,"camera_pos":camera.global_position,"camera_basis":camera.global_transform.basis,"world":render_world!=null,"visible_meshes":visible_count,"in_frustum":in_frustum,"example_centers":examples,"pixels_colorful":meaningful_pixels,"pixels_changed":central_pixels,"samples":total_pixels,"image_size":image.get_size() if image!=null else Vector2i.ZERO,"container_size":editor.preview_image.size,"ui_size":ui.get_size() if ui!=null else Vector2i.ZERO}))
  var ok:bool=visible_count>=15 and in_frustum>=12 and meaningful_pixels>=150
  print("AVATAR_RENDER_RESULT: "+("PASS" if ok else "FAIL"))
  editor._cancel()
