@@ -3,6 +3,7 @@ const PhoneVisuals = preload("res://scripts/phone_visuals.gd")
 
 var neighborhood: Node3D
 var house_control_state: Dictionary = {}
+var house_npc_navigation: RefCounted
 
 
 const PlantGrowth = preload("res://scripts/plant_growth.gd")
@@ -5522,8 +5523,10 @@ func _production_worker_station_position(station_name: String) -> Vector3:
 	if action_target is Vector3 and station_name in ["workbench","grow"]:return action_target
 	if inventory_system!=null and inventory_system.furniture!=null and inventory_system.worker_property()=="house":
 		var model:RefCounted=inventory_system.furniture.model
-		if station_name=="entry":return Vector3(28.5,0.0,-0.8)
-		if station_name=="idle":return Vector3(29.0,0.0,-0.9)
+		if station_name=="entry":return Vector3(35.0,0.0,1.45)
+		if station_name=="idle":
+			if neighborhood!=null and neighborhood.location_ops!=null and neighborhood.location_ops.crew!=null:return neighborhood.location_ops.crew.idle_spot(false,false,"house")
+			return Vector3(31.5,0.0,-2.4)
 		var kind:String={"workbench":"packing","storage":"storage","grow":"tent"}.get(station_name,"")
 		if station_name=="grow":
 			var selected_id:String=model.item_for_slot(production_worker_pending_slot)
@@ -5554,11 +5557,24 @@ func _production_worker_station_position(station_name: String) -> Vector3:
 
 
 func _reset_production_worker_navigation() -> void:
+	if house_npc_navigation!=null:house_npc_navigation.reset("production")
 	production_worker_route_points.clear()
 	production_worker_route_index = 0
 	production_worker_route_valid = false
 	production_worker_stall_seconds = 0.0
 
+
+func _house_npc_route() -> RefCounted:
+	if house_npc_navigation==null:
+		house_npc_navigation=preload("res://scripts/house_npc_navigation.gd").new()
+		house_npc_navigation.setup(self)
+	return house_npc_navigation
+
+func house_route_next(agent:String,here:Vector3,goal:Vector3) -> Vector3:
+	return _house_npc_route().next_waypoint(agent,here,goal)
+
+func house_route_arrived(agent:String,here:Vector3,goal:Vector3) -> bool:
+	return _house_npc_route().arrived(agent,here,goal)
 
 func _production_worker_navigation_target() -> Vector3:
 	# House workers navigate to the house stations, not old apartment hallway waypoints.
@@ -5647,7 +5663,8 @@ func _update_production_worker_visual(delta: float) -> void:
 	if production_worker_pending_action.is_empty():
 		production_worker_action_dwell = 0.0
 		return
-	if production_worker_node.position.distance_to(production_worker_target_position) > 0.16:
+	var at_station:bool=house_route_arrived("production",production_worker_node.position,production_worker_target_position) if inventory_system!=null and inventory_system.worker_property()=="house" else production_worker_node.position.distance_to(production_worker_target_position)<=0.16
+	if not at_station:
 		production_worker_action_dwell = 0.0
 		return
 	production_worker_action_dwell += delta
@@ -12439,19 +12456,12 @@ func _guide_protects_plants() -> bool:
 	return bool(guide.get("active",false)) and int(guide.get("step",0))<15
 
 func _house_worker_navigation_target()->Vector3:
-	var target:Vector3=production_worker_target_position
-	if production_worker_node==null:return target
-	var here:Vector3=production_worker_node.position
-	if not production_worker_route_valid or production_worker_route_destination.distance_to(target)>.01:
-		production_worker_route_points.clear();production_worker_route_index=0
-		production_worker_route_destination=target;production_worker_route_valid=true
-		if has_node("BasementExpansion") and (here.y<-.5)!=(target.y<-.5):
-			var stairs:Array[Vector3]=[Vector3(43.8,0,-7.6),Vector3(43.8,0,-8.3),Vector3(43.8,-1.9,-12.4),Vector3(43.8,-1.9,-13),Vector3(42,-1.9,-13),Vector3(42,-1.9,-12.4),Vector3(42,-3.8,-8.3),Vector3(42,-3.8,-7.4),Vector3(40.6,-3.8,-7.4)]
-			if here.y<-.5:stairs.reverse()
-			production_worker_route_points.append_array(stairs)
-		production_worker_route_points.append(target)
-	while production_worker_route_index<production_worker_route_points.size():
-		var point:Vector3=production_worker_route_points[production_worker_route_index]
-		if here.distance_to(point)>.08:return point
-		production_worker_route_index+=1
-	return target
+	if production_worker_node==null:return production_worker_target_position
+	var waypoint:Vector3=house_route_next("production",production_worker_node.position,production_worker_target_position)
+	# Mirror the route for existing map QA and in-game path debugging.
+	var record:Dictionary=_house_npc_route().routes.get("production",{})
+	production_worker_route_points.clear()
+	for point in record.get("points",[]):production_worker_route_points.append(point)
+	production_worker_route_index=int(record.get("index",0))
+	production_worker_route_valid=not production_worker_route_points.is_empty()
+	return waypoint
