@@ -7470,7 +7470,7 @@ func _build_products_local() -> void:
 		card.add_child(row)
 		# A narrow phone can collapse a horizontal LIST button into a blank
 		# strip. Stack the name and full-width action on touch/web viewports.
-		var compact:bool=OS.has_feature("web") or get_viewport().get_visible_rect().size.x<680.0
+		var compact:bool=OS.has_feature("web") or get_viewport().get_visible_rect().size.x<680.0 or get_window().size.x<680
 		var head: BoxContainer=VBoxContainer.new() if compact else HBoxContainer.new()
 		head.add_theme_constant_override("separation",8)
 		row.add_child(head)
