@@ -487,9 +487,17 @@ func cancel_placement() -> void:
 func start_layout(property_id:String) -> void:
  controls_active=false
  if not inside(property_id):hint.text="Enter this property before editing its furniture.";return
- layout_mode=true;layout_property=property_id;portfolio_property=property_id;panel.hide();layout_panel.show()
+ layout_mode=true;layout_property=property_id;portfolio_property=property_id;property=property_id;panel.hide();layout_panel.show()
  if host.get("fp_player")!=null:Input.mouse_mode=Input.MOUSE_MODE_CAPTURED
  refresh_layout()
+# Layout selection uses the current property's floor, not a previous placement
+# operation. Mounted utilities are raised above their owning floor.
+func layout_floor()->float:
+ return -3.8 if layout_property=="house" and host.has_node("BasementExpansion") and host.camera.global_position.y<-.5 else 0.0
+func layout_same_floor(id:String,base_y:float)->bool:
+ var floor_y:float=layout_floor()
+ if model.wall_mountable(id) and base_y>=floor_y+.50 and base_y<=floor_y+2.75:return true
+ return absf(base_y-floor_y)<=.8
 func refresh_layout(force:bool=false) -> void:
  if not inside(layout_property):close();return
  if controls_active and not force:return
@@ -500,10 +508,10 @@ func refresh_layout(force:bool=false) -> void:
  for id in model.state.items:
   var e:Dictionary=model.state.items[id]
   if e.get("property","")!=layout_property or not e.has("position"):continue
-  # Furniture on another floor must not intercept walk-around selection.
-  if absf(float(e.position[1])-placement_floor())>0.8:continue
-  var size:Vector3=model.size_of(id,int(e.get("yaw",0)))
-  var box:=AABB(Vector3(e.position[0]-size.x*.5,e.position[1],e.position[2]-size.z*.5),size)
+  # Raised wall equipment belongs to the viewed floor; never target across floors.
+  if not layout_same_floor(id,float(e.position[1])):continue
+  var at:=Vector3(float(e.position[0]),float(e.position[1]),float(e.position[2]))
+  var box:AABB=model.occupied_box(id,at,int(e.get("yaw",0)))
   var hit=box.intersects_ray(origin,direction)
   if hit!=null and origin.distance_to(hit)<distance:layout_focus=id;distance=origin.distance_to(hit)
  var reason:String="" if layout_focus.is_empty() else model.empty_reason(layout_focus)
