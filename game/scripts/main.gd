@@ -5333,12 +5333,17 @@ func _build_automation_timer() -> void:
 	automation_timer.start()
 
 func _on_automation_tick() -> void:
-	if _simulation_blocked():
-		return
+	if _simulation_blocked():return
 	if production_crew!=null:production_crew.tick()
-	elif packing_employee_hired and packing_employee_active:_assign_production_worker_task()
-	elif production_worker_node != null:production_worker_node.visible = false
-	if _total_dealer_count() > 0 and dealers_active:
+	elif packing_employee_hired and not packing_employee_active and bool(location_state.get("legacy_worker_resume_after_heat",false)) and not production_worker_arrested and not _staff_heat_locked() and game_day>=raid_lockdown_until_day and not lay_low_active:
+		packing_employee_active=true
+		location_state["legacy_worker_resume_after_heat"]=false
+		production_worker_task="Clocking in"
+		production_worker_last_action="Heat cooled - back on scheduled shift"
+	elif packing_employee_hired and packing_employee_active and not _staff_heat_locked() and not lay_low_active:_assign_production_worker_task()
+	elif production_worker_node!=null:production_worker_node.visible=false
+	_resume_dealers_after_heat()
+	if _total_dealer_count() > 0 and dealers_active and not _staff_heat_locked():
 		auto_sale_accumulator += AUTO_TICK_SECONDS
 		if auto_sale_accumulator >= AUTO_SALE_SECONDS:
 			auto_sale_accumulator = 0.0
@@ -7459,7 +7464,9 @@ func _build_products_local() -> void:
 		var row: VBoxContainer = VBoxContainer.new()
 		row.add_theme_constant_override("separation", 7)
 		card.add_child(row)
-		var head: HBoxContainer = HBoxContainer.new()
+		# Narrow iOS phone panels compress side-by-side labels into a green
+		# vertical strip. Stack product name and action at full card width.
+		var head: VBoxContainer = VBoxContainer.new()
 		row.add_child(head)
 		var name_label: Label = Label.new()
 		name_label.text = product_name
@@ -7470,7 +7477,9 @@ func _build_products_local() -> void:
 		var toggle: Button = Button.new()
 		toggle.text = "UNLIST" if is_listed else "LIST"
 		toggle.tooltip_text = "Remove from storefront" if is_listed else "Make available to customers"
-		toggle.custom_minimum_size = Vector2(132, 52)
+		toggle.custom_minimum_size = Vector2(0, 54)
+		toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		toggle.add_theme_font_size_override("font_size", 18)
 		toggle.disabled = stock <= 0 or not business_open
 		toggle.pressed.connect(_toggle_product_listing.bind(product_name))
 		head.add_child(toggle)
@@ -8025,6 +8034,7 @@ func _toggle_packing_employee() -> void:
 		return
 	packing_employee_active = not packing_employee_active
 	if not packing_employee_active:
+		location_state["legacy_worker_resume_after_heat"]=false
 		production_worker_pending_action = ""
 		production_worker_task = "Off duty"
 		production_worker_last_action = "Off duty"
@@ -8100,6 +8110,7 @@ func _toggle_dealers() -> void:
 		status_label.text = "Clear the $%d dealer balance before putting the team back on duty." % dealer_balance_due
 		return
 	dealers_active = not dealers_active
+	location_state["dealer_resume_after_heat"]=false
 	status_label.text = "Dealer team is now %s." % ("WORKING" if dealers_active else "OFF DUTY")
 	_save_game()
 	_refresh_phone()
@@ -8268,6 +8279,21 @@ func _critical_production_sender() -> String:
 	if not production_worker_friend_name.is_empty():return production_worker_friend_name
 	return "House Production Worker" if production_crew!=null and production_crew.current=="house" else "Production Worker"
 
+func _resume_dealers_after_heat()->void:
+ if not bool(location_state.get("dealer_resume_after_heat",false)):return
+ if dealers_active:
+  location_state["dealer_resume_after_heat"]=false
+  return
+ if _staff_heat_locked() or dealer_arrested or dealer_balance_due>0 or game_day<raid_lockdown_until_day:return
+ if neighborhood!=null and neighborhood.location_ops!=null:
+  var shop:RefCounted=neighborhood.location_ops.crew.shop
+  if shop.laying_low("apartment") and (not neighborhood.location_ops._property_controlled("house") or shop.laying_low("house")):return
+ dealers_active=true
+ location_state["dealer_resume_after_heat"]=false
+ status_label.text="Heat cooled. The dealer team resumed its previously scheduled shifts."
+ _save_game()
+ _refresh_phone()
+
 func _handle_critical_heat_staff() -> void:
 	if critical_staff_event_active or heat < 100.0:
 		return
@@ -8284,6 +8310,7 @@ func _handle_critical_heat_staff() -> void:
 	else:
 		arrest_target = "production"
 	if had_dealers:
+		location_state["dealer_resume_after_heat"]=true
 		dealers_active = false
 		var dealer_sender: String = _critical_dealer_sender()
 		if arrest_target == "dealer":
@@ -8295,6 +8322,7 @@ func _handle_critical_heat_staff() -> void:
 	if had_production and production_crew!=null:
 		production_crew.heat_shutdown(arrest_target=="production")
 	elif had_production:
+		location_state["legacy_worker_resume_after_heat"]=true
 		packing_employee_active = false
 		production_worker_pending_action = ""
 		production_worker_task = "Off duty"
@@ -9462,9 +9490,38 @@ Last change: %s" % [int(round(heat_peak)), int(floor(heat_reduced_total)), last_
 	phone_list.add_child(guide)
 
 	var shutdown_note := Label.new()
-	shutdown_note.text="Lay low at the property computer or text assigned crew through Contacts. Active in-game cooldown is intentionally faster than offline cooldown."
+	shutdown_note.text="You can always CLOSE SHOP or LAY LOW, even with no workers on duty or at critical Heat. Reopening requires Heat below 75 and no raid lockdown. Active in-game cooldown is faster than offline cooldown."
 	shutdown_note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	phone_list.add_child(shutdown_note)
+	if neighborhood!=null and neighborhood.location_ops!=null and neighborhood.location_ops.crew!=null:
+		var local_shop:RefCounted=neighborhood.location_ops.crew.shop
+		for property in ["apartment","house"]:
+			if not neighborhood.location_ops._property_controlled(property):continue
+			var current:String=local_shop.status(property)
+			var title:=Label.new()
+			title.text=property.capitalize()+" SHOP · "+current
+			title.add_theme_font_size_override("font_size",18)
+			phone_list.add_child(title)
+			if local_shop.laying_low(property):
+				var setup:=Button.new()
+				setup.text="SET UP & REOPEN "+property.to_upper()
+				setup.custom_minimum_size=Vector2(0,54)
+				setup.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+				setup.pressed.connect(local_shop.owner_command.bind(property,"reopen"))
+				phone_list.add_child(setup)
+			else:
+				var close_button:=Button.new()
+				close_button.text=("CLOSE "+property.to_upper()+" SHOP" if local_shop.is_open(property) else "REOPEN "+property.to_upper()+" SHOP")
+				close_button.custom_minimum_size=Vector2(0,54)
+				close_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+				close_button.pressed.connect(local_shop.owner_command.bind(property,"close" if local_shop.is_open(property) else "open"))
+				phone_list.add_child(close_button)
+				var hide_button:=Button.new()
+				hide_button.text="SHUT DOWN "+property.to_upper()+" · LAY LOW"
+				hide_button.custom_minimum_size=Vector2(0,54)
+				hide_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+				hide_button.pressed.connect(local_shop.owner_command.bind(property,"shutdown"))
+				phone_list.add_child(hide_button)
 
 	if reeves_met or reeves_arrangement_active or reeves_arrangement_ended:
 		var reeves_link:Label=Label.new()

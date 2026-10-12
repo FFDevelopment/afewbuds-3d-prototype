@@ -20,7 +20,7 @@ func _default()->Dictionary:
  "task":"Off duty","pending":"","slot":-1,"strain":"","target":[0.75,0.0,2.55],
  "dwell":0.0,"stall":0.0,"walk":0.0,"route":[],"route_index":0,"route_end":[0,0,0],
  "route_valid":false,"arrested":false,"bail":0,"away_service":5.0,
- "resume_after_pay":false,"payroll_owed":0,
+ "resume_after_pay":false,"payroll_owed":0,"resume_after_heat":false,
  "position":[0.75,0.0,2.55],"yaw":0.0}
 func _capture()->void:
  if not initialized:return
@@ -132,6 +132,9 @@ func setup(owner:Node3D)->void:
   if not bool(record.get("active",false)) and str(record.get("task",""))=="Off duty - unpaid" and not bool(record.get("resume_after_pay",false)):
    record.resume_after_pay=true
    record.payroll_owed=host.PACKER_DAILY_WAGE
+  # Existing careers previously lost their shift permanently at critical Heat.
+  if not bool(record.get("active",false)) and str(record.get("last",""))=="Went home - Heat too high":
+   record.resume_after_heat=true
   if place=="house" and record.get("position",[])==[0.75,0.0,2.55]:record.position=[35.0,0.0,1.45]
   if place=="house" and _at(record.get("target",[0,0,0])).x<25.0:record.target=[35.0,0.0,1.45]
   slots[place]=record
@@ -290,10 +293,14 @@ func transfer(name:String,target:String)->bool:
 # Clocking workers without switching inventory adapters silently consumes
 # apartment seeds and misses house packing inventory.
 func _task_tick()->void:
+ if host._staff_heat_locked() or host.neighborhood.location_ops.crew.shop.laying_low(current):
+  if host.production_worker_node!=null:host.production_worker_node.visible=false
+  return
  if host.packing_employee_hired and host.packing_employee_active:
   host._assign_production_worker_task()
  elif host.production_worker_node!=null:host.production_worker_node.visible=false
 func tick()->void:
+ resume_heat_shifts()
  resume_paid_shifts()
  for place in PLACES:
   if not host.inventory_system.furniture.model.controlled(place):continue
@@ -315,6 +322,34 @@ func update(delta:float)->void:
 # If cash was temporarily short, charge the owed wage once funds return and
 # automatically restore that shift. Manual time-off and heat shutdown never
 # set resume_after_pay, so neither is overridden here.
+# Heat shutdown suspends the current preference, not the employment record.
+# Resume only after Heat, arrest/bail, lockdown and Lay Low restrictions clear.
+func resume_heat_shifts(only_place:String="")->Array[String]:
+ var resumed:Array[String]=[]
+ for place in PLACES:
+  if not only_place.is_empty() and place!=only_place:continue
+  var d:Dictionary=record(place)
+  if not bool(d.get("hired",false)) or bool(d.get("active",false)) or not bool(d.get("resume_after_heat",false)):continue
+  if bool(d.get("arrested",false)) or host._staff_heat_locked() or host.game_day<host.raid_lockdown_until_day:continue
+  if host.neighborhood.location_ops.crew.shop.laying_low(place):continue
+  d.active=true
+  d.resume_after_heat=false
+  d.pending=""
+  d.slot=-1
+  d.strain=""
+  d.route=[]
+  d.route_index=0
+  d.route_valid=false
+  d.task="Clocking in"
+  d.last="Heat cooled - returned to scheduled shift"
+  resumed.append(place.capitalize())
+ if not resumed.is_empty():
+  _load(current)
+  host.status_label.text="Heat has cooled. "+", ".join(PackedStringArray(resumed))+" production shift(s) are back on duty."
+  host._save_game()
+  host._refresh_phone()
+ return resumed
+
 func resume_paid_shifts(only_place:String="")->Array[String]:
  var resumed:Array[String]=[]
  for place in PLACES:
@@ -376,6 +411,7 @@ func heat_shutdown(arrest_one:bool)->void:
   if not bool(d.get("hired",false)) or not bool(d.get("active",false)):continue
   if candidate.is_empty():candidate=place
   d.active=false
+  d.resume_after_heat=true
   d.pending=""
   d.task="Off duty"
   d.last="Went home - Heat too high"
@@ -425,7 +461,7 @@ func _offline_one(place:String,original:Array[Dictionary],elapsed:float,care:boo
 func _offline_at_property(place:String,original:Array[Dictionary],elapsed:float,care:bool,summary:Dictionary)->void:
  var model:RefCounted=host.inventory_system.furniture.model
  var settings:Dictionary=host._plant_growth_settings(true)
- var can_work:bool=care and host.packing_employee_hired and host.packing_employee_active and not host.production_worker_arrested and host.game_day>=host.raid_lockdown_until_day and not host.neighborhood.location_ops.crew.shop.laying_low(place)
+ var can_work:bool=care and host.packing_employee_hired and host.packing_employee_active and not host.production_worker_arrested and host.game_day>=host.raid_lockdown_until_day and not host._staff_heat_locked() and not host.neighborhood.location_ops.crew.shop.laying_low(place)
  var result:Dictionary=preload("res://scripts/offline_plant_care.gd").advance(original,elapsed,settings,host.fertilizer_units,can_work,host.away_worker_next_service)
  var plants:Array=result.get("plants",[])
  for i in range(host.plant_slots.size()):

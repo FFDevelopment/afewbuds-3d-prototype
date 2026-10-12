@@ -118,6 +118,21 @@ func reopen(property:String) -> bool:
 		host.inventory_system.activate_adapters(previous)
 	host._save_game();host._refresh_phone()
 	return true
+# Homeowners can always secure the operation, even without an on-duty worker.
+# Heat/raids restrict REOPENING, not closing, pausing customers, or shutting
+# off equipment. The same entry point is used by Phone > Heat and Properties.
+func owner_command(property:String,action:String)->void:
+ if not crew.ops._property_controlled(property):return
+ match action:
+  "close":close_property(property)
+  "shutdown":shutdown(property);return
+  "open","reopen":
+   if not reopen(property):
+    host.status_label.text="Heat must be below 75 and the raid lockdown must be over before "+property.capitalize()+" can reopen."
+  _:return
+ host._save_game()
+ host._refresh_phone()
+
 func command(name:String,action:String) -> void:
 	var property:String=crew.assignment(name)
 	var context:Dictionary={"property":property,"status":status(property).to_lower()}
@@ -126,8 +141,9 @@ func command(name:String,action:String) -> void:
 	if action=="status":
 		crew.send(name,crew.say(name,"status",context));return
 	if action not in ["close","open","shutdown","reopen"]:return
-	if not on_duty(name):
-		crew.send(name,crew.say(name,"off_duty",context));return
+	# A worker can still receive a safety/closure text while off duty from
+	# high Heat. No unpaid production or sales are authorized by this command.
+	# Reopening still goes through the property's Heat/raid gate.
 	crew.outgoing(name,{"close":"Close shop for clients.","open":"Open shop again.","shutdown":"Shut down shop and lay low.","reopen":"Restore the equipment and set up shop again."}[action])
 	if action=="close":
 		close_property(property)
@@ -143,9 +159,10 @@ func command(name:String,action:String) -> void:
 func render(parent:VBoxContainer,property:String) -> void:
 	crew.label(parent,"SHOP OPERATIONS · "+status(property))
 	var name:String=operator_for(property)
-	crew.label(parent,"Assigned operator: "+name if not name.is_empty() else "Put an employee at this property on duty to manage the shop remotely.")
-	if laying_low(property):crew.button(parent,"SET UP SHOP & OPEN",command.bind(name,"reopen"),name.is_empty())
+	crew.label(parent,"Assigned operator: "+name if not name.is_empty() else "No worker currently on duty. You can still close and secure this property yourself.")
+	if laying_low(property):
+		crew.button(parent,"SET UP SHOP & OPEN",owner_command.bind(property,"reopen"))
 	else:
-		crew.button(parent,"CLOSE SHOP" if is_open(property) else "OPEN SHOP",command.bind(name,"close" if is_open(property) else "open"),name.is_empty())
-		crew.button(parent,"SHUT DOWN SHOP & LAY LOW",command.bind(name,"shutdown"),name.is_empty())
-	crew.label(parent,"Close stops new sales. Lay Low also shuts down equipment. Set Up restores the settings from before shutdown.")
+		crew.button(parent,"CLOSE SHOP" if is_open(property) else "OPEN SHOP",owner_command.bind(property,"close" if is_open(property) else "open"))
+		crew.button(parent,"SHUT DOWN SHOP & LAY LOW",owner_command.bind(property,"shutdown"))
+	crew.label(parent,"Close and Lay Low are always available, even at critical Heat. Opening requires Heat below 75 and no raid lockdown; saved worker shifts resume when safe.")
