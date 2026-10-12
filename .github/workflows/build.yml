@@ -35,7 +35,7 @@ jobs:
       - name: Parse changed GDScript before gameplay tests
         run: |
           GODOT=/tmp/godot/Godot_v4.7.2-stable_linux.x86_64
-          for file in res://scripts/production_actions.gd res://scripts/property_production_crew.gd res://scripts/container_inventory.gd res://scripts/physical_packing.gd res://scripts/furniture_editor.gd; do
+          for file in res://scripts/production_actions.gd res://scripts/property_production_crew.gd res://scripts/container_inventory.gd res://scripts/main.gd res://scripts/physical_packing.gd res://scripts/furniture_editor.gd; do
             "$GODOT" --headless --path game --check-only --script "$file"
           done
       - name: Test movement, interactions, and isolated saves
