@@ -369,9 +369,12 @@ func computer_staff_payroll(property:String) -> int:
 	return total
 func computer_stock_total(property:String,kind:String,prefix:String) -> int:
 	if host.inventory_system==null:return 0
+	var inv:Node=host.inventory_system
+	if kind=="storage" and prefix=="product|":return inv.storage_stock(property)
 	var amount:int=0
-	for key in host.inventory_system.contents(property+":"+kind):
-		if str(key).begins_with(prefix):amount+=maxi(0,int(host.inventory_system.contents(property+":"+kind)[key]))
+	var contents:Dictionary=inv.contents(property+":"+kind)
+	for key in contents:
+		if str(key).begins_with(prefix):amount+=maxi(0,int(contents[key]))
 	return amount
 func computer_due(property:String) -> int:
 	var state:Dictionary=utility_state(property)

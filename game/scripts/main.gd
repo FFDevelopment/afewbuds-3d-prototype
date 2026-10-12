@@ -5861,11 +5861,8 @@ func _execute_production_worker_action_local() -> void:
 			var free_capacity: int = maxi(0, _storage_capacity() - _total_stored_stock())
 			var store_amount: int = mini(PRODUCTION_WORKER_BATCH_SIZE, mini(available_store, free_capacity))
 			if store_amount > 0:
-				bagged_inventory[strain_name] = available_store - store_amount
-				_ensure_product_exists(strain_name)
-				var data: Dictionary = products[strain_name]
-				data["stock"] = int(data.get("stock", 0)) + store_amount
-				products[strain_name] = data
+				if _storage_put_stock(strain_name,store_amount):
+					bagged_inventory[strain_name] = available_store - store_amount
 			elif free_capacity <= 0 and _dealer_locker_free_capacity() > 0:
 				var overflow_amount: int = mini(PRODUCTION_WORKER_BATCH_SIZE, mini(available_store, _dealer_locker_free_capacity()))
 				if overflow_amount > 0:
@@ -5910,11 +5907,8 @@ func _run_auto_packer() -> void:
 		var moved: int = mini(amount, free_capacity)
 		if moved <= 0:
 			break
-		bagged_inventory[strain_name] = amount - moved
-		_ensure_product_exists(strain_name)
-		var data: Dictionary = products[strain_name]
-		data["stock"] = int(data.get("stock", 0)) + moved
-		products[strain_name] = data
+		if _storage_put_stock(strain_name,moved):
+			bagged_inventory[strain_name] = amount - moved
 	if bagging_panel != null and bagging_panel.visible:
 		_refresh_bagging_panel()
 	if storage_panel != null and storage_panel.visible:
@@ -5930,12 +5924,9 @@ func _run_auto_packer_limited() -> void:
 			var free_capacity: int = maxi(0, _storage_capacity() - _total_stored_stock())
 			var moved: int = mini(PRODUCTION_WORKER_BATCH_SIZE, mini(amount, free_capacity))
 			if moved > 0:
-				bagged_inventory[strain_name] = amount - moved
-				_ensure_product_exists(strain_name)
-				var data: Dictionary = products[strain_name]
-				data["stock"] = int(data.get("stock", 0)) + moved
-				products[strain_name] = data
-			return
+				if _storage_put_stock(strain_name,moved):
+					bagged_inventory[strain_name] = amount - moved
+					return
 	for name_variant in trimmed_inventory.keys():
 		var strain_name: String = str(name_variant)
 		var amount: int = int(trimmed_inventory.get(strain_name, 0))
@@ -6245,6 +6236,25 @@ func _buy_dealer_locker_upgrade() -> void:
 	if phone_open:
 		_refresh_phone()
 
+func _property_storage_stock(strain_name:String)->int:
+ if inventory_system!=null:return inventory_system.storage_stock(inventory_system.operation(),strain_name)
+ return maxi(0,int(products.get(strain_name,{}).get("stock",0)))
+
+func _storage_take_stock(strain_name:String,amount:int)->bool:
+ if amount<=0:return amount==0
+ if inventory_system!=null:return inventory_system.take_storage(inventory_system.operation(),strain_name,amount)
+ if amount>_available_amount(strain_name):return false
+ products[strain_name]["stock"]=int(products[strain_name].get("stock",0))-amount
+ return true
+
+func _storage_put_stock(strain_name:String,amount:int)->bool:
+ if amount<=0:return amount==0
+ _ensure_product_exists(strain_name)
+ if inventory_system!=null:return inventory_system.put_storage(inventory_system.operation(),strain_name,amount)
+ if amount>maxi(0,_storage_capacity()-_total_stored_stock()):return false
+ products[strain_name]["stock"]=int(products[strain_name].get("stock",0))+amount
+ return true
+
 func _dealer_locker_add_from_storage(strain_name: String, requested_amount: int) -> int:
 	if dealer_locker_level <= 0 or not products.has(strain_name):
 		return 0
@@ -6255,9 +6265,7 @@ func _dealer_locker_add_from_storage(strain_name: String, requested_amount: int)
 	if moved <= 0:
 		status_label.text = "Dealer Locker is full or that strain has no unreserved stock."
 		return 0
-	var data: Dictionary = products[strain_name]
-	data["stock"] = maxi(0, int(data.get("stock", 0)) - moved)
-	products[strain_name] = data
+	if not _storage_take_stock(strain_name,moved):return 0
 	locker_weed[strain_name] = int(locker_weed.get(strain_name, 0)) + moved
 	status_label.text = "Stocked %dg %s in Dealer Locker. Dealers can now sell it." % [moved, strain_name]
 	_save_game()
@@ -6277,13 +6285,9 @@ func _dealer_locker_remove_to_storage(strain_name: String, requested_amount: int
 	var moved: int = mini(have, mini(free_capacity, requested))
 	if moved <= 0:
 		return 0
+	if not _storage_put_stock(strain_name,moved):return 0
 	locker_weed[strain_name] = have - moved
-	if int(locker_weed.get(strain_name, 0)) <= 0:
-		locker_weed.erase(strain_name)
-	_ensure_product_exists(strain_name)
-	var data: Dictionary = products[strain_name]
-	data["stock"] = int(data.get("stock", 0)) + moved
-	products[strain_name] = data
+	if int(locker_weed.get(strain_name, 0)) <= 0:locker_weed.erase(strain_name)
 	status_label.text = "Returned %dg %s from Dealer Locker to normal storage." % [moved, strain_name]
 	_save_game()
 	if storage_panel != null and storage_panel.visible:
@@ -6421,9 +6425,9 @@ func _dealer_sell_one_local(show_feedback: bool, assigned_dealer_name: String = 
 		locker_weed[product_name]=available-qty
 	else:
 		var from_locker: int=mini(qty,maxi(0,int(locker_weed.get(product_name,0))))
-		locker_weed[product_name]=maxi(0,int(locker_weed.get(product_name,0)))-from_locker
 		var from_storage: int=mini(qty-from_locker,_available_amount(product_name))
-		products[product_name]["stock"]=int(products[product_name].get("stock",0))-from_storage
+		if from_storage>0 and not _storage_take_stock(product_name,from_storage):return false
+		locker_weed[product_name]=maxi(0,int(locker_weed.get(product_name,0)))-from_locker
 		var from_bench: int=qty-from_locker-from_storage
 		bagged_inventory[product_name]=maxi(0,int(bagged_inventory.get(product_name,0)))-from_bench
 	if int(locker_weed.get(product_name,0))<=0:locker_weed.erase(product_name)
@@ -6640,14 +6644,10 @@ func _store_product(strain_name: String) -> void:
 	if moved <= 0:
 		status_label.text = "Storage is full. Upgrade in Central Market checkout (up to the 400g AFB vault)."
 		return
+	if not _storage_put_stock(strain_name,moved):return
 	bagged_inventory[strain_name] = amount - moved
-	_ensure_product_exists(strain_name)
-	var data: Dictionary = products[strain_name]
-	var old_stock: int = int(data.get("stock", 0))
-	data["stock"] = old_stock + moved
 	if tutorial_active and tutorial_step == 8 and strain_name == tutorial_harvest_strain:
-		data["listed"] = false
-	products[strain_name] = data
+		products[strain_name]["listed"]=false
 	_increment_advancement_stat("grams_stored", moved)
 	_tutorial_record("store", -1, strain_name)
 	status_label.text = "Placed %dg of %s in storage. It can now be listed on the phone." % [moved, strain_name]
@@ -6902,14 +6902,19 @@ func _refresh_storage_panel() -> void:
 	capacity_header.add_theme_font_size_override("font_size", 19)
 	capacity_header.modulate = Color("aeb9c0")
 	storage_list.add_child(capacity_header)
-	var total: int = 0
-	for name_variant in products.keys():
-		var strain_name: String = str(name_variant)
-		var data: Dictionary = products[strain_name]
-		var stock: int = int(data.get("stock", 0))
-		if stock <= 0:
-			continue
-		total += stock
+	var total:int=0
+	var storage_strains:Array[String]=[]
+	for product_name in products:storage_strains.append(str(product_name))
+	if inventory_system!=null:
+		for extra in inventory_system.storage_strains(inventory_system.operation()):
+			if not storage_strains.has(extra):storage_strains.append(extra)
+	storage_strains.sort()
+	for strain_name in storage_strains:
+		_ensure_product_exists(strain_name)
+		var data:Dictionary=products[strain_name]
+		var stock:int=_property_storage_stock(strain_name)
+		if stock<=0:continue
+		total+=stock
 		var parts: Dictionary = _make_inventory_card("bag")
 		var card: PanelContainer = parts["card"] as PanelContainer
 		var content: VBoxContainer = parts["content"] as VBoxContainer
@@ -7437,12 +7442,18 @@ func _build_products_local() -> void:
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	phone_list.add_child(intro)
 
-	for name_variant in products.keys():
-		var product_name: String = str(name_variant)
-		var data: Dictionary = products[product_name]
-		var stock: int = int(data.get("stock", 0))
-		var reserved: int = int(data.get("reserved", 0))
-		var sellable: int = maxi(0, stock - reserved)
+	var names:Array[String]=[]
+	for key in products.keys():names.append(str(key))
+	if inventory_system!=null:
+		for strain in inventory_system.storage_strains(inventory_system.operation()):
+			if not names.has(strain):names.append(strain)
+	names.sort()
+	for product_name in names:
+		_ensure_product_exists(product_name)
+		var data:Dictionary=products[product_name]
+		var stock:int=_property_storage_stock(product_name)
+		var reserved:int=int(data.get("reserved",0))
+		var sellable:int=maxi(0,stock-reserved)
 		var card: PanelContainer = PanelContainer.new()
 		phone_list.add_child(card)
 		var row: VBoxContainer = VBoxContainer.new()
@@ -8493,11 +8504,7 @@ func _process_friend_staff_purchases() -> int:
 		if not products.has(favorite):
 			continue
 		var product: Dictionary = products[favorite]
-		var stock: int = int(product.get("stock", 0))
-		if stock <= 0 or _available_amount(favorite) <= 0:
-			continue
-		product["stock"] = stock - 1
-		products[favorite] = product
+		if _available_amount(favorite)<=0 or not _storage_take_stock(favorite,1):continue
 		var paid: int = maxi(1, int(round(float(_effective_price(favorite)) * FRIEND_STAFF_PURCHASE_RATE)))
 		cash += paid
 		lifetime_revenue += paid
@@ -9560,9 +9567,8 @@ func _set_product_listed(product_name: String, listed: bool) -> void:
 	if not products.has(product_name):
 		return
 	var data: Dictionary = products[product_name]
-	var stock: int = int(data.get("stock", 0))
-	if stock <= 0 and listed:
-		return
+	var stock: int = _property_storage_stock(product_name)
+	if stock <= 0 and listed:return
 	var was_listed: bool = bool(data.get("listed", false))
 	data["listed"] = listed
 	products[product_name] = data
@@ -9666,7 +9672,7 @@ func _set_reserved(product_name: String, amount: int) -> void:
 	if not products.has(product_name):
 		return
 	var data: Dictionary = products[product_name]
-	var stock: int = int(data.get("stock", 0))
+	var stock: int = _property_storage_stock(product_name)
 	var reserved: int = clampi(amount, 0, stock)
 	data["reserved"] = reserved
 	products[product_name] = data
@@ -9806,9 +9812,7 @@ func _effective_price(product_name: String) -> int:
 
 func _storage_capacity() -> int:
 	if inventory_system!=null and inventory_system.furniture!=null:
-		var id:String=inventory_system.operation()+":storage"
-		if inventory_system.furniture.model.container_item(id).is_empty():return 0
-		return inventory_system.capacity(id,"product|Street Green")
+		return inventory_system.storage_capacity(inventory_system.operation())
 	if storage_level >= 5:
 		return 1000
 	if storage_level >= 4:
@@ -9820,11 +9824,9 @@ func _storage_capacity() -> int:
 	return 160
 
 func _total_stored_stock() -> int:
+	if inventory_system!=null:return inventory_system.storage_stock(inventory_system.operation())
 	var total: int = 0
-	for name_variant in products.keys():
-		var product_name: String = str(name_variant)
-		var data: Dictionary = products[product_name]
-		total += int(data.get("stock", 0))
+	for name_variant in products.keys():total+=maxi(0,int(products[name_variant].get("stock",0)))
 	return total
 
 func _on_off(value: bool) -> String:
@@ -11021,10 +11023,9 @@ func _player_product_sellable(product_name: String) -> bool:
 func _consume_player_sale_stock(product_name: String, qty: int) -> bool:
 	if qty<=0 or not products.has(product_name) or _player_available_amount(product_name)<qty:return false
 	var carried:int=mini(qty,_carried_amount("product|"+product_name))
+	var from_storage:int=qty-carried
+	if from_storage>0 and not _storage_take_stock(product_name,from_storage):return false
 	if carried>0:_consume_carried("product|"+product_name,carried)
-	var data:Dictionary=products[product_name]
-	data["stock"]=int(data.get("stock",0))-(qty-carried)
-	products[product_name]=data
 	return true
 
 func _open_customer_sale() -> void:
@@ -11274,10 +11275,9 @@ func _clear_substitutes() -> void:
 func _available_amount(product_name: String) -> int:
 	if not products.has(product_name):
 		return 0
+	if inventory_system!=null:return inventory_system.storage_available(inventory_system.operation(),product_name)
 	var data: Dictionary = products[product_name]
-	var stock: int = int(data.get("stock", 0))
-	var reserved: int = int(data.get("reserved", 0))
-	return maxi(0, stock - reserved)
+	return maxi(0,int(data.get("stock",0))-int(data.get("reserved",0)))
 
 func _clear_children(parent: Node) -> void:
 	for child in parent.get_children():
