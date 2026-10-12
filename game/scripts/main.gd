@@ -7489,7 +7489,7 @@ func _build_products_local() -> void:
 		toggle.custom_minimum_size = Vector2(0, 54)
 		toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		toggle.add_theme_font_size_override("font_size", 18)
-		toggle.disabled = stock <= 0 or not business_open
+		toggle.disabled = stock <= 0 and not is_listed
 		toggle.pressed.connect(_toggle_product_listing.bind(product_name))
 		head.add_child(toggle)
 		var effective_price: int = _effective_price(product_name)
@@ -9724,7 +9724,7 @@ func _reopen_business() -> void:
 		if not products.has(product_name):
 			continue
 		var data: Dictionary = products[product_name]
-		if int(data.get("stock", 0)) > 0:
+		if _property_storage_stock(product_name)>0:
 			data["listed"] = true
 			products[product_name] = data
 	paused_listing_snapshot.clear()
