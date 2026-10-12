@@ -27,7 +27,7 @@ func setup(owner:Node3D)->void:
  host=owner
  var old:Variant=host.location_state.get("customer_encounters_v1",{})
  history=(old as Dictionary) if old is Dictionary else {}
- if not (history.get("smoke_days",{}) is Dictionary):history["smoke_days"]={}
+ if not history.has("smoke_days") or not (history["smoke_days"] is Dictionary):history["smoke_days"]={}
  if not history.has("door_sales"):history["door_sales"]=0
  if not history.has("smoke_sessions"):history["smoke_sessions"]=0
  host.location_state["customer_encounters_v1"]=history
@@ -137,6 +137,7 @@ func conclude_visit(completed:bool)->void:
  if crew.malik_visitor==actor:crew.malik_visitor=null
  guest=actor
  guest_name=name
+ current_motion=""
  if completed:
   history["door_sales"]=int(history.get("door_sales",0))+1
   var visits:Dictionary=history.get("smoke_days",{})
@@ -164,7 +165,7 @@ func start_departure()->void:
  route.clear()
  if guest.position.z<6.8:
   route.append(Vector3(0.0,0.0,7.4))
- var right:bool=absf(float(guest_name.hash()%2))<1.0
+ var right:bool=guest_name.hash()%2==0
  route.append(SIDEWALK_RIGHT if right else SIDEWALK_LEFT)
  route.append(EXIT_RIGHT if right else EXIT_LEFT)
 
@@ -186,9 +187,11 @@ func _decline_smoke()->void:
 
 func _finish_smoke()->void:
  if stage!="smoking":return
- var previous:int=int(history.smoke_days.get(guest_name,-1))
+ var days:Dictionary=history.get("smoke_days",{})
+ var previous:int=int(days.get(guest_name,-1))
  if previous!=host.game_day:
-  history.smoke_days[guest_name]=host.game_day
+  days[guest_name]=host.game_day
+  history["smoke_days"]=days
   history.smoke_sessions=int(history.get("smoke_sessions",0))+1
   var relation:Dictionary=host.customer_relationships.get(guest_name,{}).duplicate(true)
   relation.loyalty=clampi(int(relation.get("loyalty",0))+6,0,100)
