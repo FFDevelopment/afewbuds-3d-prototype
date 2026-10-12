@@ -6237,23 +6237,23 @@ func _buy_dealer_locker_upgrade() -> void:
 		_refresh_phone()
 
 func _property_storage_stock(strain_name:String)->int:
- if inventory_system!=null:return inventory_system.storage_stock(inventory_system.operation(),strain_name)
- return maxi(0,int(products.get(strain_name,{}).get("stock",0)))
+	if inventory_system!=null:return inventory_system.storage_stock(inventory_system.operation(),strain_name)
+	return maxi(0,int(products.get(strain_name,{}).get("stock",0)))
 
 func _storage_take_stock(strain_name:String,amount:int)->bool:
- if amount<=0:return amount==0
- if inventory_system!=null:return inventory_system.take_storage(inventory_system.operation(),strain_name,amount)
- if amount>_available_amount(strain_name):return false
- products[strain_name]["stock"]=int(products[strain_name].get("stock",0))-amount
- return true
+	if amount<=0:return amount==0
+	if inventory_system!=null:return inventory_system.take_storage(inventory_system.operation(),strain_name,amount)
+	if amount>_available_amount(strain_name):return false
+	products[strain_name]["stock"]=int(products[strain_name].get("stock",0))-amount
+	return true
 
 func _storage_put_stock(strain_name:String,amount:int)->bool:
- if amount<=0:return amount==0
- _ensure_product_exists(strain_name)
- if inventory_system!=null:return inventory_system.put_storage(inventory_system.operation(),strain_name,amount)
- if amount>maxi(0,_storage_capacity()-_total_stored_stock()):return false
- products[strain_name]["stock"]=int(products[strain_name].get("stock",0))+amount
- return true
+	if amount<=0:return amount==0
+	_ensure_product_exists(strain_name)
+	if inventory_system!=null:return inventory_system.put_storage(inventory_system.operation(),strain_name,amount)
+	if amount>maxi(0,_storage_capacity()-_total_stored_stock()):return false
+	products[strain_name]["stock"]=int(products[strain_name].get("stock",0))+amount
+	return true
 
 func _dealer_locker_add_from_storage(strain_name: String, requested_amount: int) -> int:
 	if dealer_locker_level <= 0 or not products.has(strain_name):
