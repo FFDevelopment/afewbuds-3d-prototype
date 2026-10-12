@@ -7459,7 +7459,11 @@ func _build_products_local() -> void:
 		var row: VBoxContainer = VBoxContainer.new()
 		row.add_theme_constant_override("separation", 7)
 		card.add_child(row)
-		var head: HBoxContainer = HBoxContainer.new()
+		# A narrow phone can collapse a horizontal LIST button into a blank
+		# strip. Stack the name and full-width action on touch/web viewports.
+		var compact:bool=OS.has_feature("web") or get_viewport().get_visible_rect().size.x<680.0
+		var head: BoxContainer=VBoxContainer.new() if compact else HBoxContainer.new()
+		head.add_theme_constant_override("separation",8)
 		row.add_child(head)
 		var name_label: Label = Label.new()
 		name_label.text = product_name
@@ -7471,6 +7475,10 @@ func _build_products_local() -> void:
 		toggle.text = "UNLIST" if is_listed else "LIST"
 		toggle.tooltip_text = "Remove from storefront" if is_listed else "Make available to customers"
 		toggle.custom_minimum_size = Vector2(132, 52)
+		toggle.set_meta("product_listing_toggle",true)
+		toggle.autowrap_mode=TextServer.AUTOWRAP_OFF
+		toggle.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+		toggle.add_theme_font_size_override("font_size",16)
 		toggle.disabled = stock <= 0 or not business_open
 		toggle.pressed.connect(_toggle_product_listing.bind(product_name))
 		head.add_child(toggle)
@@ -9465,6 +9473,13 @@ Last change: %s" % [int(round(heat_peak)), int(floor(heat_reduced_total)), last_
 	shutdown_note.text="Lay low at the property computer or text assigned crew through Contacts. Active in-game cooldown is intentionally faster than offline cooldown."
 	shutdown_note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	phone_list.add_child(shutdown_note)
+	# Emergency closure must not require an on-duty employee. Heat often sends
+	# workers home, exactly when the owner needs to shut the operation down.
+	if neighborhood!=null and neighborhood.location_ops!=null and neighborhood.location_ops.crew!=null:
+		var shop:RefCounted=neighborhood.location_ops.crew.shop
+		for property_id in ["apartment","house"]:
+			if neighborhood.location_ops._property_controlled(property_id):
+				shop.render(phone_list,property_id)
 
 	if reeves_met or reeves_arrangement_active or reeves_arrangement_ended:
 		var reeves_link:Label=Label.new()

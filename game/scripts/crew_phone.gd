@@ -406,8 +406,8 @@ func serve_visit(client: Dictionary,request: Dictionary) -> bool:
 	return true
 func computer_controls() -> void:
 	label(ops.ui.body,"APARTMENT STOREFRONT · "+("LAY LOW" if host.lay_low_active else ("OPEN" if host.business_open else "AWAY")))
-	button(ops.ui.body,"REOPEN APARTMENT" if not host.business_open else "APARTMENT AWAY · TEXT CLIENTS",host._reopen_business if not host.business_open else host._set_business_away)
-	button(ops.ui.body,"APARTMENT LAY LOW · SHUT DOWN",shutdown)
+	button(ops.ui.body,"REOPEN APARTMENT" if not host.business_open else "CLOSE APARTMENT",shop.owner_control.bind("apartment","open" if not host.business_open else "close"),not host.business_open and (host._staff_heat_locked() or host.game_day<host.raid_lockdown_until_day))
+	button(ops.ui.body,"APARTMENT LAY LOW · SHUT DOWN",shop.owner_control.bind("apartment","shutdown"))
 	button(ops.ui.body,"CONTACTS & CREW TEXTS",func():ops.close();host._open_phone_app("clients");host.phone_open=true;host.phone_panel.show())
 	label(ops.ui.body,"Door manager: "+(manager() if not manager().is_empty() else "Not assigned. Assign a dealer from Contacts."))
 func alert(name: String,key: String,empty: bool,body: String) -> void:
