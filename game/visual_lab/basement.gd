@@ -23,22 +23,40 @@ func portions(rect:Rect2)->Array[Rect2]:
 func cut_slab(at:Vector3,size:Vector3,mat:Material,solid:bool)->void:
  for r in portions(Rect2(Vector2(at.x-size.x/2,at.z-size.z/2),Vector2(size.x,size.z))):
   block(Vector3(r.get_center().x,at.y,r.get_center().y),Vector3(r.size.x,size.y,r.size.y),mat,solid)
+# Stairwell visuals may belong to the neighborhood, the game, or a
+# runtime map child. Clipping Neighborhood's *direct* children alone leaves an
+# uncoupled pebble/asphalt ground sheet over the basement stairs on mobile.
+# Only shallow, horizontal ground-level boxes are changed; the real stairs,
+# guardrails, basement floor, furniture, and player physics are untouched.
+func cut_upper_ground_meshes(game:Node)->void:
+ var candidates:Array[Node]=game.find_children("*","MeshInstance3D",true,false)
+ for candidate in candidates:
+  var n:MeshInstance3D=candidate as MeshInstance3D
+  if n==null or not (n.mesh is BoxMesh) or not n.is_visible_in_tree():continue
+  if is_ancestor_of(n) or bool(n.get_meta("basement_cut",false)):continue
+  var bounds:AABB=n.global_transform*n.get_aabb()
+  if bounds.size.y<=0.0 or bounds.size.y>.45:continue
+  if bounds.position.y<-.50 or bounds.end.y>.23:continue
+  var footprint:=Rect2(Vector2(bounds.position.x,bounds.position.z),Vector2(bounds.size.x,bounds.size.z))
+  if not footprint.intersects(HOLE):continue
+  var material:Material=n.material_override
+  if material==null and n.mesh.get_surface_count()>0:material=n.mesh.surface_get_material(0)
+  var physics_bodies:Array[Node]=n.find_children("*","StaticBody3D",true,false)
+  cut_slab(bounds.get_center(),bounds.size,material,not physics_bodies.is_empty())
+  n.hide()
+  n.set_meta("basement_cut",true)
+  cut_count+=1
+  for body in physics_bodies:(body as StaticBody3D).collision_layer=0
 func setup(owner_study:Node)->void:
  study=owner_study
  var game=study.game
  register_basement_room(game)
  var concrete=study.surface("777b72",1);var wall=study.surface("a4aa9b",3);var steel=study.plain("344746",.3)
- # Cut actual meshes and existing colliders at the stair opening, including the map ground.
- for n in game.neighborhood.get_children():
-  if not n is MeshInstance3D or not n.mesh is BoxMesh:continue
-  var size:Vector3=n.mesh.size*n.scale
-  if n.position.y>.08 or n.position.y<-.4 or size.y>.4:continue
-  var rect=Rect2(Vector2(n.position.x-size.x/2,n.position.z-size.z/2),Vector2(size.x,size.z))
-  if not rect.intersects(HOLE):continue
-  var solid=not n.find_children("*","StaticBody3D",true,false).is_empty()
-  cut_slab(n.position,size,n.material_override,solid)
-  n.hide();n.set_meta("basement_cut",true);cut_count+=1
-  for body in n.find_children("*","StaticBody3D",true,false):body.collision_layer=0
+ # Cut every visible ground sheet over the stairwell, even if a map/runtime
+ # adapter owns it outside Neighborhood. This is a visual hole, not a new wall.
+ cut_upper_ground_meshes(game)
+ # Runtime adapters may add decorative floor sheets after the first scene pass.
+ call_deferred("cut_upper_ground_meshes",game)
  var ground=game.get_node("PrototypeNeighborhoodGround")
  ground.collision_layer=0
  var rect:Rect2=game.neighborhood.MAP_RECT
