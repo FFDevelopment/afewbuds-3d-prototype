@@ -186,7 +186,8 @@ func _decline_smoke()->void:
  start_departure()
 
 func _finish_smoke()->void:
- if stage!="smoking":return
+ # Never pay a second social reward after the actor has exited or been freed.
+ if stage!="smoking" or guest_name.is_empty() or guest==null or not is_instance_valid(guest):return
  var days:Dictionary=history.get("smoke_days",{})
  var previous:int=int(days.get(guest_name,-1))
  if previous!=host.game_day:
