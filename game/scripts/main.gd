@@ -439,6 +439,7 @@ var last_customer_broadcast: String = ""
 var phone_text_messages: Array[Dictionary] = []
 var phone_text_unread: int = 0
 var chapter_four_story_stage: int = 0
+var mission_story_engine: RefCounted
 var property_offer_unlocked: bool = false
 var property_opportunity_state: Dictionary = {}
 var location_state: Dictionary = {}
@@ -754,6 +755,7 @@ func _ready() -> void:
 	inventory_system.setup(self)
 	production_crew=load("res://scripts/property_production_crew.gd").new()
 	production_crew.setup(self)
+	mission_story_engine=load("res://scripts/mission_story_engine.gd").new();mission_story_engine.setup(self)
 	if not pending_saved_plant_clock.is_empty():
 		_restore_plant_clock(pending_saved_plant_clock)
 		pending_saved_plant_clock.clear()
@@ -8957,7 +8959,14 @@ func _build_story_progress_section() -> void:
 	elif not chapter_four_done:
 		chapter_title.text = "STORY\nCHAPTER 4 - OUTGROWING THE APARTMENT"
 	else:
-		chapter_title.text = "STORY\nCHAPTER 5 - BUILDING AN OPERATION"
+		if mission_story_engine!=null and mission_story_engine.chapter6_complete():
+			chapter_title.text = "STORY\nCHAPTER 6 COMPLETE - JOINT JUNCTION"
+		elif mission_story_engine!=null and mission_story_engine.chapter6_started():
+			chapter_title.text = "STORY\nCHAPTER 6 - JOINT JUNCTION"
+		elif mission_story_engine!=null and mission_story_engine.chapter5_complete():
+			chapter_title.text = "STORY\nCHAPTER 5 COMPLETE - MEET ROD"
+		else:
+			chapter_title.text = "STORY\nCHAPTER 5 - BUILDING AN OPERATION"
 	chapter_title.custom_minimum_size.x = 0.0
 	chapter_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	chapter_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -9020,6 +9029,7 @@ func _build_story_progress_section() -> void:
 	objectives.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	objectives.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	story_box.add_child(objectives)
+	if mission_story_engine!=null:mission_story_engine.render(story_box)
 
 func _advancement_lane_name(entry: Dictionary) -> String:
 	var advancement_id: String = str(entry.get("id", ""))
@@ -9072,6 +9082,8 @@ func _advancement_story_label() -> String:
 		return "CHAPTER 3 - GETTING NOTICED"
 	if not _story_chapter_four_complete():
 		return "CHAPTER 4 - OUTGROWING THE APARTMENT"
+	if mission_story_engine!=null and mission_story_engine.chapter6_complete():return "CHAPTER 6 - JOINT JUNCTION COMPLETE"
+	if mission_story_engine!=null and mission_story_engine.chapter6_started():return "CHAPTER 6 - JOINT JUNCTION"
 	return "CHAPTER 5 - BUILDING AN OPERATION"
 
 func _add_advancement_roadmap_milestone(parent: VBoxContainer, entry: Dictionary, current_tier: int) -> void:
@@ -9403,6 +9415,7 @@ func _increment_advancement_stat(metric_name: String, amount: int = 1) -> void:
 	elif metric_name == "reeves_missed_payments":
 		_lock_advancement_choice("reeves_miss")
 	advancement_stats[metric_name] = int(advancement_stats.get(metric_name, 0)) + amount
+	if mission_story_engine!=null:mission_story_engine.record(metric_name,amount)
 
 func _debug_trigger_reeves() -> void:
 	heat = maxf(heat, REEVES_TRIGGER_HEAT)

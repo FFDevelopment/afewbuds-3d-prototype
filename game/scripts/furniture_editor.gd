@@ -77,9 +77,12 @@ func setup(owner:Node3D,inv:Node) -> void:
  inventory.button("Done",close,layout_row)
  layout_panel.hide()
  panel.hide()
- rod_button=inventory.button("Talk to Rod",func():
-  if rod!=null and host.camera.global_position.distance_to(rod.global_position+Vector3.UP)<3.0 and chapter.meet_rod():rod.hide(),layer,true)
+ rod_button=inventory.button("Talk to Rod",talk_to_rod,layer,true)
  rod_button.hide()
+func talk_to_rod()->void:
+ if rod==null or host.camera.global_position.distance_to(rod.global_position+Vector3.UP)>=3.0:return
+ if host.mission_story_engine!=null:host.mission_story_engine.open_rod()
+ elif chapter.meet_rod():rod.hide()
 func is_open() -> bool:return panel.visible or is_placing() or layout_mode
 func is_placing() -> bool:return not selected.is_empty() and editing_camera
 func blocks_movement() -> bool:return panel.visible or controls_active
@@ -385,9 +388,12 @@ func _process(_delta:float) -> void:
  tick_timer+=_delta
  if tick_timer>=.5:
   tick_timer=0;chapter.tick()
-  if chapter.stage()==5 and chapter.started() and rod==null:
+  var story_needs_rod:bool=chapter.stage()==5 and chapter.started() and not chapter.complete()
+  if host.mission_story_engine!=null:story_needs_rod=story_needs_rod or host.mission_story_engine.rod_available()
+  if story_needs_rod and rod==null:
    rod=host.neighborhood.location_ops.crew.character_instance("Rod");host.add_child(rod);rod.position=Vector3(29,0,0)
-  var nearby:bool=rod!=null and not chapter.complete() and host.camera.global_position.distance_to(rod.global_position+Vector3.UP)<3.0
+  if rod!=null:rod.visible=story_needs_rod
+  var nearby:bool=story_needs_rod and rod!=null and host.camera.global_position.distance_to(rod.global_position+Vector3.UP)<3.0
   rod_button.visible=nearby and not host._any_modal_open() and not host.session_paused
   rod_button.position=host.get_viewport().get_visible_rect().size-Vector2(220,90)
 func tent_id(node:Node) -> String:
