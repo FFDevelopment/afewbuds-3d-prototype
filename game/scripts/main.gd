@@ -147,6 +147,7 @@ var production_worker_route_destination: Vector3 = Vector3.ZERO
 var production_worker_route_valid: bool = false
 var production_worker_friend_name: String = ""
 var production_crew:RefCounted
+var customer_encounters:Node
 var pending_saved_plant_clock:Dictionary={}
 var friend_staff_roles: Dictionary = {}
 var friend_dealer_stats: Dictionary = {}
@@ -754,6 +755,9 @@ func _ready() -> void:
 	inventory_system.setup(self)
 	production_crew=load("res://scripts/property_production_crew.gd").new()
 	production_crew.setup(self)
+	customer_encounters=load("res://scripts/customer_encounters.gd").new()
+	add_child(customer_encounters)
+	customer_encounters.setup(self)
 	if not pending_saved_plant_clock.is_empty():
 		_restore_plant_clock(pending_saved_plant_clock)
 		pending_saved_plant_clock.clear()
@@ -1069,7 +1073,9 @@ func _finish_direct_station_approach(action_id: String) -> void:
 			_open_storage_panel()
 		"station_door":
 			if customer_waiting:
-				if peephole_checked:
+				if customer_encounters!=null and customer_encounters.prepare_sale():
+					_open_customer_sale()
+				elif peephole_checked:
 					_open_customer_sale()
 				else:
 					_open_peephole()
@@ -4866,7 +4872,7 @@ func _refresh_navigation_ui() -> void:
 			contextual_button.disabled = false
 		"door":
 			if customer_waiting:
-				contextual_button.text = "ANSWER DOOR" if peephole_checked else "LOOK THROUGH PEEPHOLE"
+				contextual_button.text = "OPEN DOOR · TALK TO CUSTOMER" if customer_encounters!=null and customer_encounters.available() else ("ANSWER DOOR" if peephole_checked else "LOOK THROUGH PEEPHOLE")
 			else:
 				contextual_button.text = "OPEN DOOR & WALK OUTSIDE"
 			contextual_button.disabled = false
@@ -4914,7 +4920,9 @@ func _context_action() -> void:
 		"storage": _open_storage_panel()
 		"door":
 			if customer_waiting:
-				if peephole_checked:
+				if customer_encounters!=null and customer_encounters.prepare_sale():
+					_open_customer_sale()
+				elif peephole_checked:
 					_open_customer_sale()
 				else:
 					_open_peephole()
@@ -4922,6 +4930,7 @@ func _context_action() -> void:
 				_open_peephole()
 
 func _any_modal_open() -> bool:
+	if customer_encounters!=null and customer_encounters.blocks_controls():return true
 	if inventory_system!=null and inventory_system.packing!=null and inventory_system.packing.is_open():return true
 	if inventory_system!=null and inventory_system.furniture!=null and inventory_system.furniture.blocks_movement():return true
 	if inventory_system!=null and inventory_system.is_open():return true
@@ -11053,9 +11062,10 @@ func _open_customer_sale() -> void:
 		status_label.text = "That customer is already leaving."
 		return
 	if not peephole_checked:
-		status_label.text = "Check the peephole before answering the door."
-		_open_peephole()
-		return
+		if customer_encounters==null or not customer_encounters.prepare_sale():
+			status_label.text = "Check the peephole before answering the door."
+			_open_peephole()
+			return
 	if customer_patience_timer != null:
 		customer_patience_timer.stop()
 	customer_answered = true
@@ -11099,6 +11109,7 @@ func _open_customer_sale() -> void:
 	_apply_customer_art(sale_customer_art, current_customer, "door_art")
 	sale_body.text = line
 	_clear_substitutes()
+	if customer_encounters!=null:customer_encounters.opened_sale()
 
 func _sell_requested() -> void:
 	if str(current_customer.get("special", "")) == "reeves":
@@ -11264,6 +11275,7 @@ func _end_customer_visit(completed: bool) -> void:
 	if customer_exit_timer != null:
 		customer_exit_timer.stop()
 	var newly_known_name: String = _record_customer_encounter(completed)
+	if customer_encounters!=null:customer_encounters.conclude_visit(completed)
 	sale_panel.visible = false
 	if peephole_panel != null:
 		peephole_panel.visible = false
