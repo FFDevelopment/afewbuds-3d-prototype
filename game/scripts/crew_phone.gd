@@ -744,11 +744,8 @@ func update_malik() -> void:
 		for property_id in ["apartment","house"]:
 			host.production_crew.with_property(property_id,_sync_property_worker_character.bind(property_id))
 	else:_sync_property_worker_character("apartment")
-	var visitor: String=str(host.current_customer.get("name",""))
-	if host.customer_waiting and FriendCharacters.has_character(visitor):
-		if malik_visitor!=null and str(malik_visitor.get_meta("character",""))!=visitor:malik_visitor.queue_free();malik_visitor=null
-		if malik_visitor==null:malik_visitor=character_instance(visitor);host.add_child(malik_visitor);malik_visitor.position=Vector3(0,0,7.1)
-		malik_visitor.show()
+	if host.customer_encounters!=null and host.customer_encounters.available():
+		host.customer_encounters.ensure_visible_guest()
 	elif malik_visitor!=null:malik_visitor.hide()
 
 func seated_pose(model: Node3D,seated: bool) -> void:
