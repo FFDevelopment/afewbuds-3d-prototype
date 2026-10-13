@@ -1,4 +1,101 @@
 {
   "schema": 1,
-  "items": {}
+  "items": {
+    "tent_6": {
+      "name": "House Canopy Tent · 6 plants",
+      "shop": "grow",
+      "price": 2800,
+      "size": [5.65, 2.95, 1.65],
+      "grow_only": true,
+      "plants": 6,
+      "weight": 24,
+      "tier": 5,
+      "allowed_room_uses": ["grow"],
+      "style_tag": "black fabric, green light bar, AFewBuds house scale",
+      "interaction": "grow_tent",
+      "npc_use": {
+        "work_points": [
+          {"id": "plant_left", "role": "production", "animation": "plant_care", "offset": [-1.9, 0.0, 1.05]},
+          {"id": "plant_mid", "role": "production", "animation": "plant_care", "offset": [0.0, 0.0, 1.05]},
+          {"id": "plant_right", "role": "production", "animation": "plant_care", "offset": [1.9, 0.0, 1.05]}
+        ],
+        "clearance": {"front": 0.85, "sides": 0.2, "back": 0.12}
+      }
+    },
+    "bench_4": {
+      "name": "Sealing Station IV",
+      "shop": "equipment",
+      "price": 1800,
+      "size": [2.35, 1.32, 1.0],
+      "kind": "packing",
+      "tier": 4,
+      "weight": 34,
+      "allowed_room_uses": ["packing", "production"],
+      "style_tag": "wood and dark metal, scale, trim tray, heat sealer, labels",
+      "interaction": "packing_station",
+      "npc_use": {
+        "work_points": [
+          {"id": "trim", "role": "production", "animation": "trim", "offset": [-0.55, 0.0, 0.82]},
+          {"id": "seal", "role": "production", "animation": "bag_seal", "offset": [0.55, 0.0, 0.82]}
+        ],
+        "clearance": {"front": 0.9, "sides": 0.18, "back": 0.08}
+      }
+    },
+    "shelf_4": {
+      "name": "Grow Supply Cabinet IV",
+      "shop": "equipment",
+      "price": 1600,
+      "size": [1.75, 2.45, 0.82],
+      "kind": "supply",
+      "tier": 4,
+      "weight": 26,
+      "allowed_room_uses": ["grow", "storage", "production"],
+      "style_tag": "recessed cabinet, labeled seed drawers, fertilizer bins",
+      "interaction": "supply",
+      "npc_use": {
+        "work_points": [
+          {"id": "supply_pickup", "role": "production", "animation": "reach_shelf", "offset": [0.0, 0.0, 0.76]}
+        ],
+        "clearance": {"front": 0.75, "sides": 0.12, "back": 0.06}
+      }
+    },
+    "storage_6": {
+      "name": "House Cold Room Storage",
+      "shop": "equipment",
+      "price": 7200,
+      "size": [2.15, 2.6, 1.05],
+      "kind": "storage",
+      "tier": 6,
+      "capacity": 1800,
+      "weight": 40,
+      "allowed_room_uses": ["storage", "packing", "production"],
+      "style_tag": "insulated green-lit cabinet, sealed jars, backroom reserve",
+      "interaction": "storage",
+      "npc_use": {
+        "work_points": [
+          {"id": "stash", "role": "production", "animation": "store_product", "offset": [0.0, 0.0, 0.9]}
+        ],
+        "clearance": {"front": 0.85, "sides": 0.15, "back": 0.08}
+      }
+    },
+    "dealer_5": {
+      "name": "Dealer Dispatch Cabinet V",
+      "shop": "equipment",
+      "price": 2600,
+      "size": [1.8, 2.85, 1.05],
+      "kind": "dealer",
+      "tier": 5,
+      "capacity": 650,
+      "weight": 36,
+      "allowed_room_uses": ["storage", "packing", "production"],
+      "style_tag": "matte black dispatch locker, route bins, green status strips",
+      "interaction": "dealer",
+      "npc_use": {
+        "work_points": [
+          {"id": "pickup", "role": "dealer", "animation": "locker_pickup", "offset": [0.0, 0.0, 0.92]}
+        ],
+        "clearance": {"front": 0.85, "sides": 0.15, "back": 0.08}
+      }
+    }
+  }
 }
